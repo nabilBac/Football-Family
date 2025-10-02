@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Vidéos - Football Family</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="container">
+    <h1>Vidéos Football Family</h1>
+
+    <!-- Filtrer par catégorie -->
+    <form method="get" th:action="@{/videos/list}">
+        <label>Filtrer par catégorie :</label>
+        <select name="category">
+            <option value="">Toutes</option>
+            <option value="Entraînement">Entraînement</option>
+            <option value="Match">Match</option>
+            <option value="Technique">Technique</option>
+        </select>
+        <button type="submit">Filtrer</button>
+    </form>
+
+    <div class="video-grid" th:if="${videos != null}">
+        <div class="video-card" th:each="video : ${videos}">
+            <h3 th:text="${video.title}">Titre vidéo</h3>
+            <p>Catégorie : <span th:text="${video.category}"></span></p>
+            <p>Posté par : <span th:text="${video.uploader.username}"></span></p>
+            <p>Date : 
+                <span th:text="${video.dateUpload != null ? #temporals.format(video.dateUpload, 'dd/MM/yyyy HH:mm') : 'N/A'}"></span>
+            </p>
+
+            <video width="320" height="240" controls>
+                <source th:src="@{/videos/{filename}(filename=${video.filename})}" type="video/mp4">
+                Votre navigateur ne supporte pas la lecture vidéo.
+            </video>
+        </div>
+    </div>
+
+    <a th:href="@{/videos/upload}" class="btn-primary">Ajouter une vidéo</a>
+</div>
+</body>
+</html>

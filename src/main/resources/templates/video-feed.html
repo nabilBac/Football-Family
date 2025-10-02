@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="_csrf" th:content="${_csrf.token}"/>
+<meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+
+<title>Feed Immersif - Football Family</title>
+<link rel="stylesheet" th:href="@{/css/style.css}">
+
+</head>
+<body>
+
+<header>
+    <div class="logo">Football Family</div>
+    <div class="hamburger" onclick="document.getElementById('nav-menu').classList.toggle('show')">☰</div>
+    <nav id="nav-menu">
+    <a th:if="${#authentication.principal != null}" 
+       th:href="@{/videos/upload}" 
+       th:classappend="${page == 'upload'} ? 'active'">
+       Uploader
+    </a>
+
+    <a th:href="@{/videos/feed}" 
+       th:classappend="${page == 'feed'} ? 'active'">
+       Toutes les vidéos
+    </a>
+
+    <a th:href="@{/matches}" 
+       th:classappend="${page == 'matches'} ? 'active'">
+       Matchs
+    </a>
+
+    <a th:href="@{/trainings}" 
+       th:classappend="${page == 'trainings'} ? 'active'">
+       Entraînements
+    </a>
+
+    <a th:href="@{/clubs}" 
+       th:classappend="${page == 'clubs'} ? 'active'">
+       Clubs & Équipes
+    </a>
+
+    <a th:href="@{/calendar}" 
+       th:classappend="${page == 'calendar'} ? 'active'">
+       Calendrier
+    </a>
+
+    <a th:href="@{/challenges}" 
+       th:classappend="${page == 'challenges'} ? 'active'">
+       Challenges
+    </a>
+
+    <a th:href="@{/ranking}" 
+       th:classappend="${page == 'ranking'} ? 'active'">
+       Classements
+    </a>
+
+    <a th:href="@{/profile}" 
+       th:classappend="${page == 'profile'} ? 'active'">
+       Mon Profil
+    </a>
+</nav>
+
+</header>
+
+<!-- SCROLL SNAP CONTAINER -->
+<div id="video-container" th:insert="fragments/video-cards :: video-cards(${videos})"></div>
+
+
+<div id="loader"><p>Chargement...</p></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script th:inline="javascript">
+/*<![CDATA[*/
+let currentPage = [[${currentPage}]];
+let category = '[[${category}]]';
+let loading = false;
+let hasMoreVideos = true;
+let observer;
+
+// CORRECTION BUG SYNTAXE: Variable JavaScript globale et sécurisée pour le nom d'utilisateur.
+// Utilisation de la syntaxe de remplacement de commentaires pour garantir une injection correcte (soit 'username', soit null).
+const currentUsername = /*[[${#authentication.principal?.username}]]*/ null;
+
+
+// --- 1. Scroll infini ---
+function setupIntersectionObserver() {
+    if(observer) observer.disconnect();
+
+    const videoCards = document.querySelectorAll('.video-card');
+    if(videoCards.length < 1) return;
+
+    const targetVideoCard = videoCards[videoCards.length - 2] || videoCards[videoCards.length - 1];
+
+    observer = new IntersectionObserver((entries, obs) => {
+        entries.forEach(entry => {
+            if(entry.isIntersecting && hasMoreVideos && !loading){
+                obs.unobserve(entry.target);
+                loadMoreVideos();
+            }
+        });
+    }, { root: null, threshold: 0.1 });
+
+    observer.observe(targetVideoCard);
+}
+
+function loadMoreVideos(){
+    if(loading || !hasMoreVideos) return;
+    loading = true;
+    const loader = document.getElementById("loader");
+    loader.style.display = "block";
+    let cat = category==='null'?'':category;
+
+    fetch(`/videos/feed/fragment?page=${++currentPage}&category=${cat}`)
+        .then(r => r.text())
+        .then(html => {
+            if(html.trim() !== ""){
+                document.getElementById("video-container").insertAdjacentHTML("beforeend", html);
+                loading = false;
+                loader.style.display = "none";
+                checkVideosInView();
+                setupIntersectionObserver();
+            } else {
+                loader.innerHTML = "<p>Fin du feed</p>";
+                hasMoreVideos = false;
+            }
+        })
+        .catch(()=> {
+            loading = false;
+            loader.style.display = "none";
+        });
+}
+
+// --- 2. Autoplay vidéo ---
+function checkVideosInView(){
+    const videos = document.querySelectorAll('#video-container video');
+    let playingFound = false;
+
+    videos.forEach(video => {
+        const rect = video.getBoundingClientRect();
+        const videoCenter = rect.top + rect.height/2;
+        const windowCenter = window.innerHeight/2;
+
+        if(!playingFound && Math.abs(videoCenter - windowCenter) < rect.height/2){
+            if(!video.hasAttribute('data-volume-set')) video.muted = true;
+            video.play().catch(()=>console.log("Autoplay bloqué"));
+            playingFound = true;
+        } else {
+            video.pause();
+        }
+
+        video.removeEventListener('click', toggleMute);
+        video.addEventListener('click', toggleMute);
+    });
+}
+
+function toggleMute(event){
+    const video = event.currentTarget;
+    video.muted = !video.muted;
+    video.setAttribute('data-volume-set', 'true');
+}
+
+// --- 3. Likes et commentaires & GESTION VIDÉO ---
+document.querySelector('#video-container').addEventListener('click', function(event){
+    const videoCard = event.target.closest('.video-card');
+    if(!videoCard) return;
+
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+    // =======================================================
+    // --- ACTIONS SUR LES VIDÉOS (SUPPRESSION/MODIFICATION) ---
+    // =======================================================
+
+    // NOUVEAU: Logique de suppression de vidéo
+    if(event.target.closest('.delete-video-btn')){
+        const btn = event.target.closest('.delete-video-btn');
+        const videoId = btn.dataset.videoId;
+        
+        if(!confirm("Êtes-vous sûr de vouloir supprimer définitivement cette vidéo et tous ses commentaires/likes ?")) return;
+        
+        // On utilise la méthode DELETE HTTP
+        fetch(`/videos/${videoId}`, { 
+            method: "DELETE",
+            headers: {
+                [csrfHeader]: csrfToken
+            }
+        })
+        .then(res => {
+            // Le backend Spring renvoie une redirection (302) après une suppression réussie.
+            if (res.ok || res.redirected) {
+                console.log(`Vidéo ${videoId} supprimée. Redirection en cours...`);
+                // window.location.href = res.url; // Normalement non nécessaire
+            } else {
+                 res.json().then(data => alert(`Erreur de suppression de vidéo: ${data.error}`)).catch(()=>alert("Erreur inconnue lors de la suppression."));
+            }
+        })
+        .catch(console.error);
+
+        return;
+    }
+
+    // NOUVEAU: Logique de modification de vidéo (OUVERTURE DU FORMULAIRE)
+    if(event.target.closest('.edit-video-btn')){
+        const btn = event.target.closest('.edit-video-btn');
+        const videoId = btn.dataset.videoId;
+        
+        const overlay = btn.closest('.video-card').querySelector('.overlay');
+        const titleElement = overlay.querySelector('.video-title');
+        const editForm = document.getElementById(`edit-form-${videoId}`);
+        
+        titleElement.style.display = 'none';
+        editForm.style.display = 'block';
+        
+        btn.closest('.video-author-actions').style.display = 'none';
+
+        return;
+    }
+
+    // NOUVEAU: Logique de sauvegarde de la modification (PUT)
+    if(event.target.closest('.save-video-btn')){
+        const btn = event.target.closest('.save-video-btn');
+        const videoId = btn.dataset.videoId;
+        const videoCard = btn.closest('.video-card');
+        
+        const inputTitle = document.getElementById(`edit-title-${videoId}`);
+        const newTitle = inputTitle.value.trim();
+
+        if(!newTitle) {
+             alert("Le titre ne peut être vide.");
+             return;
+        }
+        
+        // Appel PUT pour mettre à jour les métadonnées
+        fetch(`/videos/${videoId}`, { 
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                [csrfHeader]: csrfToken
+            },
+            body: JSON.stringify({ title: newTitle })
+        })
+        .then(res => {
+            if(res.ok) {
+                return res.json();
+            } else {
+                 throw new Error("Échec de la mise à jour");
+            }
+        })
+        .then(data => {
+            // Mise à jour du titre affiché
+            const titleElement = videoCard.querySelector('.video-title');
+            titleElement.textContent = data.newTitle; 
+            
+            // Fermeture du formulaire
+            videoCard.querySelector('.video-edit-form').style.display = 'none';
+            titleElement.style.display = 'block';
+            videoCard.querySelector('.video-author-actions').style.display = 'flex'; // ou 'block'
+        })
+        .catch(error => {
+            console.error(error);
+            alert("Erreur lors de la sauvegarde : " + error.message);
+        });
+
+        return;
+    }
+
+    // NOUVEAU: Logique d'annulation de la modification
+    if(event.target.closest('.cancel-video-edit-btn')){
+        const btn = event.target.closest('.cancel-video-edit-btn');
+        const videoCard = btn.closest('.video-card');
+
+        // Réaffichage des métadonnées et masquage du formulaire
+        videoCard.querySelector('.video-edit-form').style.display = 'none';
+        videoCard.querySelector('.video-title').style.display = 'block';
+        videoCard.querySelector('.video-author-actions').style.display = 'flex'; // ou 'block'
+        
+        return;
+    }
+
+
+    // =======================================================
+    // --- ACTIONS SUR LES COMMENTAIRES ---
+    // =======================================================
+
+    // Logique de suppression de commentaire (Attend la notification WebSocket)
+    if(event.target.closest('.delete-comment-btn')){
+        const btn = event.target.closest('.delete-comment-btn');
+        const commentId = btn.dataset.commentId;
+        
+        if(!confirm("Êtes-vous sûr de vouloir supprimer ce commentaire ?")) return;
+
+        fetch(`/videos/comments/${commentId}`, { // <-- Endpoint DELETE
+            method: "DELETE",
+            headers: {
+                [csrfHeader]: csrfToken
+            }
+        })
+        .then(res => {
+            if(res.ok) {
+                // Le console.log est ici, mais la suppression du DOM se fait par WebSocket.
+                console.log(`Requête DELETE pour le commentaire ${commentId} envoyée.`);
+            } else {
+                 res.json().then(data => alert(`Erreur de suppression: ${data.error}`)).catch(()=>alert("Erreur inconnue."));
+            }
+        })
+        .catch(console.error);
+
+        return;
+    }
+
+    // NOUVEAU: Logique de modification
+    if(event.target.closest('.edit-comment-btn')){
+        const btn = event.target.closest('.edit-comment-btn');
+        const commentDiv = btn.closest('.comment');
+        const contentSpan = commentDiv.querySelector('.comment-content');
+        const commentId = btn.dataset.commentId;
+        const authorActions = btn.closest('.comment-author-actions');
+
+
+        // Étape 1: Passer en mode édition (remplacer le texte par un input)
+        const currentContent = contentSpan.textContent;
+        contentSpan.innerHTML = `
+            <input type="text" class="edit-input" value="${currentContent}" />
+            <div class="edit-controls">
+                <button type="button" class="save-edit-btn" data-comment-id="${commentId}">💾</button>
+                <button type="button" class="cancel-edit-btn" data-original-content="${currentContent}">✖</button>
+            </div>
+        `;
+        authorActions.style.display = 'none';
+
+        return;
+    }
+
+    // NOUVEAU: Logique de sauvegarde de la modification
+    if(event.target.closest('.save-edit-btn')){
+        const btn = event.target.closest('.save-edit-btn');
+        const commentDiv = btn.closest('.comment');
+        const contentSpan = commentDiv.querySelector('.comment-content');
+        const commentId = btn.dataset.commentId;
+        const input = commentDiv.querySelector('.edit-input');
+        const newContent = input.value.trim();
+        const authorActions = commentDiv.querySelector('.comment-author-actions');
+
+        if(!newContent) return; 
+
+        fetch(`/videos/comments/${commentId}`, { // <-- Endpoint PUT
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                [csrfHeader]: csrfToken
+            },
+            body: JSON.stringify({ content: newContent })
+        })
+        .then(res => {
+            if(res.ok) {
+                // Rétablir l'affichage normal après succès
+                contentSpan.textContent = newContent;
+                authorActions.style.display = 'flex';
+            } else {
+                 res.json().then(data => alert(`Erreur de modification: ${data.error}`)).catch(()=>alert("Erreur inconnue."));
+            }
+        })
+        .catch(console.error);
+        
+        return;
+    }
+
+    // NOUVEAU: Logique d'annulation de la modification
+    if(event.target.closest('.cancel-edit-btn')){
+        const btn = event.target.closest('.cancel-edit-btn');
+        const commentDiv = btn.closest('.comment');
+        const contentSpan = commentDiv.querySelector('.comment-content');
+        const authorActions = commentDiv.querySelector('.comment-author-actions');
+        
+        // On récupère le contenu original stocké dans le bouton d'annulation
+        const originalContent = btn.dataset.originalContent;
+        
+        contentSpan.textContent = originalContent;
+        authorActions.style.display = 'flex';
+        
+        return;
+    }
+    
+    // Toggle section commentaire
+    if(event.target.closest('.comment-btn')){
+        const commentsSection = videoCard.querySelector('.comments-section');
+        commentsSection.style.display = commentsSection.style.display === 'none' ? 'block' : 'none';
+        return;
+    }
+
+     if(event.target.closest('.close-comments')){
+        const videoId = event.target.dataset.videoId;
+        const commentsSection = document.getElementById(`comments-section-${videoId}`);
+        commentsSection.style.display = 'none';
+        return;
+    }
+
+  if(event.target.closest('.like-btn')){
+    const btn = event.target.closest('.like-btn');
+    const videoId = btn.dataset.videoId;
+
+    // Trouve le span contenant le nombre de likes
+    const span = btn.querySelector('.like-count');
+    if(!span) return; 
+
+    // CSRF token (déjà défini en haut de ce bloc)
+
+    fetch(`/videos/${videoId}/like`, {
+        method: "POST",
+        headers: {
+            [csrfHeader]: csrfToken
+        }
+    })
+    .then(res => res.json())
+    .then(data => { 
+        span.textContent = data.likes; // incrémente le compteur
+    })
+    .catch(console.error);
+
+    return;
+}
+
+
+    // Envoi commentaire
+    if(event.target.classList.contains('submit-comment')){
+        const btn = event.target;
+        const videoId = btn.dataset.videoId;
+        const input = document.querySelector(`#comment-input-${videoId}`);
+        const content = input.value.trim();
+        if(!content) return;
+
+        const commentsSection = videoCard.querySelector('.comments-section');
+        
+        // CSRF (déjà défini en haut de ce bloc)
+
+        fetch(`/videos/${videoId}/comment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                [csrfHeader]: csrfToken
+            },
+            body: JSON.stringify({ content })
+        })
+        .then(res => res.json())
+        .then(data => {
+            // L'ajout du commentaire est géré par WebSocket (addCommentToDom), 
+            // nous nous contentons de vider l'input et mettre à jour le compteur (si le backend renvoie le count)
+            
+            input.value = '';
+            
+            // Mettre à jour compteur
+            const countSpan = videoCard.querySelector('button.comment-btn span');
+            countSpan.textContent = data.commentCount; // Assurez-vous que votre API renvoie le count
+            
+            // Le WebSocket se chargera d'appeler addCommentToDom
+        })
+        .catch(console.error);
+    }
+});
+
+// --- 5. TEMPS RÉEL (WebSockets) ---
+
+// NOUVEAU : Fonction pour retirer un commentaire du DOM
+function removeCommentFromDom(commentId) {
+    const commentDiv = document.querySelector(`.comment[data-comment-id='${commentId}']`); 
+    if (commentDiv) {
+        const videoCard = commentDiv.closest('.video-card');
+        commentDiv.remove(); 
+
+        // Mise à jour du compteur
+        if(videoCard) {
+            const countSpan = videoCard.querySelector('button.comment-btn span');
+            countSpan.textContent = Math.max(0, parseInt(countSpan.textContent) - 1);
+        }
+    } else {
+        console.warn(`Commentaire ID ${commentId} non trouvé dans le DOM.`);
+    }
+}
+
+// 5a. Fonction pour ajouter un commentaire au DOM
+function addCommentToDom(videoId, commentId, author, content) {
+    const videoCard = document.querySelector(`.video-card [data-video-id='${videoId}']`).closest('.video-card');
+    if (!videoCard) return;
+
+    const commentsSection = videoCard.querySelector('.comments-section');
+    const commentsDiv = commentsSection.querySelector('.existing-comments');
+    const isCurrentUser = author === currentUsername; // Utilise la variable JS sécurisée
+
+    const newComment = document.createElement('div');
+    newComment.classList.add('comment');
+    newComment.setAttribute('data-comment-id', commentId);
+    
+    // Ajout des boutons modifier/supprimer si c'est l'utilisateur actuel
+    let actionsHtml = '';
+    if (isCurrentUser) {
+         actionsHtml = `
+            <div class="comment-author-actions">
+                <button type="button" class="edit-comment-btn action-icon" data-comment-id="${commentId}">✏️</button>
+                <button type="button" class="delete-comment-btn action-icon" data-comment-id="${commentId}">❌</button>
+            </div>
+        `;
+    }
+
+    newComment.innerHTML = `
+        <b style="font-size:0.9rem;">${author}</b> : 
+        <span class="comment-content">${content}</span>
+        ${actionsHtml}
+    `;
+    
+    commentsDiv.appendChild(newComment);
+    commentsDiv.scrollTop = commentsDiv.scrollHeight; 
+    commentsSection.style.display = 'block'; 
+    
+    // Mettre à jour le compteur (la partie POST du fetch devrait déjà le faire)
+    // Ici on s'assure que le compteur est mis à jour si un autre utilisateur poste.
+    const countSpan = videoCard.querySelector('button.comment-btn span');
+    countSpan.textContent = parseInt(countSpan.textContent) + 1;
+}
+
+
+let stompClient = null;
+
+function connect() {
+    const socket = new SockJS('/ws'); 
+    stompClient = Stomp.over(socket);
+    
+    stompClient.connect({}, function (frame) {
+        console.log('Connecté au WebSocket.');
+
+        // 5c. S'ABONNER au canal d'ajout de commentaire
+        document.querySelectorAll('.video-card').forEach(videoCard => {
+            const videoId = videoCard.querySelector('.comment-btn').dataset.videoId;
+            
+            // Abonnement au canal /topic/comments/{videoId} (Ajout/Modification)
+            stompClient.subscribe('/topic/comments/' + videoId, function (message) {
+                const commentData = JSON.parse(message.body);
+                
+                // Mettre à jour ou ajouter le commentaire (Ajoutons ici la logique de mise à jour)
+                if (commentData.action === "CREATED" || commentData.action === "UPDATED") {
+                    // Ici on simplifie: on utilise addCommentToDom pour l'ajout. 
+                    // Pour la modification, on peut soit recharger la carte (plus lourd)
+                    // soit mettre à jour le contenu (ce qui est déjà fait dans le fetch PUT ci-dessus)
+                    if (commentData.action === "CREATED") {
+                        addCommentToDom(
+                            commentData.videoId, 
+                            commentData.commentId, 
+                            commentData.author, 
+                            commentData.content
+                        );
+                    }
+                }
+            });
+        });
+
+        // CORRECTION CRITIQUE : S'ABONNER au canal de suppression
+        stompClient.subscribe('/topic/comments/delete', function (message) {
+            const data = JSON.parse(message.body);
+            if(data.action === "DELETED") {
+                console.log(`Notification WebSocket: Suppression du commentaire ${data.commentId}`);
+                removeCommentFromDom(data.commentId); 
+            }
+        });
+        
+    }, function (error) { // Callback en cas d'erreur de connexion
+        console.error('Erreur de connexion WebSocket', error);
+        // setTimeout(connect, 5000); // Décommenter si vous voulez une reconnexion automatique
+    });
+}
+
+
+// 5e. Démarre la connexion WebSocket après le chargement de la page
+window.addEventListener('load', connect);
+
+// --- 4. Initialisation ---
+window.addEventListener('resize', checkVideosInView);
+window.addEventListener('load', () => {
+    checkVideosInView();
+    setupIntersectionObserver();
+});
+setTimeout(() => {
+    checkVideosInView();
+    setupIntersectionObserver();
+}, 500);
+/*]]>*/
+</script>
+
+</body>
+</html>

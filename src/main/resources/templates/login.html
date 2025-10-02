@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Connexion - Football Family</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<div class="container">
+
+    <div class="hero" style="margin-bottom: 30px;">
+        <h1>Se connecter</h1>
+        <p>Accédez à vos vidéos et à la communauté Football Family</p>
+    </div>
+
+    <form th:action="@{/login}" method="post" class="form-card">
+        <div class="form-group">
+            <label>Nom d'utilisateur:</label>
+            <input type="text" name="username" required />
+        </div>
+
+        <div class="form-group">
+            <label>Mot de passe:</label>
+            <input type="password" name="password" required />
+        </div>
+
+        <button type="submit" class="btn-primary">Connexion</button>
+
+        <p th:if="${param.error}" style="color:red; margin-top:10px;">
+            Nom d'utilisateur ou mot de passe incorrect
+        </p>
+
+        <p th:if="${param.logout}" style="color:green; margin-top:10px;">
+            Déconnecté avec succès
+        </p>
+    </form>
+
+    <p style="text-align:center; margin-top:15px;">
+        Pas encore inscrit ? 
+        <a th:href="@{/register}" style="color:#4b0082; font-weight:bold;">Créer un compte</a>
+    </p>
+
+</div>
+
+</body>
+</html>

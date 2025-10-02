@@ -1,0 +1,380 @@
+/* ==================== RESET & BASE ==================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', 'Roboto', sans-serif;
+}
+
+body {
+    background-color: #000;
+    color: #fff;
+    overflow: hidden;  /* on laisse le scroll pour le feed */
+    padding-top: 60px;
+}
+
+
+a { color: white; text-decoration: none; }
+
+/* ==================== HEADER ==================== */
+header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 20;
+    padding: 10px 15px; /* padding général */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0,0,0,0.85);
+}
+
+.logo {
+    font-family: 'Poppins', sans-serif;
+    color: #6c63ff;
+    font-weight: 600;
+    font-size: 1.4rem;
+}
+
+.hamburger {
+    font-size: 1.8rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background 0.3s, transform 0.2s;
+}
+.hamburger:hover {
+    background: rgba(255,255,255,0.1);
+    transform: scale(1.1);
+}
+
+nav {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+    background: rgba(0,0,0,0.95);
+    padding: 15px;
+    border-radius: 8px;
+    position: absolute;
+    top: 60px;   /* sous le header */
+    right: 15px; /* aligné avec le bouton burger */
+    min-width: 180px;
+    text-align: left; /* plus naturel que right */
+}
+
+nav.show {
+    display: flex;
+}
+
+/* ==================== LOADER ==================== */
+#loader {
+    text-align: center;
+    padding: 20px;
+    color: #aaa;
+    display: none;
+    font-size: 1.2rem;
+}
+
+/* ==================== FEED & VIDEO CARDS COMMUN ==================== */
+#video-container {
+    height: 100vh;
+    overflow-y: auto;       /* scroll unique pour feed */
+    scroll-snap-type: y mandatory;
+}
+
+
+.video-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.video-card video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+    position: relative; /* ou absolute si nécessaire */
+    z-index: 1;
+}
+
+/* Overlay & Actions */
+.overlay {
+    position: absolute;
+    z-index: 10;
+    text-shadow: 1px 1px 5px rgba(0,0,0,0.7);
+}
+
+.actions {
+    position: absolute;
+    display: flex;
+    gap: 15px;
+    z-index: 10;
+}
+
+.actions button {
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.actions button:hover {
+    transform: scale(1.2);
+    background: rgba(0,0,0,0.7);
+}
+
+/* ==================== MOBILE FEED (TikTok) ==================== */
+@media (max-width: 1023px) {
+     #video-container {
+        height: 100vh;
+        scroll-snap-type: y mandatory;
+    }
+
+   
+    .video-card {
+        width: 100vw;
+        height: 80vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        scroll-snap-align: start;
+        position: relative;
+    }
+
+    .overlay {
+        bottom: 50px;
+        left: 15px;
+        max-width: 70%;
+        font-size: 1rem;
+        z-index: 2;
+        text-shadow: 1px 1px 5px rgba(0,0,0,0.7);
+    }
+
+      .actions {
+        position: absolute;
+        top: 50%; /* centre verticalement */
+        right: 10px;
+        transform: translateY(-50%);
+        flex-direction: column;
+        gap: 20px;
+        z-index: 3;
+        pointer-events: none; /* ignore clics sauf sur boutons */
+    }
+
+   .actions button {
+        pointer-events: auto; /* boutons cliquables */
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.2s, background 0.2s;
+    }
+     .actions button:hover {
+        transform: scale(1.2);
+        background: rgba(0,0,0,0.7);
+    }
+    /* AJOUT DANS @media (max-width: 1023px) */
+.comments-section {
+    position: absolute;
+    bottom: 0; /* Ancrage en bas de la carte vidéo */
+    left: 0;
+    width: 100%;
+    height: 60%; /* Prend 60% de la hauteur de la carte vidéo */
+    padding: 15px;
+    background: #111; /* Fond sombre pour la lisibilité */
+    z-index: 50; /* Doit être très haut pour recouvrir les autres éléments */
+    border-radius: 20px 20px 0 0; /* Coins arrondis en haut */
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.4);
+    /* 'display: none' est déjà géré par la règle générale */
+}
+
+/* Scroll interne pour la liste des commentaires */
+.existing-comments {
+    /* La hauteur restante : 100% moins la hauteur du formulaire et le padding */
+    max-height: calc(100% - 70px); 
+    overflow-y: auto;
+    margin-bottom: 10px;
+    padding-right: 5px; 
+}
+}
+
+/* ==================== DESKTOP FEED ==================== */
+@media (min-width: 1024px) {
+    #video-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 80px 0;
+        overflow-y: auto;
+        scroll-snap-type: none;
+    }
+     .video-card video {
+        /* Rétablit la hauteur de la vidéo à la taille standard desktop */
+        height: 360px; 
+    }
+    
+    
+     header {
+        padding: 10px 40px;
+        justify-content: flex-start; /* logo + nav à gauche */
+        gap: 40px; /* espace entre logo et menu */
+    }
+
+   .video-card {
+        width: 640px;   /* ratio 16:9 */
+        /* J'AI SUPPRIMÉ height: 360px; */ 
+        min-height: 360px; /* <--- MODIFICATION 1 : Permet à la carte de grandir */
+        margin: 20px 0;
+        overflow-y: hidden;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+        position: relative;
+    }
+
+     .overlay {
+        bottom: 10px;
+        left: 10px;
+        max-width: 50%;
+        font-size: 0.9rem;
+        z-index: 2;
+        text-shadow: 1px 1px 5px rgba(0,0,0,0.7);
+    }
+
+     .actions {
+    position: absolute;
+    bottom: 50px;       /* décale au-dessus de la barre de contrôle native */
+    right: 10px;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 20;        /* plus haut que la vidéo et overlay */
+}
+.comments-section {
+        position: relative; /* <--- MODIFICATION 2 : La section ne chevauche plus */
+        /* J'AI SUPPRIMÉ bottom: 0; et left: 0; */
+        width: 100%;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 5;
+        max-height: 100%; 
+        box-sizing: border-box; 
+        color: white; 
+    }
+
+       
+.actions button {
+    pointer-events: auto; /* boutons cliquables */
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+}
+.actions button:hover {
+    transform: scale(1.2);
+    background: rgba(0,0,0,0.7);
+}
+
+}
+
+/* Desktop : menu visible en ligne, pas de burger */
+@media (min-width: 1024px) {
+    .hamburger {
+        display: none; /* cache le bouton burger */
+    }
+  nav {
+        display: flex !important;
+        position: static;
+        flex-direction: row;
+        gap: 25px;
+        background: transparent;
+        margin: 0;
+        padding: 0;
+        text-align: left;
+    }
+
+   nav a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s, border-bottom 0.3s;
+}
+
+    nav a:hover {
+        color: #6c63ff;
+    }
+  
+}
+
+nav a.active {
+    color: #6c63ff;
+    border-bottom: 2px solid #6c63ff;
+}
+.comments-section {
+    display: none;
+    max-height: 200px;
+    overflow-y: auto;      /* scroll interne si + de commentaires */
+}
+
+.existing-comments {
+    max-height: 120px;
+    overflow-y: auto;
+    margin-bottom: 6px;
+}
+
+.comment {
+    font-size: 0.9rem;
+    padding: 2px 0;
+}
+
+.comment-form {
+    display: flex;
+    gap: 6px;
+}
+
+.comment-input {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 20px;
+    border: 1px solid #ccc;
+}
+
+.submit-comment {
+    padding: 6px 12px;
+    border-radius: 20px;
+    background-color: #6c5ce7;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+.submit-comment:hover {
+    background-color: #341f97;
+}
+
+
+
+
+
+ 
+
+
+  
+
+
