@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+    <nav th:fragment="mobile-navbar" class="mobile-navbar">
+        <a href="/" class="nav-item">
+            <i class="fa-solid fa-house"></i>
+        </a>
+        <a href="/search" class="nav-item">
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </a>
+        <a href="/upload" class="nav-item upload-btn">
+            <i class="fa-solid fa-plus"></i>
+        </a>
+        <a href="/notifications" class="nav-item">
+            <i class="fa-solid fa-bell"></i>
+        </a>
+        <a href="/profile" class="nav-item">
+            <i class="fa-solid fa-user"></i>
+        </a>
+    </nav>
+    
+    <script th:fragment="navbar-script" th:inline="javascript">
+      
+        // Récupérer le chemin sans les paramètres de requête
+        const currentPath = window.location.pathname.replace(/\/+$/, ''); // Supprime le slash final s'il existe
+        
+        // Fonction pour mettre à jour la classe 'active'
+        function setActiveNav() {
+            // 1. Supprimer 'active' partout
+            document.querySelectorAll('.mobile-navbar .nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // 2. Trouver et activer le lien correspondant au chemin
+            let activeLink = document.querySelector(`.mobile-navbar .nav-item[href="${currentPath}"]`);
+            
+            // 3. Cas particulier: si la page est /feed ou juste /
+            if (!activeLink && (currentPath === '' || currentPath === '/')) {
+                activeLink = document.querySelector('.mobile-navbar .nav-item[href="/"]');
+            }
+            
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+        }
+
+        // Exécuter au chargement du DOM
+        document.addEventListener('DOMContentLoaded', setActiveNav);
+        
+      
+    </script>
+</body>
+</html>

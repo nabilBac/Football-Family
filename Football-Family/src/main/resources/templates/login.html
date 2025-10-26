@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Connexion - Football Family</title>
+    <link rel="icon" type="image/png" th:href="@{/assets/icons/icon-48.png}">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <!-- Styles temporaires si style.css ne contient pas tout -->
+    <style>
+        .auth-page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f4f7f6;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+        .hero {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-card {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 10px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .btn-oauth {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            border-radius: 5px;
+            text-align: center;
+            text-decoration: none;
+            margin-top: 10px;
+        }
+        .btn-oauth:hover {
+            background-color: #000;
+        }
+        .separator {
+            text-align: center;
+            margin: 20px 0;
+            line-height: 0.1em;
+            border-bottom: 1px solid #eee;
+        }
+        .separator span {
+            background: #fff;
+            padding: 0 10px;
+            color: #999;
+        }
+    </style>
+</head>
+<body class="auth-page">
+
+<div class="container">
+
+    <div class="hero" style="margin-bottom: 30px;">
+        <h1>Se connecter</h1>
+        <p>Accédez à vos vidéos et à la communauté Football Family</p>
+    </div>
+
+    <!-- FORMULAIRE DE CONNEXION CLASSIQUE -->
+    <form th:action="@{/login}" method="post" class="form-card">
+        
+        <!-- 🎯 CORRECTION CRUCIALE : Ajout du champ CSRF -->
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+        <div class="form-group">
+            <label>Nom d'utilisateur:</label>
+            <input type="text" name="username" required />
+        </div>
+
+        <div class="form-group">
+            <label>Mot de passe:</label>
+            <input type="password" name="password" required />
+        </div>
+
+        <button type="submit" class="btn-primary">Connexion</button>
+
+        <p th:if="${param.error}" style="color:red; margin-top:10px;">
+            Nom d'utilisateur ou mot de passe incorrect
+        </p>
+
+        <p th:if="${param.logout}" style="color:green; margin-top:10px;">
+            Déconnecté avec succès
+        </p>
+        
+        <!-- 🎯 AJOUT : Séparateur et Connexion OAuth2 -->
+        <div class="separator"><span>OU</span></div>
+        
+        <!-- Bouton GitHub pour la connexion sociale -->
+        <a th:href="@{/oauth2/authorization/github}" class="btn-oauth">
+            Se connecter avec GitHub
+        </a>
+        
+    </form>
+
+    <p style="text-align:center; margin-top:15px;">
+        Pas encore inscrit ? 
+        <a th:href="@{/register}" style="color:#4b0082; font-weight:bold;">Créer un compte</a>
+    </p>
+
+</div>
+
+</body>
+</html>
