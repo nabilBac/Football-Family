@@ -25,7 +25,7 @@
         <div class="video-card" th:each="video : ${videos}">
             <h3 th:text="${video.title}">Titre vidéo</h3>
             <p>Catégorie : <span th:text="${video.category}"></span></p>
-            <p>Posté par : <span th:text="${video.uploader.username}"></span></p>
+            <p>Posté par : <span th:text="${video.uploaderUsername}"></span></p>
             <p>Date : 
                 <span th:text="${video.dateUpload != null ? #temporals.format(video.dateUpload, 'dd/MM/yyyy HH:mm') : 'N/A'}"></span>
             </p>

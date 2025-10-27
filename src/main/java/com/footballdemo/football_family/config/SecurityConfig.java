@@ -1,87 +1,86 @@
 package com.footballdemo.football_family.config;
 
 
-import com.footballdemo.football_family.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod; // Ajout de l'import HttpMethod
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository; // Ajout de l'import CSRF
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 public class SecurityConfig {
 
-    private final CustomUserDetailsService userDetailsService;
-
-    public SecurityConfig(CustomUserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
-    }
-
-   @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    /**
+     * 🔒 Configuration REST API — pour les routes /api/**
+     * Renvoie 401 Unauthorized si non authentifié, sans redirection.
+     */
+    @Bean
+    public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
         http
+            .securityMatcher("/api/**", "/ws/**") // 👉 s'applique uniquement aux routes API
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/register", "/css/**", "/videos/feed**").permitAll()
-                .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers("/admin/**").hasRole("ADMIN")
-
-                // NOUVEAU: Autoriser les requêtes POST, PUT et DELETE uniquement aux utilisateurs authentifiés
-                .requestMatchers(HttpMethod.POST, "/videos/**").authenticated() // Upload, Likes, Commentaires
-                .requestMatchers(HttpMethod.PUT, "/videos/comments/**").authenticated() // Édition de commentaires
-                .requestMatchers(HttpMethod.DELETE, "/videos/comments/**").authenticated() // Suppression de commentaires
-                .requestMatchers(HttpMethod.PUT, "/videos/**").authenticated() // Édition de vidéo
-                .requestMatchers(HttpMethod.DELETE, "/videos/**").authenticated() // Suppression de vidéo
-                
-                // Le reste doit être authentifié (ex: /profile, /matches, /trainings)
-                .anyRequest().authenticated()
+                .anyRequest().authenticated() // toutes les routes API nécessitent une auth
             )
-            .formLogin(form -> form
-                .loginPage("/login")
-                .defaultSuccessUrl("/", true)
-                .permitAll()
+            .exceptionHandling(ex -> ex
+                // ✅ renvoie 401 au lieu de 302
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
             )
-            .logout(logout -> logout
-                .logoutUrl("/logout")
-                .logoutSuccessUrl("/")
-                .permitAll()
-            )
-            // CORRECTION CRUCIALE DU CSRF POUR LES REQUÊTES AJAX/JS
-            .csrf(csrf -> csrf
-                // Permet au JavaScript de lire le jeton CSRF pour l'envoyer dans les en-têtes (comme nous le faisons dans feed.html)
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                // Nous ignorons toujours le CSRF pour H2 et le WS car ils ne suivent pas la méthode standard
-                .ignoringRequestMatchers("/h2-console/**", "/ws/**") 
-            )
-            .headers(headers -> headers
-                .frameOptions(frame -> frame.sameOrigin())
-            );
+            .csrf(csrf -> csrf.disable()); // simplifie les appels REST (tu as déjà CSRF côté web)
 
         return http.build();
     }
 
+    /**
+     * 🌐 Configuration Web classique — pour le site (formulaires, pages HTML)
+     * Conserve le comportement normal avec login/logout.
+     */
+    @Bean
+    public SecurityFilterChain webSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/**") // 👉 tout le reste
+           .authorizeHttpRequests(auth -> auth
+    .requestMatchers(
+        "/",
+        "/login",
+        "/register",
+        "/css/**",
+        "/js/**",
+        "/images/**",
+        "/webjars/**",
+        "/h2-console/**"
+    ).permitAll() // public
+    .anyRequest().authenticated() // le reste nécessite connexion
+)
+            .formLogin(form -> form
+                .loginPage("/login")
+                .loginProcessingUrl("/login")
+                .defaultSuccessUrl("/videos/list", true)
+                .failureUrl("/login?error=true")
+                .permitAll()
+            )
+            .logout(logout -> logout
+                .logoutUrl("/logout")
+                .logoutSuccessUrl("/login?logout=true")
+                .permitAll()
+            )
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .ignoringRequestMatchers("/h2-console/**", "/ws/**", "/api/**")
+            )
+            .headers(headers -> headers.frameOptions(frame -> frame.disable())); // H2-console
 
+        return http.build();
+    }
+
+    /**
+     * 🔐 Bean PasswordEncoder pour l'encodage des mots de passe
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
     }
 }

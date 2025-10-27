@@ -1,5 +1,6 @@
 package com.footballdemo.football_family.service;
 
+
 import com.footballdemo.football_family.model.User;
 import com.footballdemo.football_family.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,10 +19,8 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username);
-        if(user == null){
-            throw new UsernameNotFoundException("Utilisateur introuvable");
-        }
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Utilisateur introuvable: " + username));
 
         // Spring Security User
         return org.springframework.security.core.userdetails.User.withUsername(user.getUsername())

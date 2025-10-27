@@ -2,41 +2,42 @@ package com.footballdemo.football_family.controller;
 
 import com.footballdemo.football_family.model.User;
 import com.footballdemo.football_family.model.Video;
-import com.footballdemo.football_family.repository.CommentRepository;
+import com.footballdemo.football_family.dto.CommentDto;
+import com.footballdemo.football_family.dto.CommentListResponse;
+import com.footballdemo.football_family.dto.LikeResult;
+import com.footballdemo.football_family.dto.VideoDto;
+import org.springframework.security.access.AccessDeniedException;
 import com.footballdemo.football_family.service.CommentService;
 import com.footballdemo.football_family.service.UserService;
 import com.footballdemo.football_family.service.VideoService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.UrlResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import java.nio.file.Path;
+import jakarta.annotation.PostConstruct;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.footballdemo.football_family.dto.ApiResponse;
+import org.springframework.data.domain.Page;
 import com.footballdemo.football_family.model.Comment;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.Page; // <--- AJOUTER CETTE LIGNE
-import java.util.Map;
-import org.springframework.messaging.simp.SimpMessagingTemplate; 
-
-
-
-
-
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.Principal;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
+
 
 @Controller
 @RequestMapping("/videos")
@@ -44,34 +45,44 @@ public class VideoController {
 
     private final VideoService videoService;
     private final UserService userService;
-    private final CommentRepository commentRepository;
-    private final SimpMessagingTemplate messagingTemplate;
     private final CommentService commentService;
+
+    
+  
+
 
     @Value("${videos.upload.dir}")
     private String uploadDir;
 
-    public VideoController(VideoService videoService, UserService userService,
-                       CommentRepository commentRepository,
-                       SimpMessagingTemplate messagingTemplate,
-                       CommentService commentService) { // <-- AJOUTER ARGUMENT
+   public VideoController(VideoService videoService,
+                       UserService userService,
+                       CommentService commentService) {
     this.videoService = videoService;
     this.userService = userService;
-    this.commentRepository = commentRepository;
-    this.messagingTemplate = messagingTemplate;
-    this.commentService = commentService; // <-- AFFECTER LE CHAMP
+    this.commentService = commentService;
 }
 
-    // --- Formulaire upload
+
+    @PostConstruct
+    public void init() {
+        File folder = new File(uploadDir);
+        if (!folder.exists() && !folder.mkdirs()) {
+            throw new RuntimeException("Impossible de créer le dossier de stockage : " + uploadDir);
+        }
+        System.out.println("📂 Dossier de stockage des vidéos : " + uploadDir);
+    }
+
+    // ------------------- UPLOAD -------------------
     @GetMapping("/upload")
+    @PreAuthorize("isAuthenticated()")
     public String showUploadForm(Model model) {
         model.addAttribute("video", new Video());
         model.addAttribute("page", "upload");
         return "video-upload";
     }
 
-    // --- Upload vidéo
     @PostMapping("/upload")
+    @PreAuthorize("isAuthenticated()")
     public String uploadVideo(@ModelAttribute Video video,
                               @RequestParam("file") MultipartFile file,
                               Principal principal,
@@ -82,271 +93,191 @@ public class VideoController {
             return "video-upload";
         }
 
-        // Récupérer l’extension du fichier
         String originalName = file.getOriginalFilename();
-        String extension = "";
-        if (originalName != null && originalName.contains(".")) {
-            extension = originalName.substring(originalName.lastIndexOf("."));
-        }
+        String extension = (originalName != null && originalName.contains("."))
+                ? originalName.substring(originalName.lastIndexOf("."))
+                : "";
 
-        // Générer un nom unique
-        String filename = UUID.randomUUID().toString() + extension;
+        String filename = UUID.randomUUID() + extension;
+        String thumbnailUrl = UUID.randomUUID() + ".jpg";
 
-        // Vérifier le dossier de stockage
-        File uploadPath = new File(uploadDir);
-        if (!uploadPath.exists() && !uploadPath.mkdirs()) {
-            model.addAttribute("error", "Impossible de créer le dossier de stockage des vidéos !");
-            return "video-upload";
-        }
-
-        if (!uploadPath.canWrite()) {
-            model.addAttribute("error", "Le serveur n'a pas les droits d'écriture dans le dossier des vidéos !");
-            return "video-upload";
-        }
-
-        // Sauvegarder le fichier sur le disque
-        File destination = new File(uploadPath, filename);
+        File destination = new File(uploadDir, filename);
         file.transferTo(destination);
 
-        // Remplir l’objet vidéo
         video.setFilename(filename);
+        video.setThumbnailUrl(thumbnailUrl);
         video.setDateUpload(LocalDateTime.now());
 
-        User user = userService.getUserByUsername(principal.getName());
-        video.setUploader(user);
+        User uploader = userService.getUserByUsername(principal.getName())
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable !"));
+        video.setUploader(uploader);
 
-        // Sauvegarder en base
         videoService.saveVideo(video);
-
         return "redirect:/videos/list";
     }
 
-    // --- Lister les vidéos
+    // ------------------- LIST / FEED -------------------
     @GetMapping("/list")
-    public String listVideos(@RequestParam(required = false) String category, Model model) {
-        List<Video> videos = (category != null && !category.isEmpty())
-                ? videoService.getVideosByCategory(category)
-                : videoService.getAllVideosOrderByDate();
-        model.addAttribute("videos", videos);
-        return "video-list";
-    }
-
-    // --- Feed type TikTok
-@GetMapping("/feed")
-public String feed(@RequestParam(required = false) String category,
-                   @RequestParam(defaultValue = "0") int page,
-                   Model model) {
-
-    // 1. CRÉER l'objet de pagination (Page 0, taille 5, trié)
-    var pageable = PageRequest.of(page, 5, Sort.by("dateUpload").descending());
-
-    // 2. APPELER les méthodes du service avec le paramètre 'pageable'
-   List<Video> videos = (category != null && !category.isEmpty())
-        ? videoService.getVideosByCategoryWithComments(category, pageable)
-        : videoService.getAllVideosWithComments(pageable);     // Correction: pageable est ajouté
-
-    // 3. Passer le contenu de la Page et les variables au modèle
-    model.addAttribute("videos", videos);
-    model.addAttribute("category", category);
-    model.addAttribute("currentPage", page);
-
-    model.addAttribute("page", "feed");
-
-    return "video-feed"; 
-}
-
-// Dans VideoController.java
-
-@GetMapping("/feed/fragment")
-public String feedFragment(@RequestParam(required = false) String category,
-                           @RequestParam(defaultValue = "0") int page,
-                           Model model) {
-    var pageable = PageRequest.of(page, 5, Sort.by("dateUpload").descending());
-
-    // Utilisation des méthodes de service qui retournent Page<Video> standard
-    Page<Video> videoPage = (category != null && !category.isEmpty())
-            ? videoService.getVideosByCategory(category, pageable)
-            : videoService.getAllVideosOrderByDate(pageable);
-            
-    // IMPORTANT : On passe la liste de vidéos du contenu de la Page au modèle
-    model.addAttribute("videos", videoPage.getContent());
-
-    // Log de vérification pour s'assurer que des vidéos sont trouvées
-    System.out.println("Page demandée : " + page + ", Vidéos trouvées : " + videoPage.getContent().size());
+public String listVideos(Principal principal, Model model) {
+    // 🔍 LOG 1
+    System.out.println("🎬 [LIST] Chargement de la liste des vidéos...");
     
-    return "fragments/video-cards :: video-cards";
-}
-
-
-
-
-@GetMapping("/{filename:.+}")
-@ResponseBody
-public ResponseEntity<Resource> getVideo(@PathVariable String filename) {
-    try {
-        Path file = Paths.get(uploadDir).resolve(filename).normalize();
-        Resource resource = new UrlResource(file.toUri());
-
-        if (!resource.exists() || !resource.isReadable()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("video/mp4"))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
-                .body(resource);
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.internalServerError().build();
-    }
-}
-
-// DANS VideoController.java
-
-@PostMapping("/{videoId}/comment")
-@ResponseBody
-public Map<String, Object> addComment(@PathVariable Long videoId,
-                                      @RequestBody Map<String, String> payload,
-                                      Principal principal) {
-    // ... (Logique existante de création et d'enregistrement du commentaire)
-
-    // Logique de création du commentaire (avant l'envoi du message)
-    Video video = videoService.getVideoById(videoId);
-    User user = userService.getUserByUsername(principal.getName());
-    // ... (Sauvegarde du commentaire)
-    Comment comment = new Comment();
-    comment.setVideo(video);
-    comment.setAuthor(user);
-    comment.setContent(payload.get("content"));
-    comment.setCreatedAt(LocalDateTime.now());
-    commentRepository.save(comment);
-
-    // CRÉER L'OBJET DE RÉPONSE POUR LES MESSAGES EN TEMPS RÉEL
-    Map<String, Object> newCommentData = Map.of(
-        "author", user.getUsername(),
-        "content", comment.getContent(),
-        "videoId", videoId
+    List<VideoDto> videos = videoService.getFeedVideosForUser(
+            PageRequest.of(0, 50, Sort.by("dateUpload").descending()),
+            principal != null ? principal.getName() : "anonymousUser"
     );
-
-    // 1. ENVOYER LA NOTIFICATION VIA WEBSOCKET (Temps Réel)
-    // Destination : /topic/comments/1 (pour la vidéo ID 1)
-    String destination = "/topic/comments/" + videoId;
-    messagingTemplate.convertAndSend(destination, newCommentData);
-
-    // 2. RENVOYER LA RÉPONSE CLASSIQUE (pour le client qui vient de poster)
-    int commentCount = commentRepository.findByVideoId(videoId).size();
-    return Map.of("commentCount", commentCount);
-}
     
+    // 🔍 LOG 2
+    System.out.println("🎬 [LIST] Nombre de vidéos récupérées : " + videos.size());
+    videos.forEach(v -> System.out.println("  - " + v.getTitle()));
+    
+    model.addAttribute("videos", videos);
+    return "video-list";
+}
 
+    @GetMapping("/feed")
+    public String feed(@RequestParam(defaultValue = "0") int page,
+                       Principal principal,
+                       Model model) {
+        List<VideoDto> videos = videoService.getFeedVideosForUser(
+                PageRequest.of(page, 5, Sort.by("dateUpload").descending()),
+                principal != null ? principal.getName() : "anonymousUser"
+        );
+        model.addAttribute("videos", videos);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("page", "feed");
+        model.addAttribute("cssVersion", System.currentTimeMillis());
+        return "video-feed";
+    }
 
+    @GetMapping("/feed/fragment")
+    public String loadVideoFragment(@RequestParam(defaultValue = "0") int page,
+                                    Principal principal,
+                                    Model model) {
+        List<VideoDto> videos = videoService.getFeedVideosForUser(
+                PageRequest.of(page, 5, Sort.by("dateUpload").descending()),
+                principal != null ? principal.getName() : "anonymousUser"
+        );
+        model.addAttribute("videos", videos);
+        return "fragments/video-cards :: video-cards";
+    }
+
+    // ------------------- GET VIDEO FILE -------------------
+    @GetMapping("/{filename:.+}")
+    @ResponseBody
+    public ResponseEntity<Resource> getVideo(@PathVariable String filename) {
+        try {
+            Path file = Paths.get(uploadDir).resolve(filename).normalize();
+            Resource resource = new UrlResource(file.toUri());
+
+            if (!resource.exists() || !resource.isReadable())
+                return ResponseEntity.notFound().build();
+
+            String contentType = filename.toLowerCase().endsWith(".mp4") ? "video/mp4" : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            String cacheControl = "public, max-age=31536000, immutable";
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                    .header(HttpHeaders.CACHE_CONTROL, cacheControl)
+                    .body(resource);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    // ------------------- LIKE -------------------
 @PostMapping("/{videoId}/like")
 @ResponseBody
-public Map<String, Object> likeVideo(@PathVariable Long videoId, Principal principal) {
-    if (principal == null) {
-        System.out.println("Utilisateur non connecté !");
-        throw new RuntimeException("Utilisateur non connecté");
-    }
-
-    Video video = videoService.getVideoById(videoId);
-    if (video == null) {
-        System.out.println("Vidéo introuvable : " + videoId);
-        throw new RuntimeException("Vidéo introuvable : " + videoId);
-    }
-
-    System.out.println("LIKE reçu pour videoId = " + videoId + ", user = " + principal.getName());
-    int likes = videoService.likeVideo(videoId, principal.getName());
-    Map<String, Object> response = new HashMap<>();
-    response.put("likes", likes);
-    return response;
+@PreAuthorize("isAuthenticated()")
+public ApiResponse<Long> likeVideo(@PathVariable Long videoId, Principal principal) { 
+    LikeResult result = videoService.toggleLike(videoId, principal.getName());
+    return new ApiResponse<>(true, "Like mis à jour", result.finalLikesCount());
 }
 
-// ... dans VideoController.java
 
-@DeleteMapping("/comments/{commentId}") // URI RESTful
+    // ------------------- COMMENTAIRES -------------------
+ @PostMapping("/{videoId}/comment")
 @ResponseBody
-public ResponseEntity<Map<String, Object>> deleteComment(@PathVariable Long commentId, 
-                                                         Principal principal) {
-    if (principal == null) {
-        return ResponseEntity.status(401).body(Map.of("error", "Non connecté."));
+@PreAuthorize("isAuthenticated()")
+public ApiResponse<CommentDto> addComment(@PathVariable Long videoId,
+                                          @RequestBody Map<String, String> payload,
+                                          Principal principal) {
+    String content = payload.get("content");
+    if (content == null || content.trim().isEmpty()) {
+        throw new IllegalArgumentException("Le contenu du commentaire ne peut pas être vide.");
     }
-
-    try {
-        // Logique métier dans le service (vérification de l'auteur incluse)
-        commentService.deleteComment(commentId, principal.getName());
-        
-        // 1. ENVOYER LA NOTIFICATION VIA WEBSOCKET (Temps Réel)
-        // On notifie les abonnés que le commentaire a été supprimé
-        String destination = "/topic/comments/delete"; // Destination générique pour la suppression
-        messagingTemplate.convertAndSend(destination, Map.of(
-            "action", "DELETED",
-            "commentId", commentId
-        ));
-
-        // 2. RENVOYER LA RÉPONSE CLASSIQUE (code 200 OK)
-        return ResponseEntity.ok(Map.of("message", "Commentaire supprimé."));
-
-    } catch (SecurityException e) {
-        // Non autorisé (pas l'auteur)
-        return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
-    } catch (RuntimeException e) {
-        // Commentaire non trouvé
-        return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
-    }
-
-    
+    CommentDto commentDto = commentService.addComment(videoId, content, principal.getName());
+    return new ApiResponse<>(true, "Commentaire ajouté", commentDto);
+}
+@GetMapping("/{videoId}/comments")
+@ResponseBody
+public ApiResponse<CommentListResponse> getComments(@PathVariable Long videoId,
+                                                    @RequestParam(defaultValue = "0") int page,
+                                                    @RequestParam(defaultValue = "5") int size) {
+    Page<Comment> commentPage = commentService.getCommentsForVideo(videoId, page, size);
+    List<CommentDto> comments = commentPage.getContent().stream()
+                                           .map(CommentDto::new)
+                                           .collect(Collectors.toList());
+    CommentListResponse responseData = new CommentListResponse(comments, commentPage.getTotalElements());
+    return new ApiResponse<>(true, "Commentaires chargés", responseData);
 }
 
-// ... dans VideoController.java
 
-@PutMapping("/comments/{commentId}") // URI RESTful
+   /*  @PutMapping("/comments/{commentId}")
 @ResponseBody
-public ResponseEntity<Map<String, Object>> updateComment(@PathVariable Long commentId,
-                                                         @RequestBody Map<String, String> payload,
-                                                         Principal principal) {
-    if (principal == null) {
-        return ResponseEntity.status(401).body(Map.of("error", "Non connecté."));
-    }
-
+@PreAuthorize("isAuthenticated() and @commentService.isAuthor(#commentId, principal.name)")
+public ApiResponse<CommentDto> updateComment(@PathVariable Long commentId,
+                                             @RequestBody Map<String, String> payload,
+                                             Principal principal) {
     String newContent = payload.get("content");
     if (newContent == null || newContent.trim().isEmpty()) {
-        return ResponseEntity.badRequest().body(Map.of("error", "Le contenu ne peut être vide."));
+        throw new IllegalArgumentException("Le contenu du commentaire ne peut pas être vide.");
+    }
+    CommentDto commentDto = commentService.updateComment(commentId, newContent, principal.getName());
+    return new ApiResponse<>(true, "Commentaire mis à jour", commentDto);
+}*/
+
+   /*@DeleteMapping("/comments/{commentId}")
+@ResponseBody
+@PreAuthorize("isAuthenticated() and @commentService.isAuthor(#commentId, principal.name)")
+public ApiResponse<Void> deleteComment(@PathVariable Long commentId, Principal principal) {
+    commentService.deleteComment(commentId, principal.getName());
+    return new ApiResponse<>(true, "Commentaire supprimé", null);
+}*/
+
+    // ------------------- SUPPRESSION VIDEO -------------------
+    @PostMapping("/{videoId}/delete")
+    @PreAuthorize("isAuthenticated() and @videoService.isUploader(#videoId, principal.name)")
+    public String deleteVideo(@PathVariable Long videoId, Principal principal, Model model) {
+        try {
+            videoService.deleteVideo(videoId);
+            model.addAttribute("successMessage", "Vidéo supprimée avec succès.");
+        } catch (RuntimeException e) {
+            model.addAttribute("error", "Erreur lors de la suppression: " + e.getMessage());
+        }
+        return "redirect:/profile/" + principal.getName();
     }
 
+@DeleteMapping("/{videoId}")
+public ResponseEntity<ApiResponse<Void>> deleteVideo(@PathVariable Long videoId, Principal principal)
+{
+    // L'AccessDeniedException est levée ICI, HORS du try-catch.
+    if (!videoService.isUploader(videoId, principal.getName())) {
+        throw new AccessDeniedException("Not uploader");
+    }
+    
+    // Le try-catch ne gère plus l'AccessDeniedException.
     try {
-        // Logique métier dans le service (vérification de l'auteur incluse)
-        Comment updatedComment = commentService.updateComment(commentId, newContent, principal.getName());
+        videoService.deleteVideo(videoId);
+        return ResponseEntity.ok(new ApiResponse<Void>(true, "Vidéo supprimée avec succès", null));
 
-        // 1. CRÉER L'OBJET DE RÉPONSE POUR LES MESSAGES EN TEMPS RÉEL
-        Map<String, Object> updatedCommentData = Map.of(
-            "action", "UPDATED",
-            "commentId", updatedComment.getId(),
-            "content", updatedComment.getContent(),
-            "author", updatedComment.getAuthor().getUsername()
-            // Ajoutez d'autres champs si nécessaire (ex: date de modification)
-        );
-
-        // 2. ENVOYER LA NOTIFICATION VIA WEBSOCKET (Temps Réel)
-        // On notifie les abonnés que le commentaire a été modifié
-        String destination = "/topic/comments/update"; // Destination générique pour la modification
-        messagingTemplate.convertAndSend(destination, updatedCommentData);
-
-        // 3. RENVOYER LA RÉPONSE CLASSIQUE (code 200 OK)
-        return ResponseEntity.ok(Map.of(
-            "message", "Commentaire modifié.",
-            "newContent", updatedComment.getContent()
-        ));
-
-    } catch (SecurityException e) {
-        return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
-    } catch (RuntimeException e) {
-        return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+    } catch (RuntimeException ex) { 
+        // Cette section gère uniquement les erreurs survenant pendant le service.
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                             .body(new ApiResponse<Void>(false, ex.getMessage(), null));
     }
 }
-
-
-
-
 
 }

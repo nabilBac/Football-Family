@@ -3,7 +3,16 @@ package com.footballdemo.football_family.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "users") // éviter le mot réservé USER
+@Table(name = "users", 
+       uniqueConstraints = {
+           @UniqueConstraint(columnNames = "username"),
+           @UniqueConstraint(columnNames = "email")
+       },
+       indexes = {
+           @Index(name = "idx_username", columnList = "username"),
+           @Index(name = "idx_email", columnList = "email")
+       }
+)
 public class User {
 
     @Id

@@ -1,50 +1,76 @@
 <div th:fragment="video-cards(videos)">
-    <div class="video-card" th:each="video : ${videos}">
-        <video class="feed-video" playsinline muted preload="metadata"
-               th:src="@{/videos/{filename}(filename=${video.filename})}" controls></video>
-        
+    <div th:each="videoDto : ${videos}" class="video-card" th:data-video-id="${videoDto.id}">
+
+        <video 
+            class="video-element" 
+            th:src="@{/videos/{filename}(filename=${videoDto.filename})}" 
+            autoplay 
+            loop 
+            muted 
+            playsinline 
+            th:data-video-id="${videoDto.id}">
+        </video>
+
+        <div class="video-info-desktop">
+            <div class="video-title" th:text="${videoDto.title}">Titre vidéo</div>
+            <a th:href="@{/profile/{username}(username=${videoDto.uploaderUsername})}" class="video-author-link">
+                <div class="video-author" th:text="${videoDto.uploaderUsername}">Auteur</div>
+            </a>
+        </div>
+
+        <div th:if="${#authentication.name == videoDto.uploaderUsername}" class="video-crud-actions">
+            <button class="edit-video-btn action-btn" th:data-video-id="${videoDto.id}" title="Modifier la vidéo">
+                <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="delete-video-btn action-btn" th:data-video-id="${videoDto.id}" title="Supprimer la vidéo">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        </div>
+
         <div class="overlay">
-            <h3 th:text="${video.title}">Titre vidéo</h3>
-            <p>Posté par : <span th:text="${video.uploader.username}">Utilisateur</span></p>
-            <p>Date : <span th:text="${#temporals.format(video.dateUpload,'dd/MM/yyyy HH:mm')}">dd/MM/yyyy</span></p>
-        </div>
-
-        <div class="actions">
-            <button class="like-btn" th:attr="data-video-id=${video.id}">
-                ❤️ <span class="like-count" th:text="${video.likes}">0</span>
-            </button>
-
-            <button type="button" class="comment-btn" th:attr="data-video-id=${video.id}">
-                💬 <span class="comment-count" th:text="${video.comments.size()}">0</span>
-            </button>
-        </div>
-
-        <div class="comments-section" th:attr="id='comments-section-' + ${video.id}">
-            <button type="button" class="close-comments" th:attr="data-video-id=${video.id}">✖</button>
-           <div class="existing-comments">
-        <div class="comment" th:each="comment : ${video.comments}" th:attr="data-comment-id=${comment.id}">
-        <span class="comment-author">
-            <b th:text="${comment.author.username}">Auteur du commentaire</b>
-        </span>
-        : 
-        <span class="comment-content" th:text="${comment.content}">Contenu du commentaire</span>
-        
-        <th:block th:if="${#authorization.expression('isAuthenticated() and principal.username == ''' + comment.author.username + '''')}">
-            <button type="button" class="edit-comment-btn action-icon" 
-                    th:attr="data-comment-id=${comment.id}">✏️</button>
-            <button type="button" class="delete-comment-btn action-icon" 
-                    th:attr="data-comment-id=${comment.id}">❌</button>
-        </th:block>
-        </div>
-</div>
-            
-            <div class="comment-form" th:attr="id='comment-form-' + ${video.id}">
-                <input type="text" class="comment-input"
-                    th:attr="id='comment-input-' + ${video.id}, name='comment-' + ${video.id}"
-                    placeholder="Écrire un commentaire..." />
-                <button type="button" class="submit-comment" th:attr="data-video-id=${video.id}">Envoyer</button>
+            <div class="video-title" th:text="${videoDto.title}">Titre vidéo</div>
+            <div class="video-author-overlay">
+                <i class="fa-solid fa-user"></i>
+                <a th:href="@{/profile/{username}(username=${videoDto.uploaderUsername})}" class="video-author-link">
+                    <span th:text="${videoDto.uploaderUsername}">Auteur</span>
+                </a>
             </div>
+
+            <div class="actions">
+                <!-- ✅ SEULES 3 MODIFICATIONS ICI -->
+                <button type="button" 
+                        class="like-btn" 
+                        th:onclick="'likeVideo(' + ${videoDto.id} + ')'"
+                        th:data-video-id="${videoDto.id}">
+                    <i th:id="'like-icon-svg-' + ${videoDto.id}"
+                       class="fa-heart" 
+                       th:classappend="${videoDto.likedByCurrentUser ? 'fa-solid' : 'fa-regular'}" 
+                       aria-hidden="true"></i>
+                    <span class="likes-count" 
+                          th:id="'likes-count-span-' + ${videoDto.id}" 
+                          th:text="${videoDto.likesCount}">0</span>
+                </button>
+
+                <!-- Reste identique -->
+              <button type="button" class="comment-btn show-comments-btn" th:data-video-id="${videoDto.id}">
+ <i class="fa-regular fa-comment-dots" aria-hidden="true"></i>
+ <span class="count" th:id="'comment-count-span-' + ${videoDto.id}" th:text="${videoDto.commentsCount}">0</span> 
+ </button>
+
+                <button type="button" class="toggle-mute-btn action-btn">
+                   <i class="fa-regular fa-volume-slash"></i>
+                </button>
+                <button type="button" class="share-btn action-btn">
+    <i class="fa-solid fa-arrow-up-from-bracket"></i>
+</button>
             </div>
-        
         </div>
+
+        <!-- Section commentaires vide au départ, remplie via JS -->
+        <div class="comments-section" th:id="'comments-section-' + ${videoDto.id}" style="display:none;">
+            <!-- Les commentaires seront injectés ici par AJAX -->
+             
+        </div>
+
+    </div>
 </div>
