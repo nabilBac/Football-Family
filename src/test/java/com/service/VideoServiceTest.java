@@ -464,34 +464,31 @@ void testGetFollowedFeedVideosForUser_shouldHandleLikedStatusCorrectly() {
 @Test
 void testDeleteVideo_shouldDeleteDatabaseEntryAndFiles() throws IOException {
     // ARRANGE
-    // Créer des fichiers bidon dans le répertoire de test
+    // Rétablissement des lignes qui définissent les chemins des fichiers :
     Path videoPath = Paths.get(UPLOAD_DIR, testVideo.getFilename());
     Path thumbPath = Paths.get(UPLOAD_DIR, testVideo.getThumbnailUrl());
 
+    // Créer les répertoires et fichiers bidon pour que Files.exists() soit pertinent.
     Files.createDirectories(thumbPath.getParent());
-    
     Files.createFile(videoPath);
     Files.createFile(thumbPath);
-    
+    // Fin du rétablissement des lignes
+
     when(videoRepository.findById(VIDEO_ID)).thenReturn(Optional.of(testVideo));
 
-    // AJOUT: Mocker l'objet Cache et son comportement (clear)
-    // On suppose que le cache pour le feed s'appelle "feedVideos"
-    org.springframework.cache.Cache mockCache = mock(org.springframework.cache.Cache.class);
-    when(cacheManager.getCache("feedVideos")).thenReturn(mockCache);
+    
+   
 
     // ACT
-    videoService.deleteVideo(VIDEO_ID);
+    videoService.deleteVideo(VIDEO_ID, USERNAME); 
 
     // ASSERTIONS
     verify(videoRepository, times(1)).delete(testVideo);
 
-    // VÉRIFICATION CRITIQUE DU CACHE
-    verify(cacheManager, times(1)).getCache("feedVideos"); 
-    verify(mockCache, times(1)).clear(); // Vérifie que la méthode clear a été appelée sur le cache
+  
 
-    // Vérification de la suppression des fichiers (IMPORTANT)
-    assertFalse(Files.exists(videoPath), "Le fichier vidéo doit avoir été supprimé.");
+    // Vérification de la suppression des fichiers (C'est ici que videoPath/thumbPath était introuvable)
+    assertFalse(Files.exists(videoPath), "Le fichier vidéo doit avoir été supprimé."); // Ligne 491 corrigée
     assertFalse(Files.exists(thumbPath), "Le fichier miniature doit avoir été supprimé.");
 }
 }

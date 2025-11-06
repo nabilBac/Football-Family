@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf; // 👈 NOUVEL IMPORT NÉCESSAIRE
 
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -32,12 +33,12 @@ class AuthControllerTest {
     @MockBean
     private PasswordEncoder passwordEncoder;
 
-    @Test
-    void showLoginForm_returnsLoginView() throws Exception {
-        mockMvc.perform(get("/login"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("login"));
-    }
+   @Test
+void showLoginForm_returnsLoginView() throws Exception {
+    mockMvc.perform(get("/login").with(csrf())) // 👈 AJOUTEZ .with(csrf())
+            .andExpect(status().isOk())
+            .andExpect(view().name("login"));
+}
 
     @Test
     void showRegisterForm_returnsRegisterViewWithUserModel() throws Exception {

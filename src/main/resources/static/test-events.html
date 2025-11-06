@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Test API Events - FootballFamily</title>
+  <style>
+  body { font-family: Inter, Roboto, Arial; margin: 20px; max-width: 980px; }
+  h1 { color: #3b3b98; }
+  label { display:block; margin-top:10px; font-weight:600; }
+  input[type="text"], input[type="number"], input[type="date"], button { width: 100%; max-width: 320px; padding:6px; margin-top:6px; box-sizing: border-box; }
+  button { margin-top:10px; padding:8px 12px; border-radius:6px; cursor:pointer; }
+  .row { display:flex; gap:16px; align-items:flex-end; margin-top:12px; flex-wrap: wrap; }
+  .box { background:#f7f7fb; border:1px solid #e1e1ee; padding:12px; border-radius:8px; margin-top:12px; margin-bottom:20px; }
+  pre { white-space:pre-wrap; word-wrap:break-word; background:#fff; padding:10px; border-radius:6px; border:1px solid #eee; overflow-x:auto; }
+  .success { 
+    color: #0a8a3b; 
+    background-color: #e0f8e9; 
+    padding: 6px;
+    border-radius: 4px;
+  }
+  .error { 
+    color: #b71c1c; 
+    background-color: #fbe0e0; 
+    padding: 6px;
+    border-radius: 4px;
+  }
+
+  /* MEDIA QUERIES POUR MOBILE */
+  @media (max-width: 600px) {
+    body { margin: 10px; }
+    .row { flex-direction: column; gap: 10px; }
+    input[type="text"], input[type="number"], input[type="date"], button { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+  <h1>Test API Events — FootballFamily</h1>
+  <p>Tester rapidement les endpoints <code>/api/events</code> (create, add team, list).</p>
+
+  <div class="box">
+    <h3> Créer un événement</h3>
+    <label>Nom</label>
+    <input id="create_name" type="text" placeholder="Ex: Tournoi U11" required />
+    <label>Type</label>
+   <input id="create_type" type="text" placeholder="Ex: tournoi, match, compétition" required />
+    <label>Date</label>
+    <input id="create_date" type="date" required />
+    <div class="row">
+      <button onclick="createNewEvent()">Créer l'événement</button>
+
+      <button onclick="clearCreate()">Réinitialiser</button>
+    </div>
+    <div id="create_result" style="margin-top:10px"></div>
+  </div>
+
+  <div class="box">
+    <h3> Ajouter une équipe à un événement</h3>
+    <label>Event Id</label>
+    <input id="add_eventId" type="number" placeholder="Ex: 1" min="1" required />
+
+    <label>Team Id</label>
+   <input id="add_teamId" type="number" placeholder="Ex: 1" min="1" />
+    <div class="row">
+      <button onclick="addTeam()">Ajouter l'équipe</button>
+      <button onclick="clearAdd()">Réinitialiser</button>
+    </div>
+    <div id="add_result" style="margin-top:10px"></div>
+  </div>
+
+  <div class="box">
+    <h3> Lister les événements</h3>
+    <div class="row">
+      <button onclick="getAllEvents()">Lister tous les événements</button>
+    </div>
+    <div id="list_result" style="margin-top:10px"></div>
+  </div>
+
+  <div class="box">
+    <h3>Console / sortie</h3>
+    <pre id="output">Aucune action pour l'instant.</pre>
+  </div>
+
+
+  <div class="box">
+  <h3> S'inscrire à un événement</h3>
+  <label>Event Id</label>
+  <input id="reg_eventId" type="number" placeholder="Ex: 1" min="1" />
+  <label>Player Id</label>
+ <input id="reg_playerId" type="number" placeholder="Ex: 2" min="1" />
+  <div class="row">
+    <button onclick="registerPlayer()">S'inscrire</button>
+    <button onclick="clearRegister()">Réinitialiser</button>
+  </div>
+  <div id="register_result"></div>
+</div>
+
+<div class="box">
+  <h3> Lister les inscriptions d'un événement</h3>
+ <input id="list_reg_eventId" type="number" placeholder="Ex: 1" min="1" />
+  <button onclick="getRegistrations()">Lister les inscriptions</button>
+  <div id="list_reg_result"></div>
+</div>
+
+<div class="box">
+  <h3> Valider une inscription</h3>
+  <label>Event Id</label>
+  <input id="validate_eventId" type="number" placeholder="Ex: 1" min="1" />
+
+  <label>Registration Id</label>
+<input id="validate_registrationId" type="number" placeholder="Ex: 2" min="1" />
+  <div class="row">
+    <button onclick="validateRegistration()">Valider</button>
+    <button onclick="clearValidate()">Réinitialiser</button>
+  </div>
+  <div id="validate_result"></div>
+</div>
+
+
+<script>
+const out = (obj, ok=true) => {
+  const el = document.getElementById('output');
+  const time = new Date().toLocaleTimeString();
+  const title = ok ? `[OK ${time}]` : `[ERR ${time}]`;
+  el.textContent = title + " " + (typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2)) + "\n\n" + el.textContent;
+};
+
+const showHtml = (id, payload, ok=true) => {
+  document.getElementById(id).innerHTML = ok ? '<span class="success">Succès</span>: <pre>' + JSON.stringify(payload, null, 2) + '</pre>' : '<span class="error">Erreur</span>: <pre>' + JSON.stringify(payload, null, 2) + '</pre>';
+  out(payload, ok);
+};
+
+async function createNewEvent() {
+  const name = document.getElementById('create_name').value || '';
+  const type = document.getElementById('create_type').value || '';
+  const date = document.getElementById('create_date').value;
+  if(!name || !type || !date) { alert('Remplis tous les champs'); return; }
+  try {
+    const url = `/api/events/create?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}&date=${encodeURIComponent(date)}`;
+    const res = await fetch(url, { method:'POST' });
+    const data = await res.json();
+    if(!res.ok) throw { status: res.status, body: data };
+    showHtml('create_result', data, true);
+  } catch(err) {
+    showHtml('create_result', err, false);
+  }
+}
+
+async function addTeam() {
+  const eventId = document.getElementById('add_eventId').value;
+  const teamId = document.getElementById('add_teamId').value;
+  if(!eventId || !teamId) { alert("Remplis eventId et teamId"); return; }
+  try {
+    const url = `/api/events/${encodeURIComponent(eventId)}/add-team?teamId=${encodeURIComponent(teamId)}`;
+    const res = await fetch(url, { method:'POST' });
+    const data = await res.json();
+    if(!res.ok) throw { status: res.status, body: data };
+    showHtml('add_result', data, true);
+  } catch(err) {
+    showHtml('add_result', err, false);
+  }
+}
+
+async function getAllEvents() {
+  try {
+    const res = await fetch('/api/events/all');
+    const data = await res.json();
+    document.getElementById('list_result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+    out(data, true);
+  } catch(err) {
+    document.getElementById('list_result').innerHTML = '<span class="error">Erreur</span>';
+    out(err, false);
+  }
+}
+
+function clearCreate() {
+  document.getElementById('create_name').value = '';
+  document.getElementById('create_type').value = '';
+  document.getElementById('create_date').value = '';
+  document.getElementById('create_result').innerHTML = '';
+}
+
+function clearAdd() {
+  document.getElementById('add_eventId').value = '';
+  document.getElementById('add_teamId').value = '';
+  document.getElementById('add_result').innerHTML = '';
+}
+
+async function registerPlayer() {
+  const eventId = document.getElementById('reg_eventId').value;
+  const playerId = document.getElementById('reg_playerId').value;
+  if(!eventId || !playerId) { alert("Remplis eventId et playerId"); return; }
+  try {
+    const url = `/api/events/${encodeURIComponent(eventId)}/register?playerId=${encodeURIComponent(playerId)}`;
+    const res = await fetch(url, { method:'POST' });
+    const data = await res.json();
+    if(!res.ok) throw { status: res.status, body: data };
+    showHtml('register_result', data, true);
+  } catch(err) {
+    showHtml('register_result', err, false);
+  }
+}
+
+async function getRegistrations() {
+  const eventId = document.getElementById('list_reg_eventId').value;
+  if(!eventId) { alert("Précise eventId"); return; }
+  try {
+    const res = await fetch(`/api/events/${encodeURIComponent(eventId)}/registrations`);
+    const data = await res.json();
+    showHtml('list_reg_result', data, true);
+  } catch(err) {
+    showHtml('list_reg_result', err, false);
+  }
+}
+
+async function validateRegistration() {
+  const eventId = document.getElementById('validate_eventId').value;
+  const regId = document.getElementById('validate_registrationId').value;
+  if(!eventId || !regId) { alert("Remplis eventId et registrationId"); return; }
+  try {
+    const url = `/api/events/${encodeURIComponent(eventId)}/registrations/${encodeURIComponent(regId)}/validate`;
+    const res = await fetch(url, { method:'POST' });
+    const data = await res.json();
+    if(!res.ok) throw { status: res.status, body: data };
+    showHtml('validate_result', data, true);
+  } catch(err) {
+    showHtml('validate_result', err, false);
+  }
+}
+
+function clearRegister() {
+  document.getElementById('reg_eventId').value = '';
+  document.getElementById('reg_playerId').value = '';
+  document.getElementById('register_result').innerHTML = '';
+}
+
+function clearValidate() {
+  document.getElementById('validate_eventId').value = '';
+  document.getElementById('validate_registrationId').value = '';
+  document.getElementById('validate_result').innerHTML = '';
+}
+
+</script>
+</body>
+</html>

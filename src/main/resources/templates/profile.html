@@ -2,449 +2,755 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-    <title>Profil de <span th:text="${targetUser.username}"></span> | Football Family</title>
-    <!-- Inclure Font Awesome pour les icônes -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <meta name="_csrf" th:content="${_csrf.token}" th:if="${_csrf}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" th:if="${_csrf}"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" th:href="@{/manifest.json}">
+    <link rel="apple-touch-icon" sizes="192x192" th:href="@{/assets/icons/icon-192.png}">
     
-    <!-- IMPORTANT : Pour que le JS puisse lire le jeton CSRF -->
-    <meta name="_csrf" th:content="${_csrf.token}" th:if="${_csrf}" />
-    <meta name="_csrf_header" th:content="${_csrf.headerName}" th:if="${_csrf}" />
+    <title th:text="|GoalClips - @${targetUser.username}|">GoalClips - Profil</title>
     
-    <style>
-        /* VARIABLES DE COULEURS ET POLICES */
-        :root {
-            --primary-blue: #007bff; /* Bleu Principal (Actions) */
-            --secondary-green: #28a745; /* Vert Secondaire (Succès/Engagement) */
-            --danger-red: #dc3545; /* Rouge pour Alerte/Unfollow */
-            --background-light: #f4f7f6; /* Fond de page très clair */
-            --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Ombre de carte douce */
-            --font-stack: 'Inter', 'Helvetica Neue', Arial, sans-serif;
-        }
+    <link rel="stylesheet" th:href="@{/css/style.css(v=${cssVersion})}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script th:src="@{/service-worker-register.js}" defer></script>
 
-        /* ---------------------------------------------------- */
-        /* BASE & RESPONSIVENESS */
-        /* ---------------------------------------------------- */
-        body { 
-            font-family: var(--font-stack); 
-            background-color: var(--background-light); 
-            color: #333; 
-            margin: 0; 
-            padding: 0 0 70px 0; /* Padding accru pour la navbar mobile */
-            -webkit-font-smoothing: antialiased; /* Meilleure lisibilité */
-        }
-        
-        /* Conteneur principal - Centré sur Desktop, plein écran sur Mobile */
-        .container { 
-            max-width: 900px; 
-            margin: 20px auto; 
-            padding: 20px; 
-            background-color: #fff; 
-            border-radius: 16px; /* Coins plus arrondis */
-            box-shadow: var(--card-shadow); 
-        }
-        
-        @media (max-width: 768px) {
-            .container {
-                margin: 0; 
-                padding: 15px;
-                border-radius: 0;
-                box-shadow: none; /* Pas d'ombre en mode plein écran mobile */
-                min-height: calc(100vh - 70px); /* Assure un minimum de hauteur */
-            }
-        }
-        
-        /* ---------------------------------------------------- */
-        /* BARRE DE NAVIGATION MOBILE (PWA Bottom Bar) */
-        /* ---------------------------------------------------- */
-        .mobile-navbar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            height: 70px; /* Hauteur généreuse pour le touch */
-            background-color: #fff;
-            border-top: 1px solid #e0e0e0;
-            box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
-            z-index: 1000;
-        }
+<style>
+/* =================================================================
+   🎨 PROFIL MODERNE & PROFESSIONNEL - Mobile First UX/UI
+   ================================================================= */
 
-        .mobile-navbar .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            color: #999; /* Couleur des icônes inactives */
-            font-size: 1.1rem;
-            flex-grow: 1;
-            height: 100%;
-            transition: color 0.2s, transform 0.1s;
-        }
+/* --- VARIABLES CSS ENRICHIES --- */
+:root {
+    --app-height: 100vh;
+    --primary: #10B981;
+    --primary-dark: #059669;
+    --primary-light: #34D399;
+    --bg-dark: #0B0B0B;
+    --bg-card: #1a1a1a;
+    --bg-elevated: #242424;
+    --border: #2a2a2a;
+    --text: #ffffff;
+    --text-muted: #888888;
+    --text-subtle: #555555;
+    --danger: #EF4444;
+    --warning: #F59E0B;
+    --info: #3B82F6;
+    --success: #10B981;
+    --header-height: 60px;
+    --navbar-height: 70px;
+    --avatar-size: 110px;
+    --transition-fast: 0.2s;
+    --transition-normal: 0.3s;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.15);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.25);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.35);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+}
 
-        .mobile-navbar .nav-item i {
-            font-size: 1.4rem;
-        }
-        
-        .mobile-navbar .nav-item.active {
-            color: var(--primary-blue); /* Activation */
-        }
-        
-        /* Bouton UPLOAD au centre */
-        .mobile-navbar .upload-btn i {
-            font-size: 2rem;
-            color: var(--secondary-green);
-            background-color: #fff;
-            border-radius: 50%;
-            padding: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
+@supports (height: 100dvh) {
+    :root { --app-height: 100dvh; }
+}
 
-        /* ---------------------------------------------------- */
-        /* HEADER DE PROFIL */
-        /* ---------------------------------------------------- */
-        .profile-header { 
-            display: flex; 
-            align-items: center; /* Centré verticalement */
-            padding-bottom: 25px; 
-            border-bottom: 1px solid #eee; 
-            flex-wrap: wrap; /* Permet de passer à la ligne sur mobile */
-        }
-        
-        .avatar { 
-            width: 80px; 
-            height: 80px; 
-            border-radius: 50%; 
-            background: linear-gradient(135deg, var(--primary-blue), #004d99); 
-            color: white; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            font-size: 35px; 
-            margin-right: 20px; 
-            flex-shrink: 0; 
-            border: 4px solid white;
-            box-shadow: 0 0 0 2px var(--primary-blue); 
-        }
-        
-        .profile-details { flex-grow: 1; min-width: 0; }
-        .profile-details h1 { 
-            margin: 0; 
-            font-size: 1.8em; 
-            font-weight: 800; /* Plus de poids */
-            color: #222;
-        }
-        
-        .action-area { 
-            display: flex; 
-            align-items: center; 
-            margin-bottom: 15px; 
-        }
+/* --- RESET & BASE --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-        /* STATISTIQUES */
-        .stats { 
-            display: flex; 
-            gap: 25px; 
-            margin-top: 10px;
-        }
-        .stat-item { text-align: center; }
-        .stat-item strong { 
-            display: block; 
-            font-size: 1.3em; 
-            color: var(--primary-blue); 
-            font-weight: 800; 
-        }
-        .stat-item span { 
-            color: #6c757d; 
-            font-size: 0.8em; 
-            text-transform: uppercase; 
-        }
+body {
+    background: var(--bg-dark);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
 
-        /* BOUTON FOLLOW/UNFOLLOW */
-        #followButton {
-            padding: 10px 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-            border-radius: 20px; /* Moins rond */
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-left: 15px;
-            border: 2px solid;
-            min-width: 130px; 
-            text-align: center;
-        }
-        
-        .btn-follow {
-            background-color: var(--primary-blue);
-            color: white;
-            border-color: var(--primary-blue);
-            box-shadow: 0 3px 6px rgba(0, 123, 255, 0.4);
-        }
-        .btn-follow:hover {
-            background-color: #0056b3;
-            border-color: #0056b3;
-        }
+/* --- LAYOUT --- */
+.main-content-scrollable {
+    min-height: calc(var(--app-height) - var(--header-height) - var(--navbar-height));
+    padding-top: var(--header-height);
+    padding-bottom: calc(var(--navbar-height) + 20px);
+    overflow-y: auto;
+    background: var(--bg-dark);
+}
 
-        .btn-following {
-            background-color: #fff;
-            color: var(--primary-blue);
-            border-color: var(--primary-blue);
-        }
-        /* Effet au survol : Se désabonner */
-        .btn-following:hover {
-            background-color: var(--danger-red); 
-            color: white;
-            border-color: var(--danger-red);
-        }
-        
-        /* ---------------------------------------------------- */
-        /* GRILLE DE VIDÉOS */
-        /* ---------------------------------------------------- */
-        h2 { 
-            margin-top: 25px; 
-            padding-top: 20px; 
-            border-top: 1px solid #eee; 
-            font-size: 1.5em;
-            font-weight: 700;
-        }
-        .video-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-            gap: 15px; 
-            margin-top: 15px; 
-        }
-        
-        @media (max-width: 768px) {
-            .video-grid { 
-                /* Force 2 colonnes rapprochées pour le mobile */
-                grid-template-columns: repeat(2, 1fr); 
-                gap: 10px;
-            }
-        }
-        
-        .video-item { 
-            background-color: #fff; 
-            border-radius: 10px; 
-            overflow: hidden; 
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); /* Ombre plus subtile */
-            transition: transform 0.2s, box-shadow 0.2s; 
-            position: relative;
-        }
-        .video-item:hover { 
-            transform: translateY(-3px); 
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-        }
+/* --- HEADER PROFIL MODERNE --- */
+.profile-header {
+    position: relative;
+    padding: 2rem 1.25rem 1.75rem;
+    background: linear-gradient(
+        180deg, 
+        var(--bg-card) 0%, 
+        var(--bg-dark) 100%
+    );
+    border-bottom: 1px solid var(--border);
+}
 
-        .thumbnail-container {
-            position: relative;
-            width: 100%;
-            padding-top: 56.25%; /* 16:9 Aspect Ratio */
-            overflow: hidden;
-        }
+/* ✨ Avatar avec cercle de progression */
+.avatar-container {
+    position: relative;
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+    margin: 0 auto 1.25rem;
+}
 
-        .thumbnail-container img { 
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-            transition: transform 0.3s;
-        }
-        
-        .video-item:hover .thumbnail-container img {
-            transform: scale(1.03); 
-        }
-        
-        .video-item a { text-decoration: none; color: inherit; }
-        .video-info { 
-            padding: 10px 12px; 
-            min-height: 50px; 
-        }
-        .video-info strong { 
-            display: block; 
-            font-size: 0.95em; 
-            color: #333; 
-            margin-bottom: 5px; 
-            height: 1.2em;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis; 
-        }
-        .video-info small { 
-            color: #6c757d; 
-            font-size: 0.8em; 
-            display: flex;
-            align-items: center;
-        }
-        .video-info small i {
-            margin-right: 5px;
-        }
-        
-        /* Message d'absence de vidéo */
-        .video-grid > div > p {
-            grid-column: 1 / -1; /* Prend toute la largeur */
-            text-align: center;
-            color: #6c757d;
-            padding: 40px 0;
-            font-style: italic;
-        }
-        /* PAGINATION CSS (Mimic Bootstrap) */
-/* ---------------------------------------------------- */
-.pagination {
+.avatar-ring {
+    position: absolute;
+    inset: -4px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: var(--radius-full);
+    padding: 4px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.avatar {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-elevated));
+    box-shadow: var(--shadow-lg);
+    transition: transform var(--transition-normal);
+}
+
+.avatar:active {
+    transform: scale(0.95);
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-badge {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 28px;
+    height: 28px;
+    background: var(--primary);
+    border: 3px solid var(--bg-card);
+    border-radius: var(--radius-full);
     display: flex;
-    padding-left: 0;
-    list-style: none;
-    border-radius: .25rem;
-    justify-content: center; /* Centre les liens de pagination */
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.7rem;
+    box-shadow: var(--shadow-md);
+}
+
+/* --- USERNAME & BIO --- */
+.profile-identity {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.username-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.username {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--text), var(--text-muted));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.verified-badge {
+    color: var(--primary);
+    font-size: 1.2rem;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.user-handle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* --- BOUTONS D'ACTION --- */
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    margin: 1.5rem 0;
+}
+
+.btn {
+    position: relative;
+    padding: 0.75rem 1.75rem;
+    border-radius: var(--radius-full);
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.1);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.btn:active::before {
+    opacity: 1;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn-secondary {
+    background: var(--bg-card);
+    color: var(--primary);
+    border: 2px solid var(--primary);
+}
+
+.btn-secondary:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--danger), #dc2626);
+    color: white;
+}
+
+/* --- STATS CARDS MODERNES --- */
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    padding: 0 1rem;
     margin-top: 1.5rem;
 }
 
-.page-item {
-    margin: 0 4px;
+.stat-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 1rem 0.75rem;
+    text-align: center;
+    border: 1px solid var(--border);
+    transition: all var(--transition-normal);
+    cursor: pointer;
 }
 
-.page-link {
-    position: relative;
+.stat-card:active {
+    transform: scale(0.95);
+    background: var(--bg-elevated);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     display: block;
-    padding: .5rem .75rem;
-    margin-left: -1px;
-    line-height: 1.25;
-    color: var(--primary-blue);
-    background-color: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: .25rem;
-    transition: all 0.3s;
-    text-decoration: none;
+    margin-bottom: 0.25rem;
 }
 
-.page-link:hover {
-    z-index: 2;
-    color: #fff;
-    background-color: var(--primary-blue);
-    border-color: var(--primary-blue);
+.stat-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
 }
 
-.page-item.active .page-link {
-    z-index: 3;
-    color: #fff;
-    background-color: var(--primary-blue);
-    border-color: var(--primary-blue);
+/* --- SECTION TABS --- */
+.content-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1.25rem 1rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
 
-.page-item.disabled .page-link {
-    color: #6c757d;
+.content-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+/* --- GRILLE VIDÉOS AMÉLIORÉE --- */
+.video-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    padding: 0;
+    background: var(--border);
+}
+
+.video-item {
+    position: relative;
+    aspect-ratio: 9/16;
+    overflow: hidden;
+    background: var(--bg-card);
+    cursor: pointer;
+}
+
+.thumbnail-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.thumbnail-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        transparent 50%,
+        rgba(0,0,0,0.8) 100%
+    );
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.video-item:active .thumbnail-wrapper::after {
+    opacity: 1;
+}
+
+.thumbnail-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-normal);
+}
+
+.video-item:active .thumbnail-wrapper img {
+    transform: scale(1.05);
+}
+
+/* Overlay d'infos */
+.video-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75rem 0.5rem;
+    background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.9) 0%,
+        rgba(0,0,0,0.6) 50%,
+        transparent 100%
+    );
+    transform: translateY(100%);
+    transition: transform var(--transition-normal);
     pointer-events: none;
-    background-color: #fff;
-    border-color: #dee2e6;
-    opacity: 0.6;
 }
 
-/* Styles pour les flèches */
-.page-link span[aria-hidden="true"] {
-    font-size: 0.9em;
+.video-item:active .video-overlay {
+    transform: translateY(0);
 }
 
-    </style>
+.video-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: white;
+    font-weight: 600;
+}
+
+.video-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.video-stat i {
+    font-size: 0.9rem;
+}
+
+/* Badge de durée */
+.duration-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(8px);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* Bouton suppression moderne */
+.btn-delete-video {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    width: 32px;
+    height: 32px;
+    background: rgba(239, 68, 68, 0.95);
+    backdrop-filter: blur(10px);
+    border: none;
+    border-radius: var(--radius-full);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-md);
+    z-index: 10;
+}
+
+.btn-delete-video:active {
+    transform: scale(0.9) rotate(5deg);
+}
+
+/* --- ÉTAT VIDE --- */
+.empty-state {
+    padding: 4rem 2rem;
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    color: var(--text-subtle);
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-text {
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.profile-header {
+    animation: fadeIn 0.4s ease-out;
+}
+
+.stat-card {
+    animation: slideUp 0.5s ease-out backwards;
+}
+
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
+
+.video-item {
+    animation: fadeIn 0.3s ease-out backwards;
+}
+
+.video-item:nth-child(n+1) { animation-delay: calc(0.05s * (var(--index, 0))); }
+
+/* --- MODAL FULLSCREEN (Feed TikTok) --- */
+.feed-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 9999;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+
+.feed-item {
+    width: 100%;
+    height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.feed-video-player {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+#closeFeedButton {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-full);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 99999;
+    transition: all var(--transition-normal);
+}
+
+#closeFeedButton:active {
+    background: rgba(239, 68, 68, 0.9);
+    transform: rotate(90deg) scale(1.1);
+}
+
+/* --- RESPONSIVE --- */
+@media (min-width: 768px) {
+    .video-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+    }
+    
+    .profile-header {
+        padding: 3rem 2rem 2rem;
+    }
+    
+    :root {
+        --avatar-size: 130px;
+    }
+}
+
+/* --- LOADING SKELETON --- */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--bg-card) 0%,
+        var(--bg-elevated) 50%,
+        var(--bg-card) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+</style>
 </head>
 <body>
-    
-    <div class="container">
 
-        <!-- 1. En-tête du Profil -->
-        <div class="profile-header">
+<!-- HEADER FIXE -->
+<header>
+    <div class="header-logo">
+        <i class="fas fa-futbol"></i>
+        <span>GOAL CLIPS</span>
+    </div>
+    <div class="header-icons">
+        <img th:src="${currentUser.avatarUrl}" alt="Profile"> 
+        <button id="burger-btn"><i class="fa-solid fa-bars"></i></button>
+    </div>
+</header>
+
+<!-- MENU OVERLAY -->
+<div class="menu-overlay" id="menu-overlay">
+    <span class="close-btn" id="menu-close"><i class="fa-solid fa-xmark"></i></span>
+    <a href="/">Feed</a>
+    <a href="/events">Events</a>
+    <a href="#clubs">Clubs</a>
+    <a href="/profile" class="active">Profile</a>
+    <a href="#settings">Settings</a>
+</div>
+
+<!-- CONTENU PRINCIPAL -->
+<div class="main-content-scrollable">
+
+    <!-- HEADER PROFIL -->
+    <div class="profile-header">
+        <!-- Avatar avec ring animé -->
+        <div class="avatar-container">
+            <div class="avatar-ring"></div>
             <div class="avatar">
-                <i class="fas fa-user"></i>
-            </div>
-            
-            <div class="profile-details">
-                <div class="action-area">
-                    <h1 th:text="${targetUser.username}">NomUtilisateur</h1>
-                    
-                    <!-- BOUTON FOLLOW/UNFOLLOW (Affiché si CE N'EST PAS l'utilisateur courant) -->
-                    <div th:if="${!isCurrentUser and targetUser.id != null}">
-                        <button 
-                            id="followButton" 
-                            th:data-target-id="${targetUser.id}"
-                            th:class="${isFollowing ? 'btn-following' : 'btn-follow'}"
-                            th:text="${isFollowing ? 'Suivi' : 'S''abonner'}">
-                            S'abonner
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Statistiques -->
-                <div class="stats">
-                    <div class="stat-item">
-                        <strong th:text="${videosCount}">0</strong>
-                        <span>Vidéos</span>
-                    </div>
-                    <div class="stat-item">
-                        <!-- ID pour mise à jour par JS -->
-                        <strong id="followersCountDisplay" th:text="${followersCount}">0</strong>
-                        <span>Abonnés</span>
-                    </div>
-                    <div class="stat-item">
-                        <strong th:text="${followingCount}">0</strong>
-                        <span>Amis-suivis</span>
-                    </div>
+                <img th:src="${targetUser.avatarUrl != null and targetUser.avatarUrl.length() > 0} 
+                              ? ${targetUser.avatarUrl} 
+                              : 'https://ui-avatars.com/api/?name=' + ${targetUser.username} + '&background=10B981&color=fff&size=200'"
+                     alt="Avatar" 
+                     th:onerror="|this.src='https://ui-avatars.com/api/?name=${targetUser.username}&background=10B981&color=fff&size=200';|" />
+                <div class="avatar-badge">
+                    <i class="fas fa-check"></i>
                 </div>
             </div>
         </div>
 
-        <!-- 2. Grille des Vidéos (Affichage des publications) -->
-<h2>Vidéos de <span th:text="${targetUser.username}"></span></h2>
-
-<div th:if="${userVideos.isEmpty()}" style="text-align: center; color: #6c757d; padding: 40px 0; font-style: italic; border-top: 1px solid #eee;">
-    <p><i class="fas fa-camera" style="margin-right: 8px;"></i> Cet utilisateur n'a pas encore publié de vidéos.</p>
-</div>
-
-<div th:unless="${userVideos.isEmpty()}">
-    <div class="video-grid">
-        <div class="video-item" th:each="video : ${userVideos}">
-            <a th:href="@{/video/{id}(id=${video.id})}">
-                <div class="thumbnail-container">
-                    <img th:if="${video.thumbnailUrl != null and video.thumbnailUrl.length() > 0}"
-                         th:src="@{/videos/{filename}(filename=${video.thumbnailUrl})}"
-                         alt="Miniature Vidéo"
-                         th:onerror="|this.src='https://placehold.co/480x270/007bff/ffffff?text=Video+Thumbnail';|"
-                    />
-                    <img th:unless="${video.thumbnailUrl != null and video.thumbnailUrl.length() > 0}"
-                         src="https://placehold.co/480x270/007bff/ffffff?text=Video+Thumbnail"
-                         alt="Miniature Vidéo (Absente)"
-                    />
-                </div>
-            </a>
-            <div class="video-info">
-                <strong th:text="${video.title}">Titre de la Vidéo</strong>
-                <small>
-                    <i class="fas fa-heart" style="color:var(--danger-red);"></i>
-                    <span th:text="${video.likesCount}">10</span> J'aime
-                </small>
+        <!-- Identité -->
+        <div class="profile-identity">
+            <div class="username-group">
+                <h1 class="username" th:text="${targetUser.username}">Username</h1>
+                <i class="fas fa-badge-check verified-badge" th:if="${targetUser.verified}"></i>
             </div>
+            <p class="user-handle" th:text="'@' + ${targetUser.username}">@username</p>
+        </div>
 
-            <div th:if="${isCurrentUser}" style="position: absolute; top: 5px; right: 5px; z-index: 10;">
-                <form th:action="@{/videos/{id}/delete(id=${video.id})}" method="post">
+        <!-- Boutons d'action -->
+        <div class="action-buttons" th:if="${!isCurrentUser}">
+            <button 
+                id="followButton" 
+                th:data-target-id="${targetUser.id}"
+                th:class="${isFollowing ? 'btn btn-danger' : 'btn btn-primary'}"
+                th:text="${isFollowing ? 'Abonné' : 'S\'abonner'}">
+                S'abonner
+            </button>
+            <button class="btn btn-secondary">
+                <i class="fas fa-envelope"></i>
+            </button>
+        </div>
+
+        <div class="action-buttons" th:if="${isCurrentUser}">
+            <a th:href="@{/profile/edit}" class="btn btn-secondary">
+                <i class="fas fa-pen"></i> Éditer
+            </a>
+            <button class="btn btn-secondary">
+                <i class="fas fa-share-nodes"></i>
+            </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <span class="stat-value" th:text="${videosCount}">0</span>
+                <span class="stat-label">Vidéos</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="followersCountDisplay" th:text="${followersCount}">0</span>
+                <span class="stat-label">Abonnés</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" th:text="${followingCount}">0</span>
+                <span class="stat-label">Suivis</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="content-tabs">
+        <button class="tab active">
+            <i class="fas fa-grid-2"></i> Publications
+        </button>
+        <button class="tab">
+            <i class="fas fa-heart"></i> Likes
+        </button>
+        <button class="tab" th:if="${isCurrentUser}">
+            <i class="fas fa-bookmark"></i> Enregistrés
+        </button>
+    </div>
+
+    <!-- GRILLE VIDÉOS -->
+    <div th:if="${userVideos == null or userVideos.isEmpty()}" class="empty-state">
+        <div class="empty-icon">
+            <i class="fas fa-video-slash"></i>
+        </div>
+        <p class="empty-text">Aucune vidéo pour le moment</p>
+    </div>
+
+    <div th:unless="${userVideos == null or userVideos.isEmpty()}">
+        <div class="video-grid">
+            <div class="video-item" 
+                 th:each="video, iterStat : ${userVideos}"
+                 th:data-video-id="${video.id}"
+                 th:style="'--index: ' + ${iterStat.index}"
+                 th:onclick="|openUserFeed('${video.id}')|">
+                 
+                <div class="thumbnail-wrapper">
+                    <img th:src="@{/videos/{filename}(filename=${video.thumbnailUrl})}"
+                         alt="Thumbnail"
+                         th:onerror="|this.src='https://picsum.photos/400/600?random=' + ${video.id};|" />
+                    
+                    <span class="duration-badge">2:34</span>
+                </div>
+
+                <div class="video-overlay">
+                    <div class="video-stats">
+                        <div class="video-stat">
+                            <i class="fas fa-play"></i>
+                            <span>1.2k</span>
+                        </div>
+                        <div class="video-stat">
+                            <i class="fas fa-heart"></i>
+                            <span th:text="${video.likesCount}">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <form th:if="${isCurrentUser}" th:action="@{/videos/{id}/delete(id=${video.id})}" method="post" style="display: inline;">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                    <button type="submit"
-                            class="btn-delete-video"
-                            onclick="return confirm('Êtes-vous sûr de vouloir supprimer la vidéo \'[[${video.title}]]\' ? Cette action est irréversible.')"
-                            style="
-                                background-color: rgba(220, 53, 69, 0.9);
-                                color: white;
-                                border: none;
-                                border-radius: 50%;
-                                width: 30px;
-                                height: 30px;
-                                font-size: 14px;
-                                line-height: 1;
-                                cursor: pointer;
-                                transition: background-color 0.2s;
-                                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-                            ">
+                    <button type="submit" class="btn-delete-video" onclick="return confirm('Supprimer cette vidéo ?')">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </form>
@@ -452,167 +758,245 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12">
-            <nav aria-label="Pagination des vidéos" th:if="${totalPages > 1}">
-                <ul class="pagination justify-content-center mt-4">
-                    <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                        <a class="page-link"
-                           th:href="@{/profile/{username}(username=${targetUser.username}, page=${currentPage - 1})}"
-                           aria-label="Précédent">
-                            <span aria-hidden="true">&laquo; Précédent</span>
-                        </a>
-                    </li>
-
-                    <li class="page-item"
-                        th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
-                        th:classappend="${i == currentPage} ? 'active'">
-                        <a class="page-link"
-                           th:href="@{/profile/{username}(username=${targetUser.username}, page=${i})}"
-                           th:text="${i + 1}">1</a>
-                    </li>
-
-                    <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
-                        <a class="page-link"
-                           th:href="@{/profile/{username}(username=${targetUser.username}, page=${currentPage + 1})}"
-                           aria-label="Suivant">
-                            <span aria-hidden="true">Suivant &raquo;</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
-    </div>
+    <div style="height: 30px;"></div>
 </div>
 
-<div style="height: 30px;"></div>
+<!-- NAVBAR MOBILE -->
+<nav class="mobile-navbar">
+    <a href="/" class="nav-item"><i class="fa-solid fa-house"></i><span>Home</span></a>
+    <a href="/events" class="nav-item"><i class="fa-regular fa-calendar-days"></i><span>Events</span></a>
+    <div class="nav-spacer"></div>
+    <a href="/videos/feed" class="nav-item"><i class="fa-solid fa-clapperboard"></i><span>Clips</span></a>
+    <a href="/profile" class="nav-item active"><i class="fa-regular fa-user"></i><span>Profile</span></a>
+</nav>
+
+<a href="/upload" class="post-goal-navbar-btn">
+    <i class="fa-solid fa-bullseye"></i>
+    <span class="post-goal-label">Post Your Goal</span>
+</a>
+
+<!-- SCRIPTS -->
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const userVideosData = /*[[${userVideos}]]*/ [];
+    const currentUsername = /*[[${currentUser != null ? currentUser.username : 'anonymous'}]]*/ 'anonymous';
+    const videoBasePath = /*[[@{/videos/}]]*/ '/videos/'; 
+    /*]]>*/
+</script>
+
+<script>
+// Menu burger
+document.addEventListener('DOMContentLoaded', () => {
+    const burger = document.getElementById('burger-btn');
+    const overlay = document.getElementById('menu-overlay');
+    const closeBtn = document.getElementById('menu-close');
+
+    burger?.addEventListener('click', () => {
+        overlay.classList.add('active');
+        document.body.classList.add('no-main-scroll');
+    });
+
+    closeBtn?.addEventListener('click', () => {
+        overlay.classList.remove('active');
+        document.body.classList.remove('no-main-scroll');
+    });
+});
+
+// Bouton Follow/Unfollow
+document.addEventListener('DOMContentLoaded', function() {
+    const followButton = document.getElementById('followButton');
+    const followersCountDisplay = document.getElementById('followersCountDisplay');
+    
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+    
+    if (followButton && followersCountDisplay) {
+        const targetId = followButton.dataset.targetId;
         
-    </div>
-    
-    <!-- ---------------------------------------------------- -->
-    <!-- 4. BARRE DE NAVIGATION MOBILE (Intégrée - Utilisez votre fragment ici dans la vraie application) -->
-    <!-- Ici, je l'intègre directement pour que le fichier soit complet et puisse être prévisualisé -->
-    <nav class="mobile-navbar">
-        <a href="/home" class="nav-item">
-            <i class="fas fa-home"></i>
-        </a>
-        <a href="/search" class="nav-item">
-            <i class="fas fa-search"></i>
-        </a>
-        <a href="/upload" class="nav-item upload-btn">
-            <i class="fas fa-plus-circle"></i>
-        </a>
-        <a href="/notifications" class="nav-item">
-            <i class="fas fa-bell"></i>
-        </a>
-        <!-- On met 'active' sur le profil pour cet exemple de page -->
-        <a th:href="@{/profile}" class="nav-item active">
-            <i class="fas fa-user-circle"></i>
-        </a>
-    </nav>
-    <!-- ---------------------------------------------------- -->
-    
-    <!-- 3. SCRIPT JAVASCRIPT POUR LE BOUTON FOLLOW (logique propre) -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const followButton = document.getElementById('followButton');
-            const followersCountDisplay = document.getElementById('followersCountDisplay');
+        followButton.addEventListener('click', async () => {
+            const originalText = followButton.textContent;
+            followButton.textContent = '...';
+            followButton.disabled = true;
             
-            const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
-            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
-            
-            if (followButton && followersCountDisplay) {
-                const targetId = followButton.dataset.targetId;
-                
-                function updateButtonAppearance(isFollowing, isLoading = false) {
-                    if (isLoading) {
-                        followButton.textContent = 'Chargement...';
-                        followButton.disabled = true;
-                        followButton.classList.remove('btn-follow', 'btn-following');
-                        followButton.style.opacity = 0.7;
-                        return;
-                    }
-                    
-                    followButton.disabled = false;
-                    followButton.style.opacity = 1.0;
-
-                    if (isFollowing) {
-                        followButton.classList.remove('btn-follow');
-                        followButton.classList.add('btn-following');
-                        followButton.textContent = 'Suivi';
-                    } else {
-                        followButton.classList.remove('btn-following');
-                        followButton.classList.add('btn-follow');
-                        followButton.textContent = 'S\'abonner';
-                    }
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (csrfToken && csrfHeader) {
+                    headers[csrfHeader] = csrfToken;
                 }
-                
-                followButton.addEventListener('click', async () => {
+
+                const response = await fetch(`/api/follow/${targetId}`, {
+                    method: 'POST',
+                    headers: headers
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
                     
-                    updateButtonAppearance(false, true); // Afficher l'état de chargement
-                    
-                    try {
-                        const headers = { 'Content-Type': 'application/json' };
-                        if (csrfToken && csrfHeader) {
-                            headers[csrfHeader] = csrfToken;
-                        }
-
-                        const maxRetries = 3;
-                        let response;
-                        let success = false;
-
-                        for (let i = 0; i < maxRetries; i++) {
-                            try {
-                                response = await fetch(`/api/follow/${targetId}`, {
-                                    method: 'POST',
-                                    headers: headers
-                                });
-                                success = true;
-                                break;
-                            } catch (e) {
-                                if (i < maxRetries - 1) {
-                                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
-                                } else {
-                                    throw e; 
-                                }
-                            }
-                        }
-
-                        if (success && response.ok) {
-                            const data = await response.json();
-                            updateButtonAppearance(data.isFollowing);
-                            followersCountDisplay.textContent = data.followersCount;
-                            
-                        } else if (success && response.status === 401) {
-                            console.error("Erreur d'authentification: Veuillez vous connecter pour suivre cet utilisateur.");
-                            updateButtonAppearance(followButton.classList.contains('btn-following'));
-                        } else if (success) {
-                            const errorData = await response.json().catch(() => ({error: 'Erreur inconnue'}));
-                            console.error(`Erreur lors de l'opération : ${errorData.error || response.statusText}`);
-                            updateButtonAppearance(followButton.classList.contains('btn-following'));
-                        }
-
-                    } catch (error) {
-                        console.error('Erreur réseau ou du serveur:', error);
-                        updateButtonAppearance(followButton.classList.contains('btn-following'));
-                    } 
-                });
-                
-                // Gestion de l'effet de survol (changer "Suivi" en "Se désabonner")
-                followButton.addEventListener('mouseover', () => {
-                    if (followButton.classList.contains('btn-following') && !followButton.disabled) {
-                        followButton.textContent = 'Se désabonner';
-                    }
-                });
-
-                followButton.addEventListener('mouseout', () => {
-                    if (followButton.classList.contains('btn-following') && !followButton.disabled) {
-                        followButton.textContent = 'Suivi';
-                    }
-                });
+                    followButton.textContent = data.isFollowing ? 'Abonné' : 'S\'abonner';
+                    followButton.className = data.isFollowing ? 'btn btn-danger' : 'btn btn-primary';
+                    followersCountDisplay.textContent = data.followersCount;
+                } else {
+                    followButton.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                followButton.textContent = originalText;
+            } finally {
+                followButton.disabled = false;
             }
         });
-    </script>
+    }
+});
+
+// Modal vidéo fullscreen
+let lastPlayedVideo = null;
+
+function openUserFeed(startVideoId) {
+    const targetUsername = document.querySelector('.username').textContent.trim();
+    const startIndex = userVideosData.findIndex(video => String(video.id) === String(startVideoId));
+    
+    if (startIndex === -1) {
+        console.error('Vidéo non trouvée:', startVideoId);
+        return;
+    }
+
+    let overlay = document.getElementById('videoFeedOverlay');
+    
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'videoFeedOverlay';
+        overlay.classList.add('feed-modal-overlay');
+        document.body.appendChild(overlay);
+        
+        // Bouton fermer
+        const closeButton = document.createElement('button');
+        closeButton.id = 'closeFeedButton';
+        closeButton.innerHTML = '<i class="fas fa-times"></i>';
+        closeButton.onclick = closeUserFeed;
+        overlay.appendChild(closeButton);
+
+        // Ajouter toutes les vidéos
+        userVideosData.forEach((video, index) => {
+            const item = document.createElement('div');
+            item.classList.add('feed-item');
+            item.dataset.index = index;
+            
+            // 🔥 FIX : Support URLs externes ET locales
+            const videoSrc = video.filename.startsWith('http') 
+                ? video.filename 
+                : videoBasePath + video.filename;
+            
+            item.innerHTML = `
+                <video class="feed-video-player" 
+                       src="${videoSrc}" 
+                       controls 
+                       loop 
+                       playsinline 
+                       preload="metadata">
+                    Votre navigateur ne supporte pas la vidéo.
+                </video>
+                
+                <div style="position: absolute; bottom: 80px; left: 20px; right: 20px; color: white; z-index: 9002; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">
+                    <p style="font-weight: 600; margin-bottom: 5px;">@${targetUsername}</p>
+                    <strong>${video.title || 'Sans titre'}</strong>
+                    <div style="margin-top: 5px; font-size: 0.9em;">
+                        <i class="fas fa-heart"></i> ${video.likesCount || 0}
+                    </div>
+                </div>
+            `;
+            overlay.appendChild(item);
+        });
+        
+        // 🔥 Gestion du scroll automatique (lecture/pause)
+        overlay.addEventListener('scroll', handleFeedScroll);
+    }
+    
+    // Afficher le modal
+    overlay.style.display = 'block';
+    document.querySelector('.main-content-scrollable').style.display = 'none';
+    document.querySelector('.mobile-navbar').style.display = 'none';
+    document.querySelector('.post-goal-navbar-btn').style.display = 'none';
+    document.body.style.overflow = 'hidden';
+    
+    // 🔥 Scroll vers la vidéo cliquée
+    setTimeout(() => {
+        const startItem = overlay.querySelector(`.feed-item[data-index="${startIndex}"]`);
+        if (startItem) {
+            startItem.scrollIntoView({ behavior: 'instant', block: 'start' });
+            
+            // Lancer la lecture automatique
+            const video = startItem.querySelector('video');
+            if (video) {
+                video.play().catch(e => {
+                    console.log('Autoplay bloqué:', e);
+                    video.muted = true;
+                    video.play();
+                });
+            }
+        }
+    }, 100);
+}
+
+// 🔥 Gestion de la lecture/pause au scroll
+
+function handleFeedScroll(event) {
+    const feedItems = event.target.querySelectorAll('.feed-item');
+    const viewportCenter = window.innerHeight / 2;
+    
+    feedItems.forEach(item => {
+        const rect = item.getBoundingClientRect();
+        const video = item.querySelector('video');
+        
+        if (!video) return;
+
+        const isCentered = (rect.top < viewportCenter) && (rect.bottom > viewportCenter);
+        
+        if (isCentered) {
+            // Vidéo au centre → LECTURE
+            if (video.paused) {
+                if (lastPlayedVideo && lastPlayedVideo !== video) {
+                    lastPlayedVideo.pause();
+                    lastPlayedVideo.currentTime = 0;
+                }
+                
+                video.play().catch(e => {
+                    video.muted = true;
+                    video.play();
+                });
+                
+                lastPlayedVideo = video;
+            }
+        } else {
+            // Vidéo hors du centre → PAUSE
+            if (!video.paused) {
+                video.pause();
+                video.currentTime = 0;
+            }
+        }
+    });
+}
+
+function closeUserFeed() {
+    const overlay = document.getElementById('videoFeedOverlay');
+    
+    if (overlay) {
+        // Arrêter toutes les vidéos
+        overlay.querySelectorAll('video').forEach(v => {
+            v.pause();
+            v.currentTime = 0;
+        });
+        
+        overlay.style.display = 'none';
+        lastPlayedVideo = null;
+    }
+    
+    // Restaurer la vue normale
+    document.querySelector('.main-content-scrollable').style.display = 'block';
+    document.querySelector('.mobile-navbar').style.display = 'flex';
+    document.querySelector('.post-goal-navbar-btn').style.display = 'flex';
+    document.body.style.overflow = '';
+}
+</script>
 
 </body>
 </html>

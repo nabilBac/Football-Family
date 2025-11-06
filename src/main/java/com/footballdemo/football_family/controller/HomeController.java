@@ -6,6 +6,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import java.security.Principal; 
 import com.footballdemo.football_family.service.VideoService;
+
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,29 +24,38 @@ public class HomeController {
 
     // 🚨 MÉTHODE CORRIGÉE
     @GetMapping("/")
-    public String home(Principal principal, Model model) {
-        // 1. Définir la variable pour stocker le résultat (maintenant List<VideoDto>)
-        List<VideoDto> videos; 
+ public String home(Principal principal, Model model, HttpServletRequest request) { // 👈 AJOUT DE HttpServletRequest
+ 
+        // 🚀 NOUVELLE LOGIQUE POUR LE RAFRAÎCHISSEMENT DES ÉVÉNEMENTS APRÈS LE LOGIN
+        Boolean justLoggedIn = (Boolean) request.getSession().getAttribute("justLoggedIn");
         
-        try {
-            // Définition de la pagination par défaut
-            var pageable = PageRequest.of(0, 20, Sort.by("dateUpload").descending());
-            // Détermination du nom d'utilisateur (pour calculer les likes)
-            String username = (principal != null) ? principal.getName() : "anonymousUser";
-
-            // 2. 🎯 APPEL DE LA NOUVELLE MÉTHODE avec pagination et username
-           videos = videoService.getFeedVideosForUser(pageable, username);
-
+        if (Boolean.TRUE.equals(justLoggedIn)) {
+            // Passe le flag au modèle (pour lecture par le JavaScript/Thymeleaf)
+            model.addAttribute("justLoggedIn", true);
             
-        } catch (Exception e) {
-            System.err.println("Erreur lors de la récupération des vidéos pour la page d'accueil : " + e.getMessage());
-            videos = Collections.emptyList(); // Utiliser List.of() ou Collections.emptyList()
-            e.printStackTrace(); 
+            // 💡 Nettoie le flag immédiatement pour qu'il ne s'applique qu'une seule fois
+            request.getSession().removeAttribute("justLoggedIn"); 
         }
+        // FIN DE LA NOUVELLE LOGIQUE
+        
+// DÉBUT DE LA LOGIQUE EXISTANTE (VIDÉOS)
+ List<VideoDto> videos; 
+ 
+ try {
+ var pageable = PageRequest.of(0, 20, Sort.by("dateUpload").descending());
+ String username = (principal != null) ? principal.getName() : "anonymousUser";
 
-        model.addAttribute("videos", videos);
-        // Si vous utilisez Thymeleaf, assurez-vous que 'index.html' est prêt à gérer List<VideoDto>
-        return "index";
-    }
+videos = videoService.getFeedVideosForUser(pageable, username);
+
+} catch (Exception e) {
+ System.err.println("Erreur lors de la récupération des vidéos pour la page d'accueil : " + e.getMessage());
+videos = Collections.emptyList(); 
+ e.printStackTrace(); 
+ }
+
+ model.addAttribute("videos", videos);
+ 
+ return "index";
+ }
 
 }

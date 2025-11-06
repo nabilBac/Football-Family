@@ -1,7 +1,5 @@
 package com.footballdemo.football_family.controller;
 
-
-
 import com.footballdemo.football_family.dto.ApiResponse;
 import com.footballdemo.football_family.dto.CommentDto; // Assurez-vous d'importer CommentDto si vous l'utilisez
 import com.footballdemo.football_family.service.CommentService; // ✅ Nom du service corrigé
@@ -20,27 +18,33 @@ import java.util.Map;
 public class CommentApiController { // ✅ Mot-clé classe publique
 
     // 1. Déclaration du champ 'final' avec nom de variable
-    private final CommentService commentService; 
+    private final CommentService commentService;
 
     // 2. Constructeur pour l'injection de dépendances
     public CommentApiController(CommentService commentService) {
         this.commentService = commentService;
     }
 
-    // 3. La route DELETE (qui devrait maintenant fonctionner via /api/comments/{id})
-    @DeleteMapping("/{commentId}") 
-    @PreAuthorize("isAuthenticated() and @commentService.isAuthor(#commentId, principal.name)")
+    // 3. La route DELETE (qui devrait maintenant fonctionner via
+    // /api/comments/{id})
+    @DeleteMapping("/{commentId}")
+    // 🔑 CORRECTION : Ajoutez le # devant 'principal'
+    @PreAuthorize("isAuthenticated() and @commentService.isAuthor(#commentId, #principal.name)")
     public ApiResponse<Void> deleteComment(@PathVariable Long commentId, Principal principal) {
+
+        // Cette ligne est correcte et sera appelée une fois que l'annotation
+        // PreAuthorize aura réussi l'évaluation.
         commentService.deleteComment(commentId, principal.getName());
         return new ApiResponse<>(true, "Commentaire supprimé", null);
     }
 
     // 4. Déplacez ici la route PUT de l'ancien VideoController!
     @PutMapping("/{commentId}")
-    @PreAuthorize("isAuthenticated() and @commentService.isAuthor(#commentId, principal.name)")
+    // 🔑 CORRECTION : Ajoutez le # devant 'principal' ici aussi
+    @PreAuthorize("isAuthenticated() and @commentService.isAuthor(#commentId, #principal.name)")
     public ApiResponse<CommentDto> updateComment(@PathVariable Long commentId,
-                                                 @RequestBody Map<String, String> payload,
-                                                 Principal principal) {
+            @RequestBody Map<String, String> payload,
+            Principal principal) {
         // ... Logique d'update ...
         String newContent = payload.get("content");
         if (newContent == null || newContent.trim().isEmpty()) {

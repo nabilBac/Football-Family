@@ -23,6 +23,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
 import jakarta.annotation.PostConstruct;
 import org.springframework.security.access.prepost.PreAuthorize;
 import com.footballdemo.football_family.dto.ApiResponse;
@@ -81,40 +83,45 @@ public class VideoController {
         return "video-upload";
     }
 
-    @PostMapping("/upload")
-    @PreAuthorize("isAuthenticated()")
-    public String uploadVideo(@ModelAttribute Video video,
-                              @RequestParam("file") MultipartFile file,
-                              Principal principal,
-                              Model model) throws IOException {
+  @PostMapping("/upload")
+@PreAuthorize("isAuthenticated()")
+public String uploadVideo(@ModelAttribute Video video,
+                          @RequestParam("file") MultipartFile file,
+                          Principal principal,
+                          Model model) throws IOException {
 
-        if (file.isEmpty()) {
-            model.addAttribute("error", "Veuillez sélectionner un fichier !");
-            return "video-upload";
-        }
-
-        String originalName = file.getOriginalFilename();
-        String extension = (originalName != null && originalName.contains("."))
-                ? originalName.substring(originalName.lastIndexOf("."))
-                : "";
-
-        String filename = UUID.randomUUID() + extension;
-        String thumbnailUrl = UUID.randomUUID() + ".jpg";
-
-        File destination = new File(uploadDir, filename);
-        file.transferTo(destination);
-
-        video.setFilename(filename);
-        video.setThumbnailUrl(thumbnailUrl);
-        video.setDateUpload(LocalDateTime.now());
-
-        User uploader = userService.getUserByUsername(principal.getName())
-                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable !"));
-        video.setUploader(uploader);
-
-        videoService.saveVideo(video);
-        return "redirect:/videos/list";
+    if (file.isEmpty()) {
+        model.addAttribute("error", "Veuillez sélectionner un fichier !");
+        return "video-upload";
     }
+
+    String originalName = file.getOriginalFilename();
+    String extension = (originalName != null && originalName.contains("."))
+            ? originalName.substring(originalName.lastIndexOf("."))
+            : "";
+
+    String filename = UUID.randomUUID() + extension;
+
+    // Sauvegarde du fichier
+    File destination = new File(uploadDir, filename);
+    file.transferTo(destination);
+
+    // Récupérer l'utilisateur
+    User uploader = userService.getUserByUsername(principal.getName())
+            .orElseThrow(() -> new RuntimeException("Utilisateur introuvable !"));
+    video.setUploader(uploader);
+    video.setFilename(filename);
+    video.setDateUpload(LocalDateTime.now());
+
+    // --- Génération réelle de la miniature ---
+    String thumbnailUrl = videoService.generateThumbnail(filename);
+    video.setThumbnailUrl(thumbnailUrl != null ? thumbnailUrl : "default_video_placeholder.jpg");
+
+    videoService.saveVideo(video);
+
+    return "redirect:/videos/list";
+}
+
 
     // ------------------- LIST / FEED -------------------
     @GetMapping("/list")
@@ -174,7 +181,7 @@ public String listVideos(Principal principal, Model model) {
                 return ResponseEntity.notFound().build();
 
             String contentType = filename.toLowerCase().endsWith(".mp4") ? "video/mp4" : MediaType.APPLICATION_OCTET_STREAM_VALUE;
-            String cacheControl = "public, max-age=31536000, immutable";
+            String cacheControl = "no-cache, no-store, must-revalidate";
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
@@ -248,36 +255,63 @@ public ApiResponse<Void> deleteComment(@PathVariable Long commentId, Principal p
 }*/
 
     // ------------------- SUPPRESSION VIDEO -------------------
-    @PostMapping("/{videoId}/delete")
-    @PreAuthorize("isAuthenticated() and @videoService.isUploader(#videoId, principal.name)")
-    public String deleteVideo(@PathVariable Long videoId, Principal principal, Model model) {
-        try {
-            videoService.deleteVideo(videoId);
-            model.addAttribute("successMessage", "Vidéo supprimée avec succès.");
-        } catch (RuntimeException e) {
-            model.addAttribute("error", "Erreur lors de la suppression: " + e.getMessage());
-        }
-        return "redirect:/profile/" + principal.getName();
+  @PostMapping("/{videoId}/delete")
+@PreAuthorize("isAuthenticated() and @videoService.isUploader(#videoId, authentication.name)")
+
+// 🎯 MODIFICATION : Utiliser RedirectAttributes
+public String deleteVideo(@PathVariable Long videoId, 
+                          Principal principal, 
+                          RedirectAttributes redirectAttributes) { 
+    
+    String username = principal.getName();
+    
+    try {
+        // 🎯 CORRECTION : Ajouter le username
+        videoService.deleteVideo(videoId, username); 
+        
+        redirectAttributes.addFlashAttribute("successMessage", "Vidéo supprimée avec succès.");
+        
+    } catch (RuntimeException | IOException e) {
+        // Inclut EntityNotFoundException, AccessDeniedException et IOException
+        redirectAttributes.addFlashAttribute("errorMessage", "Erreur lors de la suppression: " + e.getMessage());
     }
+    // Redirection vers le profil
+    return "redirect:/profile/" + username;
+}
 
 @DeleteMapping("/{videoId}")
-public ResponseEntity<ApiResponse<Void>> deleteVideo(@PathVariable Long videoId, Principal principal)
+public ResponseEntity<ApiResponse<Void>> deleteVideoAPI(@PathVariable Long videoId, Principal principal)
 {
-    // L'AccessDeniedException est levée ICI, HORS du try-catch.
-    if (!videoService.isUploader(videoId, principal.getName())) {
+    String username = principal.getName();
+    
+    // L'AccessDeniedException est levée HORS du try-catch par Spring Security via @PreAuthorize
+    // La vérification manuelle ici n'est pas nécessaire si @PreAuthorize est actif sur le service.
+    // Cependant, si vous voulez que la méthode Service lève l'exception pour la catch, vous la retirez ici.
+    
+    // Si l'on garde la vérification manuelle, il faut gérer l'IOException dans le try-catch.
+    if (!videoService.isUploader(videoId, username)) {
         throw new AccessDeniedException("Not uploader");
     }
     
-    // Le try-catch ne gère plus l'AccessDeniedException.
     try {
-        videoService.deleteVideo(videoId);
+        // 🎯 CORRECTION : Ajouter le username
+        videoService.deleteVideo(videoId, username); 
+        
         return ResponseEntity.ok(new ApiResponse<Void>(true, "Vidéo supprimée avec succès", null));
 
-    } catch (RuntimeException ex) { 
-        // Cette section gère uniquement les erreurs survenant pendant le service.
+    } catch (RuntimeException | IOException ex) { // 🎯 AJOUT de IOException
+        // Gère EntityNotFoundException, et les erreurs du service (y compris les IOExceptions)
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                              .body(new ApiResponse<Void>(false, ex.getMessage(), null));
     }
+}
+
+
+@GetMapping("/test-delete/{videoId}")
+@ResponseBody
+public String testDelete(@PathVariable Long videoId, Principal principal) {
+    boolean uploader = videoService.isUploader(videoId, principal.getName());
+    return "isUploader: " + uploader;
 }
 
 }

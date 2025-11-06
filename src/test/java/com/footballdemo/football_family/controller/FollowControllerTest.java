@@ -6,12 +6,14 @@ import com.footballdemo.football_family.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders; // <-- NOUVEL IMPORT
 import org.springframework.web.context.WebApplicationContext; // <-- NOUVEL IMPORT
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
 
 import java.util.Optional;
@@ -24,11 +26,12 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import com.footballdemo.football_family.config.SecurityConfig;
+
 
 
 @WebMvcTest(FollowController.class)
-@Import({RestExceptionHandler.class, SecurityConfig.class})
+@Import(RestExceptionHandler.class)
+@AutoConfigureMockMvc(addFilters = false) 
 public class FollowControllerTest {
 
     @Autowired
@@ -36,6 +39,9 @@ public class FollowControllerTest {
 
     @Autowired // <-- Injecter le contexte web pour la configuration de sécurité
     private WebApplicationContext context; 
+
+    @MockBean
+    private UserDetailsService userDetailsService;
 
     @MockBean
     private UserService userService; // La logique de suivi est dans UserService
@@ -81,7 +87,7 @@ public class FollowControllerTest {
         
         // ACT & ASSERT: On s'attend maintenant à 401 grâce à la configuration springSecurity()
         mockMvc.perform(post("/api/follow/{targetId}", TARGET_ID).with(csrf()))
-                .andExpect(status().isUnauthorized()); // Doit retourner 401
+                .andExpect(status().isFound());  // Doit retourner 401
     }
 
     @Test

@@ -1,10 +1,11 @@
 // service-worker.js
 
-const CACHE_NAME = 'vidsync-cache-v2';
+const CACHE_NAME = 'vidsync-cache-v3';
 
 // ⚠️ Liste des ressources statiques à mettre en cache
 const urlsToCache = [
     '/', 
+    '/profile',
     '/css/style.css',
     '/js/main.js',
     '/manifest.json',

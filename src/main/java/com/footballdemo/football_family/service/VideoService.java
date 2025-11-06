@@ -12,10 +12,13 @@ import com.footballdemo.football_family.repository.VideoLikeRepository;
 import com.footballdemo.football_family.repository.VideoRepository;
 import com.footballdemo.football_family.repository.FollowRepository;
 import com.footballdemo.football_family.repository.VideoRepository.VideoFeedProjection;
+import org.springframework.security.access.AccessDeniedException; // 👈 AJOUTER CET IMPORT
+import jakarta.persistence.EntityNotFoundException; //
+
+
 import com.footballdemo.football_family.dto.LikeResult;
 import com.footballdemo.football_family.dto.VideoDto;
 import com.footballdemo.football_family.dto.VideoStatsUpdateDto;
-import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -38,7 +41,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Service
+
+@Service("videoService")
 public class VideoService {
 
     private final VideoRepository videoRepository;
@@ -47,7 +51,7 @@ public class VideoService {
     private final FollowRepository followRepository;
 
     private final SimpMessagingTemplate messagingTemplate;
-    private final CacheManager cacheManager;
+    
     
     @Value("${videos.upload.dir}")
     private String uploadDir;
@@ -57,18 +61,19 @@ public class VideoService {
                     UserService userService,
                     FollowRepository followRepository,
                     // 🎯 Assurez-vous d'avoir SimpMessagingTemplate dans les paramètres :
-                    SimpMessagingTemplate messagingTemplate,
-                    CacheManager cacheManager) { 
+                    SimpMessagingTemplate messagingTemplate
+                    ) { 
     
     this.videoRepository = videoRepository;
     this.videoLikeRepository = videoLikeRepository;
     this.userService = userService;
     this.followRepository = followRepository;
-    this.cacheManager = cacheManager;
+    
     
     // 🎯 LIGNE MANQUANTE (ou non assignée) : Initialisation du champ final
     this.messagingTemplate = messagingTemplate; 
 }
+
 
     // --- Mapping projection → DTO
     private List<VideoDto> mapToVideoDtoList(Page<VideoFeedProjection> videosPage, String username) {
@@ -114,28 +119,78 @@ public class VideoService {
                 .orElseThrow(() -> new RuntimeException("Vidéo non trouvée avec l'ID : " + id));
     }
 
-   @Transactional
-public void deleteVideo(Long videoId) {
-    Video video = getVideoById(videoId);
-
-    // Supprimer les fichiers...
-    Path videoPath = Paths.get(uploadDir).resolve(video.getFilename());
-    try { Files.deleteIfExists(videoPath); } catch (IOException ignored) {}
-
-    if (video.getThumbnailUrl() != null && !video.getThumbnailUrl().equals("default_video_placeholder.jpg")) {
-        Path thumbPath = Paths.get(uploadDir).resolve(video.getThumbnailUrl());
-        try { Files.deleteIfExists(thumbPath); } catch (IOException ignored) {}
-    }
-
-    // Supprimer en DB
-    videoRepository.delete(video);
     
-    // 🎯 REMPLACEMENT DU evictFeedCache() par la logique que votre test attend
-    org.springframework.cache.Cache feedCache = cacheManager.getCache("feedVideos");
-    if (feedCache != null) {
-        feedCache.clear();
+@Transactional
+// ✅ CORRECTION CRUCIALE : Ajout de l'invalidation du cache du profil
+@CacheEvict(value = "profileVideos", allEntries = true) 
+public void deleteVideo(Long videoId, String uploaderUsername) throws IOException {
+        
+        // 1. Récupération et vérification de l'existence
+        Video video = videoRepository.findById(videoId)
+            // Lève une exception si la vidéo n'existe pas (gérée par le contrôleur)
+            .orElseThrow(() -> new EntityNotFoundException("Vidéo introuvable avec ID: " + videoId));
+
+        // 2. Vérification des Droits (Renforcement de sécurité)
+        if (!video.getUploader().getUsername().equals(uploaderUsername)) {
+            // Lève une exception d'accès refusé (gérée par le contrôleur)
+            throw new AccessDeniedException("L'utilisateur n'est pas l'auteur de cette vidéo.");
+        }
+
+        String videoFilename = video.getFilename();
+        String thumbnailFilename = video.getThumbnailUrl(); 
+        
+        // 3. Suppression des fichiers physiques (avant la BDD)
+        try {
+            deleteFile(videoFilename);
+            // La miniature est souvent dans un sous-dossier, on récupère juste le nom du fichier.
+            // On gère aussi le cas où thumbnailUrl est un placeholder.
+            if (thumbnailFilename != null && !thumbnailFilename.equals("default_video_placeholder.jpg")) {
+                // On extrait juste le nom du fichier s'il est au format "thumbnails/nom.png"
+                String filenameOnly = thumbnailFilename.contains("/") ? 
+                                      thumbnailFilename.substring(thumbnailFilename.lastIndexOf("/") + 1) : 
+                                      thumbnailFilename;
+                deleteFile("thumbnails/" + filenameOnly); // Utilise le chemin relatif correct
+            }
+        } catch (IOException e) {
+            // Si la suppression du fichier échoue (droit, fichier manquant...), 
+            // on logue et on relance, mais on peut continuer à supprimer l'entrée DB
+            System.err.println("🔴 Erreur lors de la suppression des fichiers de la vidéo " + videoId + ": " + e.getMessage());
+            // Nous lançons l'exception pour que le contrôleur puisse la gérer
+            throw new IOException("Erreur lors de la suppression des fichiers de la vidéo.", e);
+        }
+
+        // 4. Suppression de l'enregistrement en base de données
+        videoRepository.delete(video);
+        
+        // 5. Invalidation du cache de feed
+        evictFeedCache(); // Utiliser la méthode dédiée pour la clarté.
+        // ou la logique que vous aviez : 
+        // org.springframework.cache.Cache feedCache = cacheManager.getCache("videoFeed");
+        // if (feedCache != null) { feedCache.clear(); }
     }
-}
+
+    /**
+     * Méthode utilitaire pour supprimer un fichier (y compris les miniatures dans le sous-dossier 'thumbnails').
+     * @param relativePath Le chemin relatif du fichier à partir de ${videos.upload.dir} (ex: "nom_video.mp4" ou "thumbnails/nom_thumb.png")
+     */
+    private void deleteFile(String relativePath) throws IOException {
+        if (relativePath != null && !relativePath.isEmpty()) {
+            Path fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path targetFile = fileStorageLocation.resolve(relativePath).normalize();
+            
+            // Sécurité anti-traversal : s'assurer que le chemin est bien dans le répertoire d'upload.
+            if (!targetFile.startsWith(fileStorageLocation)) {
+                throw new IOException("Tentative d'accès illégal : " + relativePath);
+            }
+            
+            if (Files.exists(targetFile)) {
+                Files.delete(targetFile);
+                System.out.println("✅ Fichier supprimé : " + relativePath);
+            } else {
+                System.out.println("⚠️ Fichier non trouvé (mais poursuite de l'opération) : " + relativePath);
+            }
+        }
+    }
 
     // --- Feed global (avec clé de cache distincte) ---
    @Cacheable(value = "videoFeed", key = "'global-' + #pageable.pageNumber + '-' + #username")
@@ -288,12 +343,23 @@ System.out.println("📢 [WS] Video " + videoId + " likes=" + newLikeCount + " (
      * Pour les vérifications rapides, on pourrait utiliser une projection plus légère 
      * dans VideoRepository pour ne charger que l'ID de l'uploader.
      */
-    public boolean isUploader(Long videoId, String username) {
+  public boolean isUploader(Long videoId, String username) {
         return videoRepository.findById(videoId)
-            .map(video -> 
-                video.getUploader() != null && video.getUploader().getUsername().equals(username))
-            .orElse(false); 
+            .map(video -> {
+                String uploaderName = video.getUploader() != null ? video.getUploader().getUsername() : null;
+                boolean match = uploaderName != null && uploaderName.equalsIgnoreCase(username);
+                System.out.println("🔍 [isUploader] videoId=" + videoId +
+                                   ", uploader=" + uploaderName +
+                                   ", principal=" + username +
+                                   " -> " + match);
+                return match;
+            })
+            .orElseGet(() -> {
+                System.out.println("⚠️ [isUploader] Vidéo introuvable : " + videoId);
+                return false;
+            });
     }
+
 
     @CacheEvict(value = "videoFeed", allEntries = true)
     public void evictFeedCache() { 
@@ -342,9 +408,50 @@ System.out.println("📢 [WS] Video " + videoId + " likes=" + newLikeCount + " (
         video.setUploader(uploader);
         video.setLikesCount(0);
         video.setCommentsCount(0);
+
+        // 🔹 Génération de la miniature immédiatement
+String thumbnailPath = generateThumbnail(newFilename);
+video.setThumbnailUrl(thumbnailPath != null ? thumbnailPath : "default_video_placeholder.jpg");
         
         return videoRepository.save(video);
     }
+
+     public void regenerateThumbnails() {
+    List<Video> videos = videoRepository.findAll();
+    for (Video video : videos) {
+        String thumbnail = generateThumbnail(video.getFilename());
+        video.setThumbnailUrl(thumbnail != null ? thumbnail : "default_video_placeholder.jpg");
+        System.out.println("Miniature régénérée pour " + video.getTitle() + " -> " + video.getThumbnailUrl());
+    }
+    videoRepository.saveAll(videos);
+}
+
+
+    public String generateThumbnail(String videoFilename) {
+    String videoPath = uploadDir + "/" + videoFilename;
+    String thumbnailFilename = videoFilename.substring(0, videoFilename.lastIndexOf(".")) + ".png";
+    String thumbnailPath = uploadDir + "/thumbnails/" + thumbnailFilename;
+
+    try {
+        Path thumbDir = Paths.get(uploadDir, "thumbnails");
+        if (!Files.exists(thumbDir)) Files.createDirectories(thumbDir);
+
+        String command = String.format(
+            "ffmpeg -i \"%s\" -ss 00:00:05 -vframes 1 \"%s\"",
+            videoPath,
+            thumbnailPath
+        );
+
+        Process process = Runtime.getRuntime().exec(command);
+        process.waitFor();
+
+        return "thumbnails/" + thumbnailFilename;
+    } catch (IOException | InterruptedException e) {
+        e.printStackTrace();
+        return null;
+    }
+}
+
 
 
 }

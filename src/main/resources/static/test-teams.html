@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Test API Teams - FootballFamily</title>
+  <style>
+    body { font-family: Inter, Roboto, Arial; margin: 20px; max-width: 980px; }
+    h1 { color: #3b3b98; }
+    label { display:block; margin-top:10px; font-weight:600; }
+    input[type="text"], input[type="number"] { width: 320px; padding:6px; margin-top:6px; }
+    button { margin-top:10px; padding:8px 12px; border-radius:6px; cursor:pointer; }
+    .row { display:flex; gap:16px; align-items:flex-end; margin-top:12px; }
+    .box { background:#f7f7fb; border:1px solid #e1e1ee; padding:12px; border-radius:8px; margin-top:12px; }
+    pre { white-space:pre-wrap; word-wrap:break-word; background:#fff; padding:10px; border-radius:6px; border:1px solid #eee; }
+    .success { color: #0a8a3b; }
+    .error { color: #b71c1c; }
+  </style>
+</head>
+<body>
+  <h1>Test API Teams — FootballFamily</h1>
+  <p>Utilise cette page pour tester rapidement les endpoints <code>/api/teams</code> (create, add player, list, list by coach).</p>
+
+  <div class="box">
+    <h3>1 Créer une équipe</h3>
+    <label>Nom</label>
+    <input id="create_name" type="text" placeholder="Ex: FC Test" />
+    <label>Catégorie</label>
+    <input id="create_category" type="text" placeholder="Ex: Junior" />
+    <label>Coach Id</label>
+    <input id="create_coachId" type="number" placeholder="Ex: 1" />
+    <div class="row">
+      <button onclick="createTeam()">Créer l'équipe</button>
+      <button onclick="clearCreate()">Réinitialiser</button>
+    </div>
+    <div id="create_result" style="margin-top:10px"></div>
+  </div>
+
+  <div class="box">
+    <h3>2 Ajouter un joueur à une équipe</h3>
+    <label>Team Id</label>
+    <input id="add_teamId" type="number" placeholder="Ex: 1" />
+    <label>Player Id</label>
+    <input id="add_playerId" type="number" placeholder="Ex: 2" />
+    <div class="row">
+      <button onclick="addPlayer()">Ajouter le joueur</button>
+      <button onclick="clearAdd()">Réinitialiser</button>
+    </div>
+    <div id="add_result" style="margin-top:10px"></div>
+  </div>
+
+  <div class="box">
+    <h3>3 Lister les équipes</h3>
+    <div class="row">
+      <button onclick="getAllTeams()">Lister toutes les équipes</button>
+      <button onclick="getTeamsByCoach()">Lister par coach</button>
+      <input id="coachId" type="number" placeholder="Coach Id (p.ex. 1)" style="width:120px" />
+    </div>
+    <div id="list_result" style="margin-top:10px"></div>
+  </div>
+
+  <div class="box">
+    <h3>Console / sortie</h3>
+    <pre id="output">Aucune action pour l'instant.</pre>
+  </div>
+
+  <div class="box">
+  <h3>4 Valider une inscription à un événement</h3>
+  <label>Event Id</label>
+  <input id="validate_eventId" type="number" placeholder="Ex: 1" />
+  <label>Registration Id</label>
+  <input id="validate_registrationId" type="number" placeholder="Ex: 2" />
+  <div class="row">
+    <button onclick="validateRegistration()">Valider l'inscription</button>
+    <button onclick="clearValidate()">Réinitialiser</button>
+  </div>
+  <div id="validate_result" style="margin-top:10px"></div>
+</div>
+
+
+<script>
+  const out = (obj, ok=true) => {
+    const el = document.getElementById('output');
+    const time = new Date().toLocaleTimeString();
+    const title = ok ? `[OK ${time}]` : `[ERR ${time}]`;
+    el.textContent = title + " " + (typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2)) + "\\n\\n" + el.textContent;
+  };
+
+  const showHtml = (id, payload, ok=true) => {
+    document.getElementById(id).innerHTML = ok ? '<span class="success">Succès</span>: <pre>' + JSON.stringify(payload, null, 2) + '</pre>' : '<span class="error">Erreur</span>: <pre>' + JSON.stringify(payload, null, 2) + '</pre>';
+    out(payload, ok);
+  };
+
+  async function createTeam() {
+    const name = document.getElementById('create_name').value || '';
+    const category = document.getElementById('create_category').value || '';
+    const coachId = document.getElementById('create_coachId').value;
+    if(!name || !category || !coachId) {
+      alert('Remplis name, category et coachId');
+      return;
+    }
+    try {
+      const url = `/api/teams/create?name=${encodeURIComponent(name)}&category=${encodeURIComponent(category)}&coachId=${encodeURIComponent(coachId)}`;
+      const res = await fetch(url, { method: 'POST' });
+      const data = await res.json();
+      if(!res.ok) throw { status: res.status, body: data };
+      showHtml('create_result', data, true);
+    } catch(err) {
+      showHtml('create_result', err, false);
+    }
+  }
+
+  async function addPlayer() {
+    const teamId = document.getElementById('add_teamId').value;
+    const playerId = document.getElementById('add_playerId').value;
+    if(!teamId || !playerId) {
+      alert("Remplis teamId et playerId");
+      return;
+    }
+    try {
+      const url = `/api/teams/${encodeURIComponent(teamId)}/add-player?playerId=${encodeURIComponent(playerId)}`;
+      const res = await fetch(url, { method: 'POST' });
+      const data = await res.json();
+      if(!res.ok) throw { status: res.status, body: data };
+      showHtml('add_result', data, true);
+    } catch(err) {
+      showHtml('add_result', err, false);
+    }
+  }
+
+  async function getAllTeams() {
+    try {
+      const res = await fetch('/api/teams/all');
+      const data = await res.json();
+      document.getElementById('list_result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+      out(data, true);
+    } catch(err) {
+      document.getElementById('list_result').innerHTML = '<span class="error">Erreur</span>';
+      out(err, false);
+    }
+  }
+
+  async function getTeamsByCoach() {
+    const coachId = document.getElementById('coachId').value;
+    if(!coachId) { alert('Précise un coachId'); return; }
+    try {
+      const res = await fetch(`/api/teams/coach/${encodeURIComponent(coachId)}`);
+      const data = await res.json();
+      document.getElementById('list_result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+      out(data, true);
+    } catch(err) {
+      document.getElementById('list_result').innerHTML = '<span class="error">Erreur</span>';
+      out(err, false);
+    }
+  }
+
+  function clearCreate() {
+    document.getElementById('create_name').value = '';
+    document.getElementById('create_category').value = '';
+    document.getElementById('create_coachId').value = '';
+    document.getElementById('create_result').innerHTML = '';
+  }
+
+  function clearAdd() {
+    document.getElementById('add_teamId').value = '';
+    document.getElementById('add_playerId').value = '';
+    document.getElementById('add_result').innerHTML = '';
+  }
+  async function validateRegistration() {
+  const eventId = document.getElementById('validate_eventId').value;
+  const registrationId = document.getElementById('validate_registrationId').value;
+  if (!eventId || !registrationId) {
+    alert("Remplis eventId et registrationId");
+    return;
+  }
+  try {
+    const url = `/api/events/${encodeURIComponent(eventId)}/registrations/${encodeURIComponent(registrationId)}/validate`;
+    const res = await fetch(url, { method: 'POST' });
+    const data = await res.json();
+    if(!res.ok) throw { status: res.status, body: data };
+    showHtml('validate_result', data, true);
+  } catch(err) {
+    showHtml('validate_result', err, false);
+  }
+}
+
+function clearValidate() {
+  document.getElementById('validate_eventId').value = '';
+  document.getElementById('validate_registrationId').value = '';
+  document.getElementById('validate_result').innerHTML = '';
+}
+
+
+  
+</script>
+</body>
+</html>

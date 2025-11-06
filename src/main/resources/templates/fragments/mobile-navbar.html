@@ -1,0 +1,28 @@
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<nav th:fragment="pwaNavbar(activePage)" class="mobile-navbar">
+    
+    <a th:href="@{/home}" class="nav-item" th:classappend="${activePage == 'home'} ? 'active' : ''">
+        <i class="fas fa-home"></i>
+    </a>
+    
+    <a th:href="@{/search}" class="nav-item" th:classappend="${activePage == 'search'} ? 'active' : ''">
+        <i class="fas fa-search"></i>
+    </a>
+    
+    <a th:href="@{/upload}" class="nav-item upload-btn" th:classappend="${activePage == 'upload'} ? 'active' : ''">
+        <i class="fas fa-plus-circle"></i>
+    </a>
+    
+    <a th:href="@{/notifications}" class="nav-item" th:classappend="${activePage == 'notifications'} ? 'active' : ''">
+        <i class="fas fa-bell"></i>
+    </a>
+    
+    <a th:href="@{/profile}" class="nav-item" th:classappend="${activePage == 'profile'} ? 'active' : ''">
+        <i class="fas fa-user-circle"></i>
+    </a>
+</nav>
+
+</body>
+</html>

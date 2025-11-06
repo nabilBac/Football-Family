@@ -1,15 +1,15 @@
 <div th:fragment="video-cards(videos)">
     <div th:each="videoDto : ${videos}" class="video-card" th:data-video-id="${videoDto.id}">
 
-        <video 
-            class="video-element" 
-            th:src="@{/videos/{filename}(filename=${videoDto.filename})}" 
-            autoplay 
-            loop 
-            muted 
-            playsinline 
-            th:data-video-id="${videoDto.id}">
-        </video>
+       <video 
+    class="video-element" 
+    th:src="${videoDto.filename.startsWith('http') ? videoDto.filename : '/videos/' + videoDto.filename}"
+    autoplay 
+    loop 
+    muted 
+    playsinline 
+    th:data-video-id="${videoDto.id}">
+</video>
 
         <div class="video-info-desktop">
             <div class="video-title" th:text="${videoDto.title}">Titre vidéo</div>
@@ -18,19 +18,12 @@
             </a>
         </div>
 
-        <div th:if="${#authentication.name == videoDto.uploaderUsername}" class="video-crud-actions">
-            <button class="edit-video-btn action-btn" th:data-video-id="${videoDto.id}" title="Modifier la vidéo">
-                <i class="fa-solid fa-pen"></i>
-            </button>
-            <button class="delete-video-btn action-btn" th:data-video-id="${videoDto.id}" title="Supprimer la vidéo">
-                <i class="fa-solid fa-trash"></i>
-            </button>
-        </div>
+       
 
         <div class="overlay">
             <div class="video-title" th:text="${videoDto.title}">Titre vidéo</div>
             <div class="video-author-overlay">
-                <i class="fa-solid fa-user"></i>
+                <i class="fa-solid fa-circle-user"></i>
                 <a th:href="@{/profile/{username}(username=${videoDto.uploaderUsername})}" class="video-author-link">
                     <span th:text="${videoDto.uploaderUsername}">Auteur</span>
                 </a>
@@ -58,8 +51,8 @@
  </button>
 
                 <button type="button" class="toggle-mute-btn action-btn">
-                   <i class="fa-regular fa-volume-slash"></i>
-                </button>
+    <i class="fa-solid fa-volume-xmark volume-icon"></i> 
+</button>
                 <button type="button" class="share-btn action-btn">
     <i class="fa-solid fa-arrow-up-from-bracket"></i>
 </button>

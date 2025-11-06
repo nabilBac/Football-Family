@@ -1,16 +1,29 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>GoalClips - Feed Pro</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" th:href="@{/manifest.json}">
+    <link rel="apple-touch-icon" sizes="192x192" th:href="@{/assets/icons/icon-192.png}">
+    <title>GoalClips - Feed</title>
+    
+    <link rel="stylesheet" th:href="@{/css/style.css(v=${cssVersion})}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script th:src="@{/service-worker-register.js}" defer></script>
 
 <style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    overflow-y: hidden !important;
+    overflow: hidden;
 }
 
 body {
@@ -19,773 +32,271 @@ body {
     min-height: 100vh;
     font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
     overflow-x: hidden;
-    padding-bottom: 100px; /* Augmenté pour le bouton central */
+    overflow-y: hidden;
+    padding-bottom: 0px;
+}
+
+.main-content-scrollable {
+    /* REMPLACÉ : On enlève le padding car le header et la nav sont masqués */
+    padding-top: 0; 
+    /* CORRIGÉ : On fixe la hauteur à l'écran entier */
+    height: 100vh; 
+    overflow-y: scroll;
+    /* ESSENTIEL pour l'effet TikTok/Reels: ancre le scroll sur chaque vidéo */
+    scroll-snap-type: y mandatory; 
+}
+.club-nav, .events-cta-banner {
+    display: none !important; /* Seuls ces éléments restent masqués */
+}
+/* Le 'header' doit maintenant être géré par les règles de positionnement */
+
+
+
+/* Garder la navbar inférieure */
+.mobile-navbar {
+    z-index: 100; 
+}
+.post-goal-navbar-btn {
+    z-index: 100;
 }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* ------------------------------------------------------------------ */
-/* HEADER */
-/* ------------------------------------------------------------------ */
+.no-main-scroll { overflow: hidden !important; }
+
 header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 60px;
-    background: #0B0B0B;
-    display: flex;
+    position: fixed; top: 0; left: 0; width: 100%; height: 60px;
+    
+    /* CORRIGÉ: S'assurer que le fond est transparent */
+    background: transparent; 
+    
+    display: flex; 
     justify-content: space-between;
-    align-items: center;
-    padding: 0 1rem;
+    align-items: center; 
+    padding: 0 1rem; 
     z-index: 50;
-    border-bottom: 1px solid #1a1a1a;
+    
+    /* CORRIGÉ: Retirer la bordure qui pourrait apparaître */
+    border-bottom: none; 
 }
 
-.header-logo {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+.header-logo { 
+    display: flex; 
+    align-items: center; 
+    gap: 0.5rem; 
+    /* NEW: Assurer que le logo et le texte sont au-dessus de tout */
+    z-index: 51; 
 }
-
-.header-logo i {
-    color: #10B981;
-    font-size: 1.5rem;
+.header-logo i, .header-logo span, .header-icons button {
+    color: white !important; 
+    /* Ajout de !important au cas où une autre règle écrase */
+    text-shadow: 0 0 5px rgba(0,0,0,0.5); /* Ombre pour la lisibilité sur fond clair */
 }
+.header-logo span { font-size: 1rem; font-weight: bold; }
 
-.header-logo span {
-    font-size: 1rem;
-    font-weight: bold;
-    letter-spacing: 0.5px;
+.header-icons { 
+    display: flex; 
+    align-items: center; 
+    gap: 1rem; 
+    
+    /* NEW: Positionner explicitement à droite */
+    z-index: 51;
 }
-
-.header-icons {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+.header-icons img { 
+    width: 32px; 
+    height: 32px; 
+    border-radius: 50%; 
+    
+    /* CORRIGÉ: Assurer une bordure blanche pour contraster */
+    border: 2px solid white; 
 }
+.header-icons button { background: none; border: none; color: white; font-size: 1.3rem; cursor: pointer; }
 
-.header-icons img {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #10B981;
-}
-
-.header-icons button {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.3rem;
-    cursor: pointer;
-}
-
-/* Menu overlay */
 .menu-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.95);
-    backdrop-filter: blur(6px);
-    display: none;
-    flex-direction: column;
-    padding: 2rem 1rem;
-    z-index: 100;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95); backdrop-filter: blur(6px);
+    display: none; flex-direction: column; padding: 2rem 1rem; z-index: 100;
 }
+.menu-overlay.active { display: flex; }
+.menu-overlay .close-btn { align-self: flex-end; font-size: 1.5rem; cursor: pointer; margin-bottom: 2rem; }
+.menu-overlay a { color: white; text-decoration: none; font-size: 1.2rem; padding: 0.75rem 0; border-bottom: 1px solid #222; }
 
-.menu-overlay.active {
-    display: flex;
-}
-
-.menu-overlay .close-btn {
-    align-self: flex-end;
-    font-size: 1.5rem;
-    cursor: pointer;
-    margin-bottom: 2rem;
-}
-
-.menu-overlay a {
-    color: white;
-    text-decoration: none;
-    font-size: 1.2rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #222;
-}
-
-/* ------------------------------------------------------------------ */
-/* NAVIGATION DES CLUBS */
-/* ------------------------------------------------------------------ */
 .club-nav {
-    position: fixed;
-    top: 60px;
-    width: 100%;
-    background: #0B0B0B;
-    display: flex;
-    overflow-x: scroll;
-    padding: 0.75rem 1rem;
-    gap: 1rem;
-    z-index: 40;
-    border-bottom: 1px solid #1a1a1a;
+    position: fixed; top: 60px; width: 100%; background: #0B0B0B;
+    display: flex; overflow-x: scroll; padding: 0.75rem 1rem; gap: 1rem;
+    z-index: 40; border-bottom: 1px solid #1a1a1a; scroll-behavior: smooth;
 }
 
-.club-item {
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-decoration: none;
-    color: #888;
-    font-size: 0.7rem;
-    gap: 0.3rem;
-}
+.club-item { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #888; font-size: 0.7rem; gap: 0.3rem; }
+.club-item.active { color: white; }
+.club-icon { width: 50px; height: 50px; border-radius: 50%; background: #1a1a1a; border: 2px solid #1a1a1a; display: flex; justify-content: center; align-items: center; }
+.club-item.active .club-icon { border-color: #10B981; }
+.club-add-button { background: #10B981; color: white; font-size: 1.2rem; }
 
-.club-item.active {
-    color: white;
-}
+.mobile-navbar { position: fixed; bottom: 0; left: 0; width: 100%; height: 70px; background: #1a1a1a; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 -4px 15px rgba(0,0,0,0.5); z-index: 45; padding: 0 10px; }
+.nav-item { display: flex; flex-direction: column; align-items: center; color: #888; text-decoration: none; font-size: 0.7rem; transition: color 0.2s ease; flex: 1; padding: 0.5rem 0; }
+.nav-item.active { color: #10B981; }
+.nav-item i { font-size: 1.4rem; margin-bottom: 4px; }
+.nav-spacer { flex: 1; max-width: 70px; }
 
-.club-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: #1a1a1a;
-    border: 2px solid #1a1a1a;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
+.post-goal-navbar-btn {
+    position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
+    width: 65px; height: 65px; border-radius: 50%; background: #10B981;
+    display: flex; justify-content: center; align-items: center; color: white;
+    font-size: 1.8rem; border: 5px solid #0B0B0B;
+    box-shadow: 0 6px 25px rgba(16,185,129,0.6); z-index: 50;
+    text-decoration: none; cursor: pointer;
 }
+.post-goal-label { position: absolute; bottom: -18px; font-size: 0.6rem; font-weight: bold; color: white; white-space: nowrap; text-transform: uppercase; }
 
-.club-icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+@media (min-width: 768px) {
+    body { max-width: 480px; margin: 0 auto; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
 }
-
-.club-item.active .club-icon {
-    border-color: #10B981;
-}
-
-.club-add-button {
-    background: #10B981;
-    color: white;
-    font-size: 1.2rem;
-}
-
-/* ------------------------------------------------------------------ */
-/* CTA CRÉER UN ÉVÉNEMENT */
-/* ------------------------------------------------------------------ */
-.create-event-cta {
+/* Bannière Events CTA */
+.events-cta-banner {
     margin: 1rem;
-    margin-top: 140px; /* Header + Club Nav */
-    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-    border-radius: 16px;
-    padding: 1.25rem;
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
-    animation: slideIn 0.6s ease-out;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.cta-content {
+    margin-top: 0.5rem; /* Petit espace après la barre des clubs */
+    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+    border-radius: 12px;
+    padding: 1rem;
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    text-decoration: none;
+    transition: transform 0.2s ease;
 }
 
-.cta-icon {
-    width: 50px;
-    height: 50px;
+.events-cta-banner:active {
+    transform: scale(0.98);
+}
+
+.events-cta-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.events-cta-icon {
+    width: 40px;
+    height: 40px;
     background: rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-}
-
-.cta-icon i {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     color: white;
 }
 
-.cta-text h3 {
+.events-cta-text h4 {
     color: white;
-    font-size: 1.1rem;
-    font-weight: bold;
-    margin-bottom: 0.25rem;
-}
-
-.cta-text p {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 0.85rem;
-    line-height: 1.3;
-}
-
-.cta-button {
-    width: 100%;
-    background: white;
-    color: #10B981;
-    border: none;
-    padding: 0.9rem;
-    border-radius: 12px;
     font-size: 0.95rem;
     font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
+    margin-bottom: 0.2rem;
 }
 
-.cta-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-}
-
-.cta-button:active {
-    transform: translateY(0);
-}
-
-/* ------------------------------------------------------------------ */
-/* MODAL CRÉATION D'ÉVÉNEMENT */
-/* ------------------------------------------------------------------ */
-.event-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.9);
-    backdrop-filter: blur(8px);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 200;
-    padding: 1rem;
-}
-
-.event-modal.active {
-    display: flex;
-}
-
-.modal-content {
-    background: #1a1a1a;
-    border-radius: 20px;
-    padding: 1.5rem;
-    width: 100%;
-    max-width: 400px;
-    max-height: 90vh;
-    overflow-y: auto;
-    animation: modalSlideUp 0.3s ease-out;
-}
-
-@keyframes modalSlideUp {
-    from {
-        opacity: 0;
-        transform: translateY(50px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.modal-header h2 {
-    color: white;
-    font-size: 1.3rem;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    color: #888;
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.event-type-selector {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-}
-
-.event-type-card {
-    background: #2a2a2a;
-    border: 2px solid transparent;
-    border-radius: 12px;
-    padding: 1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-align: center;
-}
-
-.event-type-card:hover {
-    background: #333;
-}
-
-.event-type-card.selected {
-    border-color: #10B981;
-    background: rgba(16, 185, 129, 0.1);
-}
-
-.event-type-card i {
-    font-size: 2rem;
-    color: #10B981;
-    margin-bottom: 0.5rem;
-}
-
-.event-type-card h4 {
-    color: white;
-    font-size: 0.9rem;
-    font-weight: bold;
-    margin-bottom: 0.25rem;
-}
-
-.event-type-card p {
-    color: #888;
+.events-cta-text p {
+    color: rgba(255, 255, 255, 0.9);
     font-size: 0.75rem;
 }
 
-.form-group {
-    margin-bottom: 1.25rem;
-}
-
-.form-group label {
-    display: block;
-    color: #ccc;
-    font-size: 0.85rem;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-    width: 100%;
-    background: #2a2a2a;
-    border: 1px solid #333;
+.events-cta-arrow {
     color: white;
-    padding: 0.75rem;
-    border-radius: 10px;
-    font-size: 0.9rem;
-    font-family: inherit;
+    font-size: 1.2rem;
 }
-
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: #10B981;
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-}
-
-.submit-event-btn {
-    width: 100%;
-    background: #10B981;
-    color: white;
-    border: none;
-    padding: 1rem;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    margin-top: 0.5rem;
-    transition: all 0.3s ease;
-}
-
-.submit-event-btn:hover {
-    background: #059669;
-    transform: translateY(-2px);
-}
-
-.submit-event-btn:active {
-    transform: translateY(0);
-}
-
-/* ------------------------------------------------------------------ */
-/* EVENT STORIES */
-/* ------------------------------------------------------------------ */
-.event-stories-section {
-    padding: 1rem;
-    margin-top: 1rem; /* Réduit car le CTA est au-dessus */
-}
-
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-}
-
-.section-header h2 {
-    color: #888;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.section-header i {
-    color: #888;
-    font-size: 0.7rem;
-}
-
-.event-stories-container {
-    display: flex;
-    overflow-x: scroll;
-    gap: 0.75rem;
-    padding-bottom: 0.5rem;
-}
-
-.event-story-card {
-    flex-shrink: 0;
-    width: 120px;
-    height: 160px;
-    background: #1c1c1c;
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-}
-
-.event-story-card img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.event-story-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0));
-    padding: 0.5rem;
-    color: white;
-    font-size: 0.7rem;
-    font-weight: bold;
-}
-
-/* ------------------------------------------------------------------ */
-/* VIDEO FEED (Style Instagram/TikTok) */
-/* ------------------------------------------------------------------ */
-#video-feed {
-    padding: 0 1rem;
-    margin-top: 1rem;
-}
-
 .video-card {
+    height: 100vh; /* OCCUPE 100% DE LA HAUTEUR */
+    scroll-snap-align: start; /* Ancrage pour l'effet "snap" de TikTok */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     position: relative;
-    width: 100%;
-    height: 400px; /* Plus grand comme dans l'image */
-    background: #1c1c1c;
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 1rem;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    /* Assurez-vous que le conteneur s'ajuste bien */
+    width: 100%; 
 }
 
-.video-thumbnail {
+/* La vidéo elle-même prend le maximum d'espace dans la carte */
+.video-element {
+    position: absolute;
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 3rem;
-    color: #333;
+    object-fit: contain; /* ⬅️ CHANGÉ de 'cover' à 'contain' */
+    z-index: 1;
+    background: #000; /* Fond noir pour les bandes */
 }
 
-.video-overlay {
+/* L'overlay doit être au-dessus de la vidéo (z-index élevé) */
+.video-card .overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.8) 100%);
+    z-index: 10;
     display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    padding: 1rem;
-}
-
-.video-info-top {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.video-info-top img {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 2px solid #10B981;
-}
-
-.video-info-top .username {
-    font-weight: bold;
-    color: white;
-    font-size: 0.9rem;
-}
-
-.video-info-top .time {
-    color: #888;
-    font-size: 0.75rem;
-    margin-left: auto;
-}
-
-.video-title {
-    font-size: 0.85rem;
-    color: #ccc;
-    margin-bottom: 0.5rem;
-}
-
-.video-stats {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    font-size: 0.8rem;
-    color: #ccc;
-}
-
-.video-stats span {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-}
-
-.video-stats i {
-    color: #10B981;
-}
-
-/* ------------------------------------------------------------------ */
-/* UPCOMING EVENTS */
-/* ------------------------------------------------------------------ */
-.upcoming-events-section {
-    padding: 1rem;
-    background: #1c1c1c;
-    border-radius: 16px;
-    margin: 1.5rem 1rem 2rem 1rem;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-}
-
-.upcoming-events-section h2 {
-    color: #10B981;
-    margin-bottom: 1rem;
-    font-size: 1.1rem;
-}
-
-.upcoming-event-item {
-    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
     justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #2a2a2a;
+    padding: 20px 10px 100px 10px; /* ⬅️ AUGMENTÉ le padding bottom */
+    pointer-events: none; /* Les clics passent à travers */
 }
 
-.upcoming-event-item:last-child {
-    border-bottom: none;
+/* Réactiver les clics sur les boutons */
+.overlay .actions,
+.overlay .video-author-link {
+    pointer-events: auto;
 }
 
-.event-details span {
-    display: block;
-    font-size: 0.9rem;
-}
-
-.event-details .date-time {
-    color: #888;
-    font-size: 0.75rem;
-    margin-top: 0.25rem;
-}
-
-.status-button {
-    background: #10B981;
-    color: white;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-}
-
-.status-button.live {
-    background: #EF4444;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-/* Club Stories dans Upcoming Events */
-.club-stories-mini {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #2a2a2a;
-}
-
-.club-stories-mini h3 {
-    color: white;
-    font-size: 0.9rem;
-    margin-bottom: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.stories-avatars {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.story-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 2px solid #10B981;
-    overflow: hidden;
-}
-
-.story-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-/* ------------------------------------------------------------------ */
-/* NAVBAR INFÉRIEURE */
-/* ------------------------------------------------------------------ */
-.mobile-navbar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 70px;
-    background: #1a1a1a;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    box-shadow: 0 -4px 15px rgba(0,0,0,0.5);
-    z-index: 45;
-    padding: 0 10px;
-}
-
-.nav-item {
+/* Déplacer les éléments statiques au bas de l'écran (comme les likes/commentaires) */
+.video-actions {
     display: flex;
     flex-direction: column;
     align-items: center;
-    color: #888;
-    text-decoration: none;
-    font-size: 0.7rem;
-    transition: color 0.2s ease;
-    flex: 1;
-    padding: 0.5rem 0;
+    gap: 1.5rem;
+    padding-right: 0.5rem; /* Un peu d'espace à droite */
+}
+/* Déplacer les infos de l'utilisateur/titre en bas à gauche */
+.video-info {
+    padding-left: 1rem;
+    padding-bottom: 1.5rem;
+}
+.video-crud-actions {
+    display: none !important; 
+}
+.video-card {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: 100vh !important;
+    width: 100% !important;
+    position: relative !important;
+}
+.video-title {
+    font-size: 1rem; /* ⬅️ Réduit si trop grand */
+    line-height: 1.3;
+    max-width: 70%; /* Limite la largeur */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Maximum 2 lignes */
+    -webkit-box-orient: vertical;
+}
+.video-author-overlay {
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
 }
 
-.nav-item.active {
-    color: #10B981;
-}
-
-.nav-item i {
-    font-size: 1.4rem;
-    margin-bottom: 4px;
-}
-
-.nav-spacer {
-    flex: 1;
-    max-width: 70px;
-}
-
-/* Bouton central */
-.post-goal-navbar-btn {
-    position: fixed;
-    bottom: 50px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 65px;
-    height: 65px;
-    border-radius: 50%;
-    background: #10B981;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    font-size: 1.8rem;
-    border: 5px solid #0B0B0B;
-    box-shadow: 0 6px 25px rgba(16,185,129,0.6);
-    z-index: 50;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.post-goal-label {
-    position: absolute;
-    bottom: -18px;
-    font-size: 0.6rem;
-    font-weight: bold;
-    color: white;
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* ------------------------------------------------------------------ */
-/* RESPONSIVE */
-/* ------------------------------------------------------------------ */
-@media (min-width: 768px) {
-    body {
-        max-width: 480px;
-        margin: 0 auto;
-        box-shadow: 0 0 50px rgba(0,0,0,0.5);
-    }
+.video-element {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 </style>
 </head>
-
 <body>
 
 <header>
@@ -801,12 +312,11 @@ header {
 
 <div class="menu-overlay" id="menu-overlay">
     <span class="close-btn" id="menu-close"><i class="fa-solid fa-xmark"></i></span>
-    <a href="#feed">Feed</a>
-    <a href="#events">Events</a>
+    <a href="/">Feed</a>
+    <a href="/events">Events</a>
     <a href="#clubs">Clubs</a>
-    <a href="#profile">Profile</a>
+    <a href="/profile">Profile</a>
     <a href="#settings">Settings</a>
-    <a href="#logout">Logout</a>
 </div>
 
 <nav class="club-nav no-scrollbar">
@@ -818,203 +328,32 @@ header {
         <div class="club-icon"><i class="fa-solid fa-shield-halved" style="color: #10B981; font-size: 1.5rem;"></i></div>
         <span>Mon Club</span>
     </a>
-    <a href="#" class="club-item">
-        <div class="club-icon"><i class="fa-solid fa-shield" style="color: #EF4444; font-size: 1.5rem;"></i></div>
-        <span>PSG</span>
-    </a>
-    <a href="#" class="club-item">
-        <div class="club-icon"><i class="fa-solid fa-shield" style="color: #3B82F6; font-size: 1.5rem;"></i></div>
-        <span>OM</span>
-    </a>
-    <a href="#" class="club-item">
-        <div class="club-icon"><i class="fa-solid fa-shield" style="color: #F59E0B; font-size: 1.5rem;"></i></div>
-        <span>Lyon</span>
-    </a>
-    <a href="#" class="club-item">
-        <div class="club-icon"><i class="fa-solid fa-shield" style="color: #8B5CF6; font-size: 1.5rem;"></i></div>
-        <span>Monaco</span>
-    </a>
 </nav>
 
-<!-- Section CTA Créer un Événement -->
-<section class="create-event-cta">
-    <div class="cta-content">
-        <div class="cta-icon">
-            <i class="fa-solid fa-calendar-plus"></i>
+<!--<a href="/events" class="events-cta-banner">
+    <div class="events-cta-content">
+        <div class="events-cta-icon">
+            <i class="fas fa-calendar-star"></i>
         </div>
-        <div class="cta-text">
-            <h3>Organisez votre match ⚽</h3>
-            <p>Créez un tournoi, un match amical ou un événement amateur</p>
+        <div class="events-cta-text">
+            <h4>Événements à venir</h4>
+            <p>Matchs, tournois et entraînements</p>
         </div>
     </div>
-    <button class="cta-button" id="create-event-btn">
-        <i class="fa-solid fa-plus"></i> Créer un événement
-    </button>
-</section>
+    <i class="fas fa-chevron-right events-cta-arrow"></i>
+</a>-->
 
-<section class="event-stories-section">
-    <div class="section-header">
-        <h2>Event Stories</h2>
-        <i class="fa-solid fa-search"></i>
-    </div>
-    <div class="event-stories-container no-scrollbar">
-        <div class="event-story-card">
-            <div class="video-thumbnail">
-                <i class="fa-solid fa-futbol"></i>
-            </div>
-            <div class="event-story-overlay">Champions FC vs Lions</div>
-        </div>
-        <div class="event-story-card">
-            <div class="video-thumbnail">
-                <i class="fa-solid fa-trophy"></i>
-            </div>
-            <div class="event-story-overlay">Match FC Paris</div>
-        </div>
-        <div class="event-story-card">
-            <div class="video-thumbnail">
-                <i class="fa-solid fa-fire"></i>
-            </div>
-            <div class="event-story-overlay">Derby Match FC Paris</div>
-        </div>
-        <div class="event-story-card">
-            <div class="video-thumbnail">
-                <i class="fa-solid fa-star"></i>
-            </div>
-            <div class="event-story-overlay">Top Goals 2024</div>
-        </div>
-    </div>
-</section>
-
-<section id="video-feed">
-    <!-- Vidéo 1 -->
-    <div class="video-card">
-        <div class="video-thumbnail">
-            <i class="fa-solid fa-play-circle"></i>
-        </div>
-        <div class="video-overlay">
-            <div class="video-info-top">
-                <img src="https://i.pravatar.cc/150?img=12" alt="User">
-                <span class="username">@footballpro</span>
-                <span class="time">2h ago</span>
-            </div>
-            <div class="video-title">🔥 Incroyable but de 30m! Champions FC vs Red Stars</div>
-            <div class="video-stats">
-                <span><i class="fa-solid fa-eye"></i> 1403</span>
-                <span><i class="fa-solid fa-heart"></i> 245</span>
-                <span><i class="fa-solid fa-comment"></i> 38</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Vidéo 2 -->
-    <div class="video-card">
-        <div class="video-thumbnail">
-            <i class="fa-solid fa-play-circle"></i>
-        </div>
-        <div class="video-overlay">
-            <div class="video-info-top">
-                <img src="https://i.pravatar.cc/150?img=25" alt="User">
-                <span class="username">@goalkeeperking</span>
-                <span class="time">5h ago</span>
-            </div>
-            <div class="video-title">⚡ Arrêt décisif! Match Fc Blanes</div>
-            <div class="video-stats">
-                <span><i class="fa-solid fa-eye"></i> 2108</span>
-                <span><i class="fa-solid fa-heart"></i> 412</span>
-                <span><i class="fa-solid fa-comment"></i> 67</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Vidéo 3 -->
-    <div class="video-card">
-        <div class="video-thumbnail">
-            <i class="fa-solid fa-play-circle"></i>
-        </div>
-        <div class="video-overlay">
-            <div class="video-info-top">
-                <img src="https://i.pravatar.cc/150?img=45" alt="User">
-                <span class="username">@striker99</span>
-                <span class="time">1d ago</span>
-            </div>
-            <div class="video-title">💪 Derby Match FC Paris - Ambiance de folie!</div>
-            <div class="video-stats">
-                <span><i class="fa-solid fa-eye"></i> 897</span>
-                <span><i class="fa-solid fa-heart"></i> 156</span>
-                <span><i class="fa-solid fa-comment"></i> 24</span>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="upcoming-events-section">
-    <h2>Upcoming Events</h2>
-    
-    <div class="upcoming-event-item">
-        <div class="event-details">
-            <span>19:00 Match: FC Agile vs. Red Stars</span>
-            <span class="date-time">Today, Stade Municipal</span>
-        </div>
-        <button class="status-button live">LIVE</button>
-    </div>
-    
-    <div class="upcoming-event-item">
-        <div class="event-details">
-            <span>14:00 Match: Les Bleus vs. Les Rouges</span>
-            <span class="date-time">Tomorrow, Parc des Sports</span>
-        </div>
-        <button class="status-button">View Details</button>
-    </div>
-    
-    <div class="upcoming-event-item">
-        <div class="event-details">
-            <span>16:30 Tournoi Amical</span>
-            <span class="date-time">Sat, Nov 11, Complexe Sportif</span>
-        </div>
-        <button class="status-button">View Details</button>
-    </div>
-
-    <div class="club-stories-mini">
-        <h3>Club Stories <i class="fa-solid fa-chevron-right" style="font-size: 0.7rem; color: #888;"></i></h3>
-        <div class="stories-avatars">
-            <div class="story-avatar">
-                <img src="https://i.pravatar.cc/150?img=1" alt="Story">
-            </div>
-            <div class="story-avatar">
-                <img src="https://i.pravatar.cc/150?img=2" alt="Story">
-            </div>
-            <div class="story-avatar">
-                <img src="https://i.pravatar.cc/150?img=3" alt="Story">
-            </div>
-            <div class="story-avatar">
-                <img src="https://i.pravatar.cc/150?img=4" alt="Story">
-            </div>
-            <div class="story-avatar">
-                <img src="https://i.pravatar.cc/150?img=5" alt="Story">
-            </div>
-        </div>
-    </div>
-</section>
+<div class="main-content-scrollable no-scrollbar">
+    <div id="video-container" th:insert="fragments/video-cards :: video-cards(${videos})"></div>
+    <div id="loader" style="display: none;"><p>Chargement...</p></div>
+</div>
 
 <nav class="mobile-navbar">
-    <a href="/" class="nav-item active"> <i class="fa-solid fa-house"></i>
-        <span>Home</span>
-    </a>
-    <a href="#" class="nav-item">
-        <i class="fa-regular fa-calendar-days"></i>
-        <span>Events</span>
-    </a>
-    
+    <a href="/" class="nav-item active"><i class="fa-solid fa-house"></i><span>Home</span></a>
+    <a href="/events" class="nav-item"><i class="fa-regular fa-calendar-days"></i><span>Events</span></a>
     <div class="nav-spacer"></div>
-    
-    <a href="/videos/feed" class="nav-item">
-        <i class="fa-solid fa-clapperboard"></i>
-        <span>Clips</span>
-    </a>
-    <a href="/profile" class="nav-item">
-        <i class="fa-regular fa-user"></i>
-        <span>Profile</span>
-    </a>
+    <a href="/videos/feed" class="nav-item"><i class="fa-solid fa-clapperboard"></i><span>Clips</span></a>
+    <a href="/profile" class="nav-item"><i class="fa-regular fa-user"></i><span>Profile</span></a>
 </nav>
 
 <a href="#" class="post-goal-navbar-btn">
@@ -1022,189 +361,1333 @@ header {
     <span class="post-goal-label">Post Your Goal</span>
 </a>
 
-<!-- Modal de création d'événement -->
-<div class="event-modal" id="event-modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Créer un événement</h2>
-            <button class="modal-close" id="modal-close">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<script th:inline="javascript">
+// Variables globales (reprises de video-feed.html)
+let currentPage = /*[[${currentPage}]]*/ 0;
+let category = /*[['' + ${category}]]*/ 'general';
+const currentUsername = /*[['' + ${#authentication.name != 'anonymousUser' ? #authentication.name : 'nab'} + '']]*/ 'nab';
+let loading = false;
+let hasMoreVideos = true;
+let observer;
+let isManuallyMuted = true;
+let stompClient = null;
+let videoObserver;
+const commentsPagination = new Map();
+const csrfToken = document.querySelector('meta[name="_csrf"]') ? document.querySelector('meta[name="_csrf"]').content : null;
+const csrfHeader = document.querySelector('meta[name="_csrf_header"]') ? document.querySelector('meta[name="_csrf_header"]').content : null;
+const activeSubscriptions = new Map();
 
-        <div class="event-type-selector">
-            <div class="event-type-card selected" data-type="match">
-                <i class="fa-solid fa-futbol"></i>
-                <h4>Match Amical</h4>
-                <p>Organisez un match</p>
-            </div>
-            <div class="event-type-card" data-type="tournament">
-                <i class="fa-solid fa-trophy"></i>
-                <h4>Tournoi</h4>
-                <p>Créez un tournoi</p>
-            </div>
-            <div class="event-type-card" data-type="training">
-                <i class="fa-solid fa-dumbbell"></i>
-                <h4>Entraînement</h4>
-                <p>Session d'entraînement</p>
-            </div>
-            <div class="event-type-card" data-type="other">
-                <i class="fa-solid fa-calendar-day"></i>
-                <h4>Autre</h4>
-                <p>Événement personnalisé</p>
-            </div>
-        </div>
-
-        <form id="event-form">
-            <div class="form-group">
-                <label for="event-name">Nom de l'événement *</label>
-                <input type="text" id="event-name" placeholder="Ex: Match amical du dimanche" required>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="event-date">Date *</label>
-                    <input type="date" id="event-date" required>
-                </div>
-                <div class="form-group">
-                    <label for="event-time">Heure *</label>
-                    <input type="time" id="event-time" required>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="event-location">Lieu *</label>
-                <input type="text" id="event-location" placeholder="Ex: Stade Municipal de Toulon" required>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="event-players">Joueurs</label>
-                    <select id="event-players">
-                        <option value="">Nombre de joueurs</option>
-                        <option value="5v5">5 vs 5</option>
-                        <option value="7v7">7 vs 7</option>
-                        <option value="11v11">11 vs 11</option>
-                        <option value="custom">Personnalisé</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="event-level">Niveau</label>
-                    <select id="event-level">
-                        <option value="">Sélectionner</option>
-                        <option value="debutant">Débutant</option>
-                        <option value="intermediaire">Intermédiaire</option>
-                        <option value="avance">Avancé</option>
-                        <option value="tous">Tous niveaux</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="event-description">Description</label>
-                <textarea id="event-description" placeholder="Ajoutez des détails sur votre événement..."></textarea>
-            </div>
-
-            <button type="submit" class="submit-event-btn">
-                <i class="fa-solid fa-check"></i> Créer l'événement
-            </button>
-        </form>
-    </div>
-</div>
-
-<script>
+// Menu burger
 const burger = document.getElementById('burger-btn');
 const overlay = document.getElementById('menu-overlay');
 const closeBtn = document.getElementById('menu-close');
 
 burger.addEventListener('click', () => {
     overlay.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add('no-main-scroll');
 });
 
 closeBtn.addEventListener('click', () => {
     overlay.classList.remove('active');
-    document.body.style.overflow = 'auto';
+    document.body.classList.remove('no-main-scroll');
 });
 
-// Fermeture du menu lors du clic sur un lien
-document.querySelectorAll('.menu-overlay a').forEach(link => {
-    link.addEventListener('click', () => {
-        overlay.classList.remove('active');
-        document.body.style.overflow = 'auto';
-    });
-});
+// TOUTES LES FONCTIONS DE video-feed.html (copie intégrale du JavaScript)
+// Je garde le code complet pour éviter les bugs
 
-// Gestion de la modal de création d'événement
-const createEventBtn = document.getElementById('create-event-btn');
-const eventModal = document.getElementById('event-modal');
-const modalCloseBtn = document.getElementById('modal-close');
-const eventForm = document.getElementById('event-form');
-const eventTypeCards = document.querySelectorAll('.event-type-card');
-
-// Ouvrir la modal
-createEventBtn.addEventListener('click', () => {
-    eventModal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-});
-
-// Fermer la modal
-modalCloseBtn.addEventListener('click', () => {
-    eventModal.classList.remove('active');
-    document.body.style.overflow = 'auto';
-});
-
-// Fermer la modal en cliquant en dehors
-eventModal.addEventListener('click', (e) => {
-    if (e.target === eventModal) {
-        eventModal.classList.remove('active');
-        document.body.style.overflow = 'auto';
+function getAuthHeaders(contentType = 'application/json') {
+    const headers = { 'Content-Type': contentType };
+    if (csrfHeader && csrfToken) {
+        headers[csrfHeader] = csrfToken;
     }
-});
+    return headers;
+}
 
-// Sélection du type d'événement
-eventTypeCards.forEach(card => {
-    card.addEventListener('click', () => {
-        eventTypeCards.forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
-    });
-});
+function updateMuteIcon(buttonElement, isMuted) {
+    const icon = buttonElement ? buttonElement.querySelector('i') : null;
+    if (icon) {
+        if (isMuted) {
+            icon.classList.remove('fa-volume-high');
+            icon.classList.add('fa-volume-xmark');
+        } else {
+            icon.classList.remove('fa-volume-xmark');
+            icon.classList.add('fa-volume-high');
+        }
+    }
+}
 
-// Soumission du formulaire
-eventForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+        function getAuthHeaders(contentType = 'application/json') {
+            const headers = { 'Content-Type': contentType };
+            if (csrfHeader && csrfToken) {
+                headers[csrfHeader] = csrfToken;
+            }
+            return headers;
+        }
+        // =======================================================
+        // AJOUT : Correction JS pour forcer la mise en page Flexbox (mobile)
+        // =======================================================
+        function fixVideoTitlePosition() {
+            // Cibler tous les titres à l'intérieur de l'overlay des cartes vidéo
+            const videoTitles = document.querySelectorAll('.video-card .overlay .video-title');
+
+            videoTitles.forEach(title => {
+                // Appliquer un délai pour s'assurer de s'exécuter après le script fautif
+                setTimeout(() => {
+                    // Surcharge le style inline (qui est prioritaire sur le CSS !important)
+                    if (window.innerWidth <= 1023) {
+                        title.style.position = 'relative';
+                        title.style.bottom = 'unset';
+                        title.style.left = 'unset';
+                        title.style.width = '100%';
+                        // Retirer la propriété 'float' au cas où elle aurait été injectée
+                        title.style.float = 'none';
+                    }
+                }, 150); // Délai augmenté à 150ms pour plus de sécurité
+            });
+        }
+
+ function createCommentElement(comment) {
+    const commentId = comment.commentId || comment.id;
     
-    const selectedType = document.querySelector('.event-type-card.selected').dataset.type;
-    const eventData = {
-        type: selectedType,
-        name: document.getElementById('event-name').value,
-        date: document.getElementById('event-date').value,
-        time: document.getElementById('event-time').value,
-        location: document.getElementById('event-location').value,
-        players: document.getElementById('event-players').value,
-        level: document.getElementById('event-level').value,
-        description: document.getElementById('event-description').value
-    };
+    // ✅ CORRECTION 1 : Rendre le nom d'auteur robuste
+    // 1. Cherche `authorUsername` (DTO), 2. Cherche `author.username` (si l'objet est complet), 3. Sinon 'Anonymous'
+    const authorName = comment.authorUsername 
+                     || (comment.author ? comment.author.username : 'Anonymous');
+
+                     console.log('createCommentElement => commentId:', commentId, 'authorName:', authorName, 'currentUsername:', currentUsername);
     
-    console.log('Événement créé:', eventData);
+    // ✅ CORRECTION 2 : Rendre le contenu robuste (pour éviter 'undefined')
+    const content = comment.content || 'Contenu non disponible';
+
+    // Supprime les espaces et normalise la chaîne pour détecter les caractères invisibles
+const cleanAuthorName = authorName?.trim().normalize();
+const cleanCurrentUsername = currentUsername?.trim().normalize();
+
+// Comparaison insensible à la casse
+const isOwner = cleanAuthorName.toLowerCase() === cleanCurrentUsername.toLowerCase();
+
+console.log('isOwner?', isOwner, 
+            'authorName:', `"${authorName}"`, 
+            'currentUsername:', `"${currentUsername}"`,
+            'cleanAuthorName:', `"${cleanAuthorName}"`,
+            'cleanCurrentUsername:', `"${cleanCurrentUsername}"`)
+
+
+    // ✅ CORRECTION 3 : Rendre la date robuste (pour gérer 'Invalid Date')
+    let dateString = 'Date Invalide';
+    if (comment.createdAt) {
+        try {
+            let dateObject = new Date(comment.createdAt); 
+            
+            // Si le format direct échoue, nettoie la chaîne (retire les microsecondes excessives)
+            if (isNaN(dateObject.getTime())) { 
+                // Regex pour couper après la 3ème décimale (milli-secondes) et ajouter Z (pour UTC)
+                const cleanedDateString = comment.createdAt.replace(/(\.\d{3})\d+/, '$1Z');
+                dateObject = new Date(cleanedDateString);
+            }
+            
+            if (!isNaN(dateObject.getTime())) {
+                dateString = dateObject.toLocaleTimeString('fr-FR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+            }
+        } catch (e) {
+            console.error("Erreur lors du formatage de la date:", e);
+        }
+    }
+
+
+    const actionsHtml = isOwner ? `
+        <div class="comment-actions">
+            <button class="edit-comment-btn" data-comment-id="${commentId}"><i class="fa-solid fa-pen"></i></button>
+            <button class="delete-comment-btn" data-comment-id="${commentId}"><i class="fa-solid fa-trash"></i></button>
+        </div>
+    ` : '';
+
+    console.log('actionsHtml:', actionsHtml);
+
+
+    return `
+        <div class="comment" data-comment-id="${commentId}">
+            <div class="comment-header">
+                <i class="fa-solid fa-user"></i>
+                <span class="comment-username">${authorName}</span>
+                <span class="comment-date">${dateString}</span>
+                ${actionsHtml}
+            </div>
+            <p class="comment-content">${content}</p>
+        </div>
+    `;
+}
+
+        /**
+ * Retrait immédiat d'une carte vidéo du DOM suite à un message de suppression (WS).
+ * @param {number} videoId L'ID de la vidéo à retirer.
+ */
+function removeVideoCardFromDOM(videoId) {
+    const selector = `.video-card[data-video-id="${videoId}"]`;
+    const cardToRemove = document.querySelector(selector);
     
-    // Animation de succès
-    const submitBtn = eventForm.querySelector('.submit-event-btn');
-    submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Événement créé !';
-    submitBtn.style.background = '#059669';
-    
-    setTimeout(() => {
-        eventModal.classList.remove('active');
-        document.body.style.overflow = 'auto';
-        eventForm.reset();
-        submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Créer l\'événement';
-        submitBtn.style.background = '#10B981';
+    if (cardToRemove) {
+        console.log(`🗑️ Retrait de la carte vidéo ${videoId} du DOM via WS.`);
         
-        // Réinitialiser la sélection du type
-        eventTypeCards.forEach(c => c.classList.remove('selected'));
-        eventTypeCards[0].classList.add('selected');
-    }, 1500);
+        // 1. Arrêter l'observation de la lecture automatique
+        if (videoObserver) {
+             videoObserver.unobserve(cardToRemove);
+        }
+        
+        // 2. Retrait de la carte
+        cardToRemove.remove();
+        
+        // 3. Réinitialiser l'observer de scroll si la carte retirée était la dernière
+        // Cela permet de continuer à charger la page suivante si la dernière a été retirée.
+        setupIntersectionObserver();
+        
+        // 4. Optionnel : Forcer un rechargement pour combler le trou
+        // Si le nombre de vidéos dans le DOM tombe trop bas, on charge la suite immédiatement.
+        if (document.querySelectorAll('.video-card').length < 5) {
+            console.log("Moins de 5 vidéos restantes, tentative de recharger le feed.");
+            // loadMoreVideos() vérifiera automatiquement l'état loading/hasMore
+            loadMoreVideos(); 
+        }
+    }
+    
+    // 5. Nettoyer les abonnements de cette vidéo (TRÈS IMPORTANT pour l'hygiène STOMP)
+    const subscriptions = activeSubscriptions.get(videoId);
+    if (subscriptions) {
+        subscriptions.forEach(sub => sub.unsubscribe());
+        activeSubscriptions.delete(videoId);
+        console.log(`❌ Désabonnement nettoyé pour la vidéo ${videoId}.`);
+    }
+}
+
+        // =======================================================
+        // 3. GESTION DE LA LECTURE VIDÉO (AUTO-PLAY IMMERSIF) - CORRECTION FINALE
+        // =======================================================
+        function setupMuteToggles() {
+            const muteButtons = document.querySelectorAll('.toggle-mute-btn:not([data-mute-listener="true"])');
+
+            muteButtons.forEach(btn => {
+
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+
+                    const videoCard = btn.closest('.video-card');
+                    const video = videoCard ? videoCard.querySelector('.video-element') : null;
+                    
+                    if (video) {
+                        // INVERSION : ON INVERSE L'ÉTAT GLOBAL AU CLIC
+                        isManuallyMuted = !isManuallyMuted;
+                        
+                        // On applique le nouvel état global à la vidéo
+                        video.muted = isManuallyMuted;
+                        
+                        // Mettre à jour l'icône immédiatement
+                        updateMuteIcon(btn, isManuallyMuted);
+                        
+                    }
+                   
+                });
+
+                btn.setAttribute('data-mute-listener', 'true');
+            });
+        }
+       // --- NOUVELLE LOGIQUE PLAY/PAUSE (IntersectionObserver pour la fluidité) ---
+function setupVideoPlayObserver() {
+    if (videoObserver) {
+        videoObserver.disconnect();
+    }
+    
+    // Seulement 75% est visible pour le comportement "TikTok"
+    videoObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const videoElement = entry.target.querySelector('.video-element');
+            const muteBtn = entry.target.querySelector('.toggle-mute-btn');
+
+            if (!videoElement) return;
+
+            if (entry.intersectionRatio > 0.75) {
+                // VIDÉO PRINCIPALE : LECTURE
+                videoElement.muted = isManuallyMuted;
+                if (videoElement.paused) {
+                    videoElement.play().catch(e => {
+                        console.warn(`Lecture vidéo bloquée (Autoplay). Forçage du mute.`, e.name);
+                        videoElement.muted = true;
+                        isManuallyMuted = true; // Mise à jour de l'état global
+                        videoElement.play().catch(e => console.error("Échec définitif.", e.name));
+                    });
+                }
+                if (muteBtn) updateMuteIcon(muteBtn, videoElement.muted);
+
+            } else {
+                // AUTRES VIDÉOS : PAUSE et MUTE forcé
+                if (!videoElement.paused) {
+                    videoElement.pause();
+                }
+                // Mute forcé est essentiel pour ne pas consommer de ressources
+                videoElement.muted = true;
+                if (muteBtn) updateMuteIcon(muteBtn, true);
+            }
+        });
+    }, {
+        root: null, // Viewport
+        threshold: 0.75 
+    });
+
+    // Observez toutes les cartes vidéo présentes
+    document.querySelectorAll('.video-card').forEach(card => {
+        videoObserver.observe(card);
+    });
+}
+        // =======================================================
+        // 4. SCROLL INFINI : FONCTIONS
+        // =======================================================
+      function loadMoreVideos() {
+    console.log(`[LOAD] Tentative de chargement de la page : ${currentPage + 1}.`);
+
+    // AJOUTEZ CES ACCOLADES
+    if (loading || !hasMoreVideos) {
+        console.log("[LOAD] Chargement ignoré (déjà en cours ou fin du flux).");
+        return; // Maintenant, ce return est conditionnel.
+    }
+    // FIN DE LA ZONE CRITIQUE
+
+    loading = true;
+    document.getElementById('loader').style.display = 'block';
+
+    currentPage++;
+            let url = `/videos/feed/fragment?page=${currentPage}`;
+            if (category && category !== 'null' && category.trim() !== '') {
+                url += `&category=${category}`;
+            }
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur de chargement des fragments');
+                    }
+                    return response.text();
+                })
+               .then(html => {
+    const videoContainer = document.getElementById('video-container');
+    
+    if (html.trim() === '') {
+        hasMoreVideos = false;
+        console.log("Fin du flux.");
+        const endMessage = document.createElement('p');
+        endMessage.textContent = "C'est tout ce que nous avons pour le moment !";
+        videoContainer.appendChild(endMessage);
+    } else {
+        // 🔥 AJOUT CRITIQUE : Nettoyer AVANT d'ajouter de nouvelles vidéos
+        pruneOldVideos();
+        
+        videoContainer.insertAdjacentHTML('beforeend', html);
+        console.log(`Page ${currentPage} chargée.`);
+                        
+                        // ESSENTIEL : LIE LES ÉCOUTEURS DE MUTE/UNMUTE AUX NOUVELLES VIDÉOS
+                        setupMuteToggles();
+
+                        // 🎯 CORRECTION D'ALIGNEMENT POUR LES FRAGMENTS CHARGÉS
+                        fixVideoTitlePosition();
+
+                        // 🚀 ABONNEMENT AUX NOUVEAUX TOPICS (Likes & Commentaires)
+                        subscribeToNewVideos();
+
+                        setupVideoPlayObserver(); 
+
+                        // Relance l'observation sur la nouvelle dernière carte
+                        setupIntersectionObserver();
+                    }
+                })
+                .catch(error => {
+                    console.error("Erreur de chargement:", error);
+                    hasMoreVideos = false;
+                })
+                .finally(() => {
+                    loading = false;
+                    document.getElementById('loader').style.display = 'none';
+                });
+        }
+
+        // =======================================================
+// VIRTUALISATION : LIMITER LE NOMBRE DE VIDÉOS EN DOM
+// =======================================================
+function pruneOldVideos() {
+    const MAX_VIDEOS_IN_DOM = 10; // Maximum de vidéos dans le DOM
+    const videoCards = document.querySelectorAll('.video-card');
+    
+    if (videoCards.length > MAX_VIDEOS_IN_DOM) {
+        const toRemove = videoCards.length - MAX_VIDEOS_IN_DOM;
+        
+        console.log(`🗑️ Suppression de ${toRemove} anciennes vidéos`);
+        
+        // Supprimer les vidéos les plus anciennes (en haut)
+        for (let i = 0; i < toRemove; i++) {
+            const card = videoCards[i];
+            const videoId = card.dataset.videoId;
+            
+            // 1. Désabonner des WebSockets
+            const subscriptions = activeSubscriptions.get(videoId);
+            if (subscriptions) {
+                subscriptions.forEach(sub => sub.unsubscribe());
+                activeSubscriptions.delete(videoId);
+            }
+            
+            // 2. Arrêter et détruire la vidéo
+            const videoElement = card.querySelector('.video-element');
+            if (videoElement) {
+                videoElement.pause();
+                videoElement.removeAttribute('src'); // Libère le buffer
+                videoElement.load();
+            }
+            
+            // 3. Retirer du IntersectionObserver
+            if (videoObserver) {
+                videoObserver.unobserve(card);
+            }
+            
+            // 4. Supprimer du DOM
+            card.remove();
+            
+            console.log(`🗑️ Vidéo ${videoId} supprimée du DOM`);
+        }
+    }
+}
+
+       function setupIntersectionObserver() {
+    // 1. Utilisez une méthode de sélection plus robuste
+    const allVideoCards = document.querySelectorAll('.video-card');
+    
+    // 2. Sélectionnez le dernier élément du NodeList (méthode la plus fiable)
+    const lastVideoCard = allVideoCards.length > 0 ? allVideoCards[allVideoCards.length - 1] : null;
+
+    // 💡 LOGS DE DEBUG : Déterminons ce qui se passe
+    console.log("Nombre de cartes vidéo trouvées :", allVideoCards.length); 
+
+    // 3. Déplacement du message d'avertissement
+    if (!lastVideoCard || !hasMoreVideos) {
+        if (!lastVideoCard) {
+            // Se déclenche UNIQUEMENT si aucune carte n'est trouvée (ce qui est le cas pour un échec)
+            console.warn("[OBSERVER] Aucune carte vidéo trouvée dans le DOM. Arrêt de l'observation.");
+        }
+        return;
+    }
+
+    // Si on arrive ici, on a une carte et on doit l'observer.
+
+    // Déconnexion de l'ancien observer (important pour la réinitialisation après chargement)
+    if (observer) {
+        observer.disconnect();
+    }
+
+ observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            console.log("[OBSERVER] Déclenchement de l'intersection !");
+            observer.unobserve(entry.target);
+            loadMoreVideos();
+        }
+    });
+}, {
+    root: null,
+    // MODIFICATION CLÉ 1 : Déclenchement 500 pixels AVANT d'atteindre le bas de la page
+    rootMargin: '0px 0px 500px 0px', 
+    
+    // MODIFICATION CLÉ 2 : Déclenchement dès qu'un minuscule fragment de la carte est visible (plus fiable)
+    threshold: 0.001 
 });
+
+    // 5. Lancement de l'observation
+    console.log("[OBSERVER] Observation démarrée sur la dernière carte.");
+    observer.observe(lastVideoCard);
+        }
+    // =======================================================
+// 5. GESTION DES CLICS SUR LES VIDÉOS (LIKES, COMMENTAIRES, CRUD)
+// =======================================================
+
+// --- FONCTIONS UTILITAIRES POUR LA SECTION COMMENTAIRES ---
+
+function createCommentInputAndCloseHtml(videoId) {
+    return `
+        <div class="comment-input-area">
+            <textarea id="comment-input-${videoId}" 
+                      placeholder="Écrire un commentaire..." 
+                      maxlength="500"></textarea>
+            <button class="submit-comment action-btn" data-video-id="${videoId}">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+    `;
+}
+
+// Fonction qui gère la fermeture fluide de la section commentaires
+function closeCommentsSection(videoId) {
+    const videoCard = document.querySelector(`.video-card[data-video-id="${videoId}"]`);
+    const section = document.getElementById(`comments-section-${videoId}`);
+
+    if (videoCard && section && videoCard.classList.contains('comments-open')) {
+        // 1. Déclenche la transition de glissement vers le bas (transform: translateY(100%))
+        videoCard.classList.remove('comments-open'); 
+
+        // 2. Attend que la transition soit finie (300ms comme dans le CSS)
+        setTimeout(() => {
+            // 3. Masque la section
+            section.style.display = 'none';
+        }, 300); // Doit correspondre à la transition-duration du CSS (.comments-section)
+    }
+}
+
+// Fonction qui construit la zone de saisie du nouveau commentaire
+function createCommentSectionContent(comments, videoId) {
+    const closeBtnHtml = `<button class="close-comments-btn action-btn" data-video-id="${videoId}"><i class="fa-solid fa-xmark"></i></button>`;
+    const inputArea = createCommentInputAndCloseHtml(videoId);
+
+    // 🔥 Structure optimisée pour le scroll infini
+    return `
+        <div class="comments-content-wrapper"> 
+            ${closeBtnHtml} 
+            <div class="existing-comments" data-video-id="${videoId}">
+                <!-- Les commentaires seront insérés ici -->
+                <div class="comments-loading" style="display:none;">
+                    <p>⏳ Chargement...</p>
+                </div>
+            </div>
+        </div>
+        ${inputArea}
+    `;
+}
+
+
+// ✅ 3. Fonction pour charger les commentaires (pagination backend)
+function loadComments(videoId, page = 0, append = false) {
+    const state = commentsPagination.get(videoId) || { page: -1, hasMore: true, loading: false };
+    
+    // Éviter les chargements simultanés
+    if (state.loading || !state.hasMore) {
+        console.log(`⏸️ Chargement ignoré pour vidéo ${videoId} (loading=${state.loading}, hasMore=${state.hasMore})`);
+        return Promise.resolve();
+    }
+    
+    // Mise à jour de l'état
+    state.loading = true;
+    commentsPagination.set(videoId, state);
+    
+    // Afficher le loader
+    const loader = document.querySelector(`#comments-section-${videoId} .comments-loading`);
+    if (loader) loader.style.display = 'block';
+    
+    console.log(`📥 Chargement commentaires - Vidéo: ${videoId}, Page: ${page}`);
+    
+    return fetch(`/api/videos/${videoId}/comments?page=${page}&size=10`)
+        .then(res => {
+            if (!res.ok) throw new Error(`Erreur HTTP ${res.status}`);
+            return res.json();
+        })
+        .then(apiResponse => {
+            if (!apiResponse.success || !apiResponse.data) {
+                throw new Error("Format API invalide");
+            }
+            
+            const commentsData = apiResponse.data;
+            const commentsArray = commentsData.comments || [];
+            const totalCount = commentsData.totalCount || 0;
+            
+            console.log(`✅ Reçu ${commentsArray.length} commentaires (total: ${totalCount})`);
+            
+            // Mise à jour du compteur
+            const countSpan = document.getElementById(`comment-count-span-${videoId}`);
+            if (countSpan) countSpan.textContent = totalCount;
+            
+            // Trouver le conteneur
+            const container = document.querySelector(`#comments-section-${videoId} .existing-comments`);
+            
+            if (container) {
+                if (!append) {
+                    // Premier chargement : vider le conteneur (sauf le loader)
+                    const loader = container.querySelector('.comments-loading');
+                    container.innerHTML = '';
+                    if (loader) container.appendChild(loader);
+                }
+                
+                // Insérer les nouveaux commentaires
+                const commentsHtml = commentsArray.map(c => createCommentElement(c)).join('');
+                const loader = container.querySelector('.comments-loading');
+                
+                if (loader) {
+                    // 🔥 IMPORTANT : Ajouter AVANT le loader (scroll vers le haut)
+                    loader.insertAdjacentHTML('afterend', commentsHtml);
+                } else {
+                    container.insertAdjacentHTML('beforeend', commentsHtml);
+                }
+                
+                // Scroll en bas (seulement pour le premier chargement)
+                if (!append) {
+                    setTimeout(() => {
+                        container.scrollTop = container.scrollHeight;
+                    }, 100);
+                }
+            }
+            
+            // Mise à jour de l'état de pagination
+            state.page = page;
+            state.hasMore = commentsArray.length === 10; // S'il y a 10 résultats, il y en a peut-être plus
+            state.loading = false;
+            commentsPagination.set(videoId, state);
+            
+            console.log(`📊 État pagination vidéo ${videoId}:`, state);
+            
+        })
+        .catch(error => {
+            console.error(`❌ Erreur chargement commentaires:`, error);
+            state.loading = false;
+            state.hasMore = false;
+            commentsPagination.set(videoId, state);
+        })
+        .finally(() => {
+            // Masquer le loader
+            if (loader) loader.style.display = 'none';
+        });
+}
+
+// ✅ 4. Observer le scroll pour charger automatiquement
+function setupCommentsScrollObserver(videoId) {
+    const container = document.querySelector(`#comments-section-${videoId} .existing-comments`);
+    
+    if (!container) {
+        console.warn(`⚠️ Conteneur de commentaires introuvable pour vidéo ${videoId}`);
+        return;
+    }
+    
+    // Éviter les observers multiples
+    if (container.dataset.scrollObserver === 'true') {
+        console.log(`✅ Observer déjà actif pour vidéo ${videoId}`);
+        return;
+    }
+    
+    container.dataset.scrollObserver = 'true';
+    
+    container.addEventListener('scroll', () => {
+        const state = commentsPagination.get(videoId);
+        
+        if (!state || state.loading || !state.hasMore) return;
+        
+        // Détecter si on est proche du haut (scroll infini inversé)
+        const scrollTop = container.scrollTop;
+        const triggerPoint = 200; // Charger 200px avant d'atteindre le haut
+        
+        if (scrollTop < triggerPoint) {
+            console.log(`🔄 Scroll détecté - Chargement page ${state.page + 1}`);
+            
+            // Sauvegarder la position de scroll actuelle
+            const oldScrollHeight = container.scrollHeight;
+            
+            loadComments(videoId, state.page + 1, true).then(() => {
+                // Restaurer la position relative après ajout
+                const newScrollHeight = container.scrollHeight;
+                container.scrollTop = newScrollHeight - oldScrollHeight + scrollTop;
+            });
+        }
+    });
+    
+    console.log(`👀 Observer de scroll activé pour vidéo ${videoId}`);
+}
+
+// --- GESTION DES CLICS GLOBALE ---
+document.querySelector('#video-container').addEventListener('click', function(event){
+        const videoCard = event.target.closest('.video-card');
+        if(!videoCard) return;
+
+    // Logique de suppression de vidéo (DELETE)
+    const deleteBtn = event.target.closest('.delete-video-btn');
+    if(deleteBtn){
+        const videoId = deleteBtn.dataset.videoId;
+        // Remplacer par un modal UI personnalisé pour éviter window.confirm
+        if(!confirm("Êtes-vous sûr de vouloir supprimer définitivement cette vidéo et tous ses commentaires/likes ?")) return; 
+        fetch(`/api/videos/${videoId}`, { method: "DELETE", headers: getAuthHeaders('text/plain') })
+
+        .then(res => {
+            if (res.ok || res.redirected) {
+                videoCard.remove();
+            } else {
+                res.json().then(data => alert(`Erreur de suppression de vidéo: ${data.error}`)).catch(()=>alert("Erreur inconnue lors de la suppression."));
+            }
+        })
+        .catch(console.error);
+        return;
+    }
+
+    // Logique de suppression de commentaire (DELETE)
+    const deleteCommentBtn = event.target.closest('.delete-comment-btn');
+    if(deleteCommentBtn){
+        const btn = deleteCommentBtn;
+        const commentId = btn.dataset.commentId;
+        // Remplacer par un modal UI personnalisé pour éviter window.confirm
+        if(!confirm("Êtes-vous sûr de vouloir supprimer ce commentaire ?")) return;
+
+       fetch(`/api/comments/${commentId}`, { method: "DELETE", headers: getAuthHeaders('text/plain') })
+
+       .then(res => {
+            if(res.ok) {
+                const commentElement = btn.closest('.comment');
+                
+                const videoCard = btn.closest('.video-card'); 
+                
+                if(commentElement && videoCard) {
+                    const videoId = videoCard.dataset.videoId;
+                    commentElement.remove();
+
+                    // Décrémentation locale du compteur
+                    const countSpan = document.getElementById(`comment-count-span-${videoId}`);
+                    if (countSpan) { countSpan.textContent = Math.max(0, (parseInt(countSpan.textContent) || 0) - 1); }
+                
+                } else if (commentElement) {
+                    commentElement.remove();
+                }
+            } else { 
+                // Gestion de l'erreur du serveur si res.ok est false
+                res.json().then(data => alert(`Erreur de suppression de commentaire: ${data.error}`)).catch(()=>alert("Erreur inconnue lors de la suppression."));
+            }
+       })
+       .catch(console.error);
+       return;
+    }
+
+    // Logique d'édition/mise à jour de commentaire (PUT)
+    const editCommentBtn = event.target.closest('.edit-comment-btn');
+    if (editCommentBtn) {
+        const btn = editCommentBtn;
+        const commentElement = btn.closest('.comment');
+        const contentParagraph = commentElement ? commentElement.querySelector('.comment-content') : null;
+        
+        if (!commentElement || !contentParagraph) return;
+        
+        // Mode ENREGISTREMENT (si on est en mode 'editing')
+        if (commentElement.classList.contains('editing')) {
+            const textarea = commentElement.querySelector('textarea.edit-comment-input');
+            const newContent = textarea ? textarea.value.trim() : null;
+            const commentId = btn.dataset.commentId;
+
+            if (!newContent) {
+                alert("Le commentaire ne peut pas être vide."); // Remplacer par un modal
+                return;
+            }
+
+            // Récupération du contenu original stocké
+            const originalContent = contentParagraph.dataset.originalContent || '';
+
+            if (newContent === originalContent) {
+                 // Pas de changement, annuler l'édition
+                commentElement.classList.remove('editing');
+                contentParagraph.textContent = originalContent; 
+                delete contentParagraph.dataset.originalContent;
+                // Rétablit l'icône
+                btn.querySelector('i').classList.remove('fa-save');
+                btn.querySelector('i').classList.add('fa-pen');
+                // Supprime le bouton d'annulation
+                commentElement.querySelector('.cancel-edit-btn')?.remove();
+                return;
+            }
+            
+            // Envoi de la requête PUT
+           fetch(`/api/comments/${commentId}`, { 
+    method: "PUT", 
+    headers: getAuthHeaders(), 
+    body: JSON.stringify({ content: newContent }) 
+})
+
+            .then(res => {
+                if (!res.ok) throw new Error("Échec de la mise à jour du commentaire.");
+                return res.json();
+            })
+            .then(() => {
+                // La mise à jour du DOM pour tous se fera via WebSocket (handleUpdatedComment)
+                console.log("Commentaire mis à jour. Notification WebSocket envoyée.");
+            })
+            .catch(error => { 
+                console.error(error); 
+                alert(`Erreur de mise à jour: ${error.message}`); // Remplacer par un modal
+            });
+            
+            // Quitte le mode édition immédiatement pour le feedback UI
+            commentElement.classList.remove('editing');
+            delete contentParagraph.dataset.originalContent;
+            // Rétablit l'icône de stylo
+            btn.querySelector('i').classList.remove('fa-save');
+            btn.querySelector('i').classList.add('fa-pen');
+            // Supprime le bouton d'annulation
+            commentElement.querySelector('.cancel-edit-btn')?.remove();
+            
+            return;
+        } 
+        // Mode ÉDITION (si on n'est PAS en mode 'editing')
+        else {
+            // Optionnel : Désactiver l'édition des autres commentaires
+            // (Laisser comme ça pour l'instant pour la simplicité)
+
+            commentElement.classList.add('editing');
+            
+            const currentContent = contentParagraph.textContent.trim();
+            const textareaHtml = `<textarea class="edit-comment-input" maxlength="500">${currentContent}</textarea>`; 
+            
+            // Sauvegarde de l'ancien contenu dans un attribut de données du paragraphe (pour l'annulation)
+            contentParagraph.dataset.originalContent = currentContent;
+            
+            // Remplacer le contenu par la zone de texte
+            contentParagraph.innerHTML = textareaHtml; 
+            
+            // Changer l'icône en enregistrement
+            btn.querySelector('i').classList.remove('fa-pen');
+            btn.querySelector('i').classList.add('fa-save'); 
+            
+            // Ajouter un bouton d'annulation temporaire
+            const cancelBtnHtml = `<button class="cancel-edit-btn action-btn" data-comment-id="${btn.dataset.commentId}" type="button"><i class="fa-solid fa-xmark"></i></button>`;
+            
+            // Insère le bouton seulement s'il n'existe pas déjà
+            if (!commentElement.querySelector('.cancel-edit-btn')) {
+                btn.parentElement.insertAdjacentHTML('beforeend', cancelBtnHtml);
+            } 
+            
+            // Focus sur la zone de texte
+            const textarea = commentElement.querySelector('textarea.edit-comment-input');
+            if(textarea) {
+                textarea.focus();
+                textarea.select(); 
+            }
+        }
+        return;
+    }
+    
+    // Logique d'annulation d'édition de commentaire
+    const cancelEditBtn = event.target.closest('.cancel-edit-btn');
+    if (cancelEditBtn) {
+        const commentElement = cancelEditBtn.closest('.comment');
+        const contentParagraph = commentElement.querySelector('.comment-content');
+        const editBtn = commentElement.querySelector('.edit-comment-btn');
+        
+        // Restaure le contenu original
+        if (contentParagraph && contentParagraph.dataset.originalContent) {
+             contentParagraph.textContent = contentParagraph.dataset.originalContent;
+             delete contentParagraph.dataset.originalContent; // Nettoyage
+        }
+        
+        commentElement.classList.remove('editing');
+        
+        // Rétablit l'icône
+        if (editBtn) {
+            editBtn.querySelector('i').classList.remove('fa-save');
+            editBtn.querySelector('i').classList.add('fa-pen');
+        }
+        // Supprime le bouton d'annulation
+        cancelEditBtn.remove();
+        return;
+    }
+
+        // ========================================
+    // 🔥 AJOUT : LOGIQUE DE LIKE (déplacer depuis le 2e écouteur)
+    // ========================================
+   /* const likeBtn = event.target.closest('.like-btn');
+    if (likeBtn) {
+        const videoId = likeBtn.dataset.videoId;
+        
+        const span = document.getElementById('likes-count-' + videoId);
+        const icon = likeBtn.querySelector('i');
+
+        const isCurrentlyLiked = icon.classList.contains('fa-solid');
+        let currentLikes = parseInt(span.textContent) || 0;
+
+        const savedIconClasses = icon.className;
+        const savedLikesText = span.textContent;
+        
+        if (isCurrentlyLiked) {
+            icon.classList.remove('fa-solid'); icon.classList.add('fa-regular');
+            span.textContent = Math.max(0, currentLikes - 1);
+        } else {
+            icon.classList.remove('fa-regular'); icon.classList.add('fa-solid');
+            span.textContent = currentLikes + 1;
+        }
+
+        fetch(`/api/videos/${videoId}/like`, {
+        method: "POST",
+        headers: getAuthHeaders()
+    })
+        .then(res => {
+            if (!res.ok) {
+                icon.className = savedIconClasses;
+                span.textContent = savedLikesText;
+                throw new Error("Action échouée, code: " + res.status); 
+            }
+            return res.json();
+        })
+        .then(data => {
+            span.textContent = `${data.data}`;
+            
+            if (data.data > currentLikes) {
+                icon.classList.remove('fa-regular'); icon.classList.add('fa-solid');
+            } else {
+                icon.classList.remove('fa-solid'); icon.classList.add('fa-regular');
+            }
+        })
+        .catch(error => {
+            console.error(`Erreur like pour Vidéo ${videoId}:`, error);
+        });
+        return;
+    }*/
+
+    // ========================================
+    // 🔥 AJOUT : ENVOI DE COMMENTAIRE (déplacer depuis le 2e écouteur)
+    // ========================================
+ const submitCommentBtn = event.target.closest('.submit-comment');
+if(submitCommentBtn){
+    const videoId = submitCommentBtn.dataset.videoId;
+    const input = document.querySelector(`#comment-input-${videoId}`);
+    const content = input.value.trim();
+    
+    if(!content) return;
+
+  fetch(`/api/videos/${videoId}/comment`, { 
+    method: 'POST', 
+    headers: getAuthHeaders(), 
+    body: JSON.stringify({ content }) 
+})
+    .then(res => { 
+        if (!res.ok) throw new Error("Échec de l'envoi du commentaire."); 
+        return res.json();
+    })
+    .then(data => {
+        input.value = '';
+
+        // ✅ Chercher directement .existing-comments
+        const container = document.querySelector(`#comments-section-${videoId} .existing-comments`);
+        
+        if (container) {
+            const loader = container.querySelector('.comments-loading');
+            const newCommentHtml = createCommentElement(data.comment);
+            
+            if (loader) {
+                loader.insertAdjacentHTML('beforebegin', newCommentHtml);
+            } else {
+                container.insertAdjacentHTML('beforeend', newCommentHtml);
+            }
+            
+            container.scrollTop = container.scrollHeight;
+            console.log(`✅ Commentaire ajouté au DOM pour vidéo ${videoId}`);
+        }
+
+        // ✅ Mise à jour du compteur (TOUJOURS)
+        const countSpan = document.getElementById(`comment-count-span-${videoId}`);
+        if (countSpan) {
+            const currentCount = parseInt(countSpan.textContent || 0);
+            countSpan.textContent = currentCount + 1;
+            console.log(`✅ Compteur mis à jour: ${currentCount} → ${currentCount + 1}`);
+        }
+    })
+    .catch(error => { 
+        console.error(`❌ Échec lors de l'envoi du commentaire: ${error.message}`); 
+    });
+    
+    return;
+}
+    
+    // LOGIQUE D'OUVERTURE/FERMETURE DES COMMENTAIRES
+    const commentToggleBtn = event.target.closest('.comment-btn'); 
+    const closeBtn = event.target.closest('.close-comments-btn'); 
+
+    // 1. Gérer la fermeture (bouton 'X')
+    if (closeBtn) { 
+        const videoId = closeBtn.dataset.videoId;
+        closeCommentsSection(videoId); // Utilisation de la nouvelle fonction pour la transition fluide
+        return; 
+    }
+// 2. Gérer l'ouverture (bouton '💬 commentaires')
+if (commentToggleBtn) {
+    const videoId = commentToggleBtn.dataset.videoId;
+    const section = document.getElementById('comments-section-' + videoId);
+    
+    // Si déjà affichée, on ferme (logique de toggle)
+    if (videoCard.classList.contains('comments-open')) {
+          closeCommentsSection(videoId);
+          return;
+    }
+
+    // --- LOGIQUE D'OUVERTURE ET DE CHARGEMENT ---
+    
+    // Assure que display: block est là AVANT d'ajouter comments-open pour déclencher la transition
+    section.style.display = 'block';
+    section.offsetHeight; // <-- Ceci est la ligne de correction
+    
+    // Déclenche la transition CSS (transform: translateY(0))
+    videoCard.classList.add('comments-open'); 
+    section.innerHTML = createCommentSectionContent([], videoId);
+    commentsPagination.set(videoId, { page: -1, hasMore: true, loading: false });
+    
+    loadComments(videoId, 0, false).then(() => {
+        setupCommentsScrollObserver(videoId);
+    });
+    
+    return; // <-- L'accolade de fermeture du 'if (commentToggleBtn)' est ici
+    
+}
+});
+
+/**
+ * Gère le like/unlike d'une vidéo avec mise à jour optimiste de l'UI
+ * @param {number} videoId - L'ID de la vidéo à liker
+ */
+function likeVideo(videoId) {
+    const heartIcon = document.getElementById('like-icon-svg-' + videoId);
+    const counter = document.getElementById('likes-count-span-' + videoId);
+    
+    if (!heartIcon || !counter) {
+        console.error(`❌ Éléments non trouvés pour la vidéo ${videoId}`);
+        return;
+    }
+    
+    // 1. 🎨 Mise à jour INSTANTANÉE de l'UI (optimiste)
+    const wasLiked = heartIcon.classList.contains('liked');
+    heartIcon.classList.toggle('liked');
+    
+    let currentCount = parseInt(counter.textContent) || 0;
+    const newOptimisticCount = wasLiked ? currentCount - 1 : currentCount + 1;
+    counter.textContent = newOptimisticCount;
+    
+    console.log(`🔄 [Optimiste] Like ${wasLiked ? 'retiré' : 'ajouté'} pour vidéo ${videoId}`);
+    
+    // 2. 📡 Envoi de la requête au backend
+   fetch(`/api/videos/${videoId}/like`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            // ✅ Token CSRF requis par Spring Security
+            [csrfHeader]: csrfToken
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success && data.data !== null && data.data !== undefined) {
+            // ✅ Confirmation : synchroniser avec la valeur EXACTE du serveur
+            counter.textContent = data.data;
+            console.log(`✅ [REST] Confirmation serveur: ${data.data} likes`);
+        } else {
+            console.warn('⚠️ Réponse inattendue du serveur:', data);
+            // Rollback en cas d'erreur
+            heartIcon.classList.toggle('liked');
+            counter.textContent = currentCount;
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erreur lors du like:', error);
+        
+        // 🔄 Rollback de l'UI en cas d'erreur réseau
+        heartIcon.classList.toggle('liked');
+        counter.textContent = currentCount;
+        
+        alert('Impossible de liker la vidéo. Veuillez réessayer.');
+    });
+}
+        // 6. WEBSOCKETS (STOMP/SockJS) - MODIFIÉ POUR LE SCOPING PAR VIDÉO
+       
+// === NOUVEAU : gestion des batches de commentaires ===
+function handleNewCommentsBatch(payload) {
+    const messages = Array.isArray(payload) ? payload : [payload];
+    const videoId = messages[0]?.videoId;
+    
+    // 🔍 DEBUG 1
+    console.log(`🔔 WebSocket reçu pour vidéo ${videoId}:`, messages);
+    
+    const existingCommentsContainer = document.querySelector(`#comments-section-${videoId} .existing-comments`);
+    const countSpan = document.getElementById(`comment-count-span-${videoId}`);
+
+    // 🔍 DEBUG 2
+    console.log(`📦 Conteneur trouvé:`, existingCommentsContainer ? 'OUI ✅' : 'NON ❌');
+    console.log(`🔢 Compteur trouvé:`, countSpan ? `OUI (${countSpan.textContent})` : 'NON ❌');
+
+    let newCommentCount = 0;
+
+    messages.forEach(message => {
+        const commentDto = message.comment; 
+        
+        if (message.action === "CREATED" && commentDto) {
+            const commentId = commentDto.commentId || commentDto.id;
+            
+            // 🔍 DEBUG 3
+            console.log(`➕ Tentative d'ajout du commentaire ${commentId}`);
+            
+            const existingComment = document.querySelector(`.comment[data-comment-id="${commentId}"]`);
+            
+            if (existingComment) {
+                console.log(`⚠️ Commentaire ${commentId} déjà présent, skip.`);
+                return;
+            }
+            
+            if (existingCommentsContainer) {
+                const newCommentHtml = createCommentElement(commentDto);
+                existingCommentsContainer.insertAdjacentHTML('beforeend', newCommentHtml);
+                
+                // 🔍 DEBUG 4
+                console.log(`✅ Commentaire ${commentId} ajouté au DOM`);
+            } else {
+                // 🔍 DEBUG 5
+                console.error(`❌ PROBLÈME: Le conteneur .existing-comments n'existe pas !`);
+            }
+            newCommentCount++;
+        }
+    });
+
+    if (existingCommentsContainer) {
+        existingCommentsContainer.scrollTop = existingCommentsContainer.scrollHeight;
+    }
+
+   
+}
+
+
+
+       function handleDeletedComment(payload) {
+    if (payload.action === "DELETED") {
+        const commentElement = document.querySelector(`.comment[data-comment-id="${payload.commentId}"]`);
+        if (commentElement) commentElement.remove();
+
+        // ✅ Toujours utiliser le compteur exact envoyé par le backend
+        const countSpan = document.getElementById(`comment-count-span-${payload.videoId}`);
+        if (countSpan && payload.newCommentsCount !== undefined) {
+            countSpan.textContent = payload.newCommentsCount;
+        }
+            }
+        }
+      function handleUpdatedComment(payload) {
+    if (payload.action === "UPDATED") {
+        // 🎯 Récupère le DTO complet
+        const updatedCommentDto = payload.comment; 
+        
+        if (!updatedCommentDto) return;
+
+        const commentElement = document.querySelector(`.comment[data-comment-id="${updatedCommentDto.id}"]`);
+        
+        if (commentElement) {
+            // Remplacer l'ancien élément par le nouvel élément HTML généré par le DTO mis à jour
+            // Cela gère automatiquement la mise à jour du contenu et de la date.
+            commentElement.outerHTML = createCommentElement(updatedCommentDto);
+        }
+        
+        // Note: Vous n'avez plus besoin de retirer la classe 'editing' ici, car l'élément
+        // entier est remplacé et le formulaire d'édition disparaît si l'utilisateur l'avait.
+    }
+}
+  function handleVideoStatsUpdate(videoId, statsPayload) {
+    const { newLikesCount, newCommentsCount } = statsPayload;
+
+    console.log(`[WS] update video ${videoId}: likes=${newLikesCount}, comments=${newCommentsCount}`);
+
+    function safeUpdate(idSuffix, value, videoId, retries = 20) {
+        const el = document.getElementById(idSuffix + videoId);
+        if (el) {
+            el.textContent = value;
+        } else if (retries > 0) {
+            setTimeout(() => safeUpdate(idSuffix, value, videoId, retries - 1), 50);
+        } else {
+            console.warn(`Impossible de mettre à jour ${idSuffix}${videoId}, élément non trouvé`);
+        }
+    }
+
+    if (newLikesCount != null) safeUpdate('likes-count-span-', newLikesCount, videoId);
+    if (newCommentsCount != null) safeUpdate('comment-count-span-', newCommentsCount, videoId);
+}
+
+    // =======================================================
+// GESTION INTELLIGENTE DES ABONNEMENTS WEBSOCKET (CORRIGÉ)
+// =======================================================
+
+function subscribeToNewVideos() {
+if (!stompClient || !stompClient.connected) {
+ console.warn("STOMP client not connected, skipping dynamic subscription.");
+return;
+ }
+ 
+ const videoCards = document.querySelectorAll('.video-card');
+
+ videoCards.forEach(card => {
+ const videoId = card.dataset.videoId;
+ 
+ // Si déjà abonné, on ignore
+ if (!videoId || activeSubscriptions.has(videoId)) return;
+ 
+ const subscriptions = [];
+console.log("🔗 Tentative d'abonnement à :", `/topic/videos/${videoId}/comments`);
+ subscriptions.push(
+ stompClient.subscribe('/topic/videos/' + videoId + '/comments', function (message) {
+const payload = JSON.parse(message.body);
+
+ if (payload.comment && payload.comment.authorUsername === currentUsername) {
+ console.log("👤 C'est mon propre commentaire — affichage instantané déjà fait ?");
+ // on laisse passer si le DOM ne contient pas déjà ce commentaire
+ const existingComment = document.querySelector(`.comment[data-comment-id="${payload.comment.id}"]`);
+ if (existingComment) {
+ console.log("✅ Déjà visible, on ignore le doublon.");
+return;
+ }
+ console.log("🆕 Mon commentaire n'est pas encore dans le DOM, on l'ajoute quand même.");
+}
+
+ 
+ handleNewCommentsBatch(payload);
+ })
+);
+ 
+// ❌ ANCIEN BLOC DE SUPPRESSION RETIRÉ. 
+// La suppression est maintenant gérée par l'abonnement global /topic/feed/video-deleted dans connectToStomp().
+// La fonction handleDeletedComment gère toujours la suppression de commentaires, qui peut être reçue
+// via un autre topic si vous l'avez prévu (comme un topic dédié aux commentaires).
+// Mais l'abonnement spécifique à la suppression de VIDÉO est retiré d'ici.
+
+ subscriptions.push(
+ stompClient.subscribe('/topic/videos/' + videoId + '/update', function (message) {
+handleUpdatedComment(JSON.parse(message.body));
+ })
+ );
+
+subscriptions.push(
+stompClient.subscribe('/topic/video/' + videoId, function (message) {
+ try {
+ // 🎯 ÉTAPE CRUCIALE : Décoder le JSON VideoStatsUpdateDto
+ const statsPayload = JSON.parse(message.body);
+
+ // 🎯 Appel de la fonction de mise à jour pour gérer le compteur et l'état
+ handleVideoStatsUpdate(videoId, statsPayload);
+
+ console.log(`[Stats Update] Vidéo ${videoId} mise à jour:`, statsPayload);
+
+ } catch (e) {
+ console.error("Erreur de parsing du payload stats:", e, message.body);
+ }
+ })
+);
+
+ // Stocker les abonnements pour cette vidéo
+ activeSubscriptions.set(videoId, subscriptions);
+console.log(`✅ Abonné à la vidéo ${videoId}`);
+ });
+ 
+ // 🔥 AJOUT CRITIQUE : Nettoyer les abonnements invisibles
+ cleanupInvisibleSubscriptions();
+}
+
+// 🔥 NOUVELLE FONCTION : Désabonner les vidéos hors écran
+function cleanupInvisibleSubscriptions() {
+    const visibleIds = new Set();
+    const cards = document.querySelectorAll('.video-card');
+    
+    // Identifier les vidéos visibles + buffer de 5 suivantes
+    cards.forEach((card, index) => {
+        const rect = card.getBoundingClientRect();
+        const isInViewport = rect.top < window.innerHeight + 1000 && rect.bottom > -1000;
+        
+        if (isInViewport || index < 5) {
+            visibleIds.add(card.dataset.videoId);
+        }
+    });
+    
+    // Désabonner les vidéos qui ne sont plus visibles
+    activeSubscriptions.forEach((subscriptions, videoId) => {
+        if (!visibleIds.has(videoId)) {
+            // Désabonner tous les topics de cette vidéo
+            subscriptions.forEach(sub => sub.unsubscribe());
+            activeSubscriptions.delete(videoId);
+            console.log(`❌ Désabonné de la vidéo ${videoId}`);
+        }
+    });
+    
+    console.log(`📊 Abonnements WebSocket actifs: ${activeSubscriptions.size}`);
+}
+        // 7. Lancement de la connexion et des Observateurs - FINALISÉ
+
+// ❌ SUPPRIMER ENTIÈREMENT CES FONCTIONS OBSOLÈTES
+/*
+function debounce(func, delay) {
+    let timeout;
+    return function() {
+        const context = this;
+        const args = arguments;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), delay);
+    };
+}
+// SUPPRIMER CETTE VARIABLE OBSOLÈTE
+const debouncedCheckVideosInView = debounce(checkVideosInView, 100);
+*/ 
+// =======================================================
+// NETTOYAGE AUTOMATIQUE PÉRIODIQUE
+// =======================================================
+// Lancer un nettoyage automatique toutes les 5 secondes
+setInterval(() => {
+    if (stompClient && stompClient.connected) {
+        cleanupInvisibleSubscriptions();
+    }
+    
+    // Logs pour debug (vous pouvez retirer en production)
+    console.log('🧹 Nettoyage automatique effectué');
+    console.log(`📊 Vidéos en DOM: ${document.querySelectorAll('.video-card').length}`);
+    console.log(`📊 Abonnements WebSocket: ${activeSubscriptions.size}`);
+}, 5000); // Toutes les 5 secondes
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    // 1. Initialisation et Connexion STOMP
+    const socket = new SockJS('/ws');
+    stompClient = Stomp.over(socket);
+    const headers = {};
+    if (csrfHeader && csrfToken) {
+        headers[csrfHeader] = csrfToken;
+    }
+    
+    // Fonction de connexion/reconnexion
+    const connectToStomp = () => {
+        stompClient.connect(headers, function (frame) {
+            console.log('WebSocket Connected: ' + frame);
+            
+            // 🚀 NOUVEL ABONNEMENT CRITIQUE : Suppression globale de vidéo
+            stompClient.subscribe('/topic/feed/video-deleted', function (message) {
+                try {
+                    const data = JSON.parse(message.body);
+                    if (data.videoId) {
+                        // Appel de la fonction utilitaire créée précédemment
+                        removeVideoCardFromDOM(data.videoId); 
+                    }
+                } catch (e) {
+                    console.error("Erreur de traitement du message de suppression:", e);
+                }
+            });
+            
+            // 🎯 Appel pour abonner les vidéos initiales de la page
+            subscribeToNewVideos();
+
+        }, function(error) {
+            console.error('STOMP Connection Error:', error);
+            // Tente de se reconnecter après 5 secondes
+            setTimeout(connectToStomp, 5000);
+        });
+    }; // Fin de la fonction connectToStomp
+    
+    // 2. Appel initial pour lancer la connexion STOMP
+    connectToStomp(); 
+
+}); // <--- CORRECTION : Fermeture du document.addEventListener('DOMContentLoaded', ...
+
+
+
+// TODO: Ajouter TOUTES les autres fonctions de video-feed.html ici
+// (Pour éviter de dépasser la limite, je te recommande de copier-coller 
+// tout le bloc <script> de video-feed.html dans ce fichier)
+
+console.log('✅ Page HOME simplifiée chargée avec système vidéos');
 </script>
 
 </body>
