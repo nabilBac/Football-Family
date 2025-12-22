@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+
+    <!-- 🌐 PWA & MOBILE FIX -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <!-- Android / Chrome -->
+    <meta name="theme-color" content="#007bff">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- iOS / Safari -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GoalClips">
+
+    <link rel="apple-touch-icon" sizes="192x192" href="/assets/icons/icon-192.png">
+
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <title>GoalClips</title>
+
+
+    <!-- TON CSS GLOBAL -->
+    <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/hub.css">
+<link rel="stylesheet" href="/css/live-pages.css">
+<link rel="stylesheet" href="/css/profile.css">
+<link rel="stylesheet" href="/css/tournament-summary.css">
+<link rel="stylesheet" href="/css/tournament.css">
+<link rel="stylesheet" href="/css/matches.css">
+<link rel="stylesheet" href="/css/live-matches.css">
+
+<!-- Ces deux-là doivent rester avant -->
+<link rel="stylesheet" href="/css/navbar-common.css">
+<link rel="stylesheet" href="/css/auth.css">
+
+<!-- 🚀 DOIT VENIR EN DERNIER -->
+<link rel="stylesheet" href="/css/admin.css">
+    
+
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body>
+
+<!-- 🔥 Container SPA -->
+<div id="app"></div>
+
+
+<!-- 🔥🔥🔥 AJOUT ICI : LA MODALE DE COMMENTAIRES 🔥🔥🔥 -->
+<div id="comments-modal" class="comments-modal">
+
+    <div class="comments-backdrop"></div>
+
+    <div class="comments-panel">
+        <div class="comments-header">
+            <h3>Commentaires</h3>
+            <button id="comments-close-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div id="comments-list" class="comments-list"></div>
+
+        <div class="comments-input">
+            <textarea id="comments-input-field" placeholder="Écrire un commentaire…" maxlength="300"></textarea>
+            <button id="comments-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- 🔥🔥🔥 FIN AJOUT MODALE 🔥🔥🔥 -->
+
+<!-- WebSocket libraries -->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+<!-- Router -->
+<!-- ✅ CORRECT -->
+<script type="module" src="/app/js/router.js"></script>
+
+<!-- Service Worker -->
+<script src="/service-worker-register.js"></script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init();</script>
+
+</body>
+</html>

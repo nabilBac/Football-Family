@@ -1,169 +1,159 @@
 package com.footballdemo.football_family.service;
 
+import com.footballdemo.football_family.dto.RegisterRequest;
+import com.footballdemo.football_family.exception.BadRequestException;
+import com.footballdemo.football_family.exception.UserNotFoundException;
+import com.footballdemo.football_family.model.Club;
+import com.footballdemo.football_family.model.ClubRole;
+import com.footballdemo.football_family.model.ClubType;
+import com.footballdemo.football_family.model.ClubUser;
+import com.footballdemo.football_family.model.Follow;
 import com.footballdemo.football_family.model.User;
 import com.footballdemo.football_family.model.UserRole;
-import com.footballdemo.football_family.repository.FollowRepository; // 🎯 NOUVEL IMPORT
+import com.footballdemo.football_family.repository.ClubRepository;
+import com.footballdemo.football_family.repository.ClubUserRepository;
+import com.footballdemo.football_family.repository.FollowRepository;
 import com.footballdemo.football_family.repository.UserRepository;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import com.footballdemo.football_family.model.Follow; // 🎯 NOUVEL IMPORT
 import org.springframework.transaction.annotation.Transactional;
-import java.util.Optional;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
+
+
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
-    private final FollowRepository followRepository; // 🎯 INJECTION DU REPOSITORY DE SUIVI
+    private final FollowRepository followRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final ClubRepository clubRepository;
+private final ClubUserRepository clubUserRepository;
 
-    // 🎯 CONSTRUCTEUR MIS À JOUR : Spring va injecter les deux Repositories
-    public UserService(UserRepository userRepository, FollowRepository followRepository) {
-        this.userRepository = userRepository;
-        this.followRepository = followRepository;
-    }
+
+@Value("${app.mode-dev:true}")
+private boolean modeDev;
+
+
+
+  public UserService(
+        UserRepository userRepository,
+        FollowRepository followRepository,
+        PasswordEncoder passwordEncoder,
+        ClubRepository clubRepository,
+        ClubUserRepository clubUserRepository
+) {
+    this.userRepository = userRepository;
+    this.followRepository = followRepository;
+    this.passwordEncoder = passwordEncoder;
+    this.clubRepository = clubRepository;
+    this.clubUserRepository = clubUserRepository;
+}
+
 
     // =======================================================
-    // 1. GESTION DE L'UTILISATEUR COURANT
+    // 🔐 1. UTILISATEUR COURANT
     // =======================================================
 
-    /**
-     * Récupère l'entité User de l'utilisateur actuellement connecté via Spring
-     * Security.
-     * 
-     * @return L'objet User ou null si non authentifié.
-     */
     public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated()
-                || "anonymousUser".equals(authentication.getPrincipal())) {
+        if (authentication == null ||
+                !authentication.isAuthenticated() ||
+                "anonymousUser".equals(authentication.getPrincipal())) {
             return null;
         }
 
         String username = authentication.getName();
-        System.out.println("🔍 AUTH USERNAME: " + username); // Debug
-
-        // ✅ CORRECTION : Chercher directement par username
-        Optional<User> user = userRepository.findByUsername(username);
-
-        if (user.isPresent()) {
-            System.out.println("✅ USER TROUVÉ: " + user.get().getUsername());
-            return user.get();
-        } else {
-            System.out.println("❌ USER NON TROUVÉ pour username: " + username);
-            return null;
-        }
-    }
-
-    @Cacheable(value = "users", key = "#username")
-    public Optional<User> findUserByUsernameCached(String username) {
-        // 🛑 CORRECTION : Retournez directement l'Optional du repository
-        return userRepository.findByUsername(username);
+        return userRepository.findByUsername(username).orElse(null);
     }
 
     // =======================================================
-    // 2. STATISTIQUES DU PROFIL (ABONNÉS/ABONNEMENTS)
+    // 🔍 2. RÉCUPÉRATION / CACHE
     // =======================================================
 
-    /**
-     * Calcule le nombre d'ABONNÉS (Followers) d'un utilisateur donné.
-     * Utilise le FollowRepository pour une logique réelle basée sur la base de
-     * données.
-     */
-    public int getFollowersCount(User user) {
-        // Renvoie le nombre réel d'utilisateurs qui le suivent
-        return (int) followRepository.countByFollowing(user);
-    }
-
-    /**
-     * Calcule le nombre d'ABONNEMENTS (Following) faits par un utilisateur donné.
-     * Utilise le FollowRepository pour une logique réelle basée sur la base de
-     * données.
-     */
-    public int getFollowingCount(User user) {
-        // Renvoie le nombre réel d'utilisateurs qu'il suit
-        return (int) followRepository.countByFollower(user);
-    }
-
-    // =======================================================
-    // 3. AUTRES MÉTHODES UTILES (Déjà existantes ou implicites)
-    // =======================================================
-
-    // Exemple d'une ancienne méthode que vous deviez avoir :
-
-    public Page<User> getUsersPaged(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return userRepository.findAll(pageable);
-    }
+    // ❗ CORRECTION IMPORTANTE :
+    // On NE cache PAS un Optional -> on stocke un User ou null
+  public User findUserByUsernameCached(String username) {
+    return userRepository.findByUsername(username).orElse(null);
+}
 
     public Optional<User> getUserByUsername(String username) {
-        return findUserByUsernameCached(username);
+        return Optional.ofNullable(findUserByUsernameCached(username));
+    }
+
+    public User getUserByIdCached(Long id) {
+    return userRepository.findById(id).orElse(null);
+}
+
+
+    public Optional<User> getUserById(Long id) {
+        return Optional.ofNullable(getUserByIdCached(id));
     }
 
     public User saveUser(User user) {
         return userRepository.save(user);
     }
 
-    /**
-     * ✅ NOUVELLE MÉTHODE REQUISE PAR FollowController.
-     * Récupère un utilisateur par son ID.
-     * 
-     * @param id L'ID de l'utilisateur.
-     * @return Un Optional contenant l'utilisateur s'il est trouvé.
-     */
-    @Cacheable(value = "users", key = "#id")
-    public Optional<User> getUserById(Long id) {
-        return userRepository.findById(id);
+    // =======================================================
+    // 📊 3. STATISTIQUES PROFIL : followers / following
+    // =======================================================
+
+    public int getFollowersCount(User user) {
+        return (int) followRepository.countByFollowing(user);
+    }
+
+    public int getFollowingCount(User user) {
+        return (int) followRepository.countByFollower(user);
+    }
+
+    public List<Long> getFollowedUserIds(Long userId) {
+        User follower = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        return followRepository.findFollowingIdsByFollower(follower);
+    }
+
+    public Page<User> getUsersPaged(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return userRepository.findAll(pageable);
     }
 
     // =======================================================
-    // 4. LOGIQUE D'ABONNEMENT
+    // 🔄 4. FOLLOW / UNFOLLOW
     // =======================================================
 
-    /**
-     * Bascule l'état d'abonnement (Follow/Unfollow) entre l'utilisateur courant et
-     * la cible.
-     * 
-     * @param follower   L'utilisateur qui clique (l'abonné).
-     * @param targetUser L'utilisateur cible (celui que l'on veut suivre/ne plus
-     *                   suivre).
-     * @return true si la relation est créée (Follow), false si elle est supprimée
-     *         (Unfollow).
-     */
     @Transactional
     public boolean toggleFollow(User follower, User targetUser) {
 
-        // Sécurité : Ne pas laisser un utilisateur se suivre lui-même
+        if (follower == null || targetUser == null) {
+            throw new BadRequestException("Utilisateur invalide.");
+        }
+
         if (follower.equals(targetUser)) {
-            throw new IllegalArgumentException("Un utilisateur ne peut pas s'abonner à lui-même.");
+            throw new BadRequestException("Un utilisateur ne peut pas se suivre lui-même.");
         }
 
-        // 1. Chercher si une relation de suivi existe déjà
-        Optional<Follow> existingFollow = followRepository.findByFollowerAndFollowing(follower, targetUser);
+        Optional<Follow> existing = followRepository.findByFollowerAndFollowing(follower, targetUser);
 
-        if (existingFollow.isPresent()) {
-            // CAS 1: La relation existe -> on la supprime (UNFOLLOW)
-            followRepository.delete(existingFollow.get());
-            return false; // Désabonné
-        } else {
-            // CAS 2: La relation n'existe pas -> on la crée (FOLLOW)
-            Follow newFollow = new Follow();
-            newFollow.setFollower(follower);
-            newFollow.setFollowing(targetUser);
-            followRepository.save(newFollow);
-            return true; // Abonné
+        if (existing.isPresent()) {
+            followRepository.delete(existing.get());
+            return false; // Unfollow
         }
+
+        Follow newFollow = new Follow();
+        newFollow.setFollower(follower);
+        newFollow.setFollowing(targetUser);
+        followRepository.save(newFollow);
+
+        return true; // Follow
     }
 
-    /**
-     * Vérifie si l'utilisateur courant suit déjà la cible.
-     */
     public boolean isFollowing(User follower, User targetUser) {
         if (follower == null || targetUser == null) {
             return false;
@@ -171,35 +161,133 @@ public class UserService {
         return followRepository.findByFollowerAndFollowing(follower, targetUser).isPresent();
     }
 
-    /**
-     * Récupère la liste des IDs des utilisateurs que l'utilisateur donné suit.
-     * 
-     * @param userId ID de l'utilisateur (le suiveur).
-     * @return Liste des IDs (Long) des utilisateurs suivis.
-     */
-    public List<Long> getFollowedUserIds(Long userId) {
-        // 1. Récupérer l'entité User pour s'assurer qu'elle existe
-        User follower = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Follower non trouvé."));
+    // =======================================================
+    // 🆕 5. INSCRIPTION
+    // =======================================================
 
-        // 2. Utiliser le FollowRepository pour trouver les IDs.
-        // Cette méthode doit exister dans FollowRepository.
-        return followRepository.findFollowingIdsByFollower(follower);
+@Transactional
+public User registerUser(RegisterRequest req) {
+
+    // --- VALIDATIONS ---
+    if (req.getUsername() == null || req.getUsername().isBlank()) {
+        throw new BadRequestException("Le nom d'utilisateur est obligatoire.");
+    }
+    if (req.getEmail() == null || req.getEmail().isBlank()) {
+        throw new BadRequestException("L'email est obligatoire.");
+    }
+    if (req.getPassword() == null || req.getPassword().isBlank()) {
+        throw new BadRequestException("Le mot de passe est obligatoire.");
+    }
+    if (userRepository.existsByUsername(req.getUsername())) {
+        throw new BadRequestException("Ce nom d'utilisateur est déjà pris.");
+    }
+    if (userRepository.existsByEmail(req.getEmail())) {
+        throw new BadRequestException("Cet email est déjà utilisé.");
     }
 
-    public void registerUser(User user, String typeInscription) {
-        user.addRole(UserRole.USER); // toujours
+    // --- CRÉATION USER ---
+    User user = new User();
+    user.setUsername(req.getUsername().trim());
+    user.setEmail(req.getEmail().trim().toLowerCase());
+    user.setPassword(passwordEncoder.encode(req.getPassword()));
+    user.setSiret(req.getSiret());
+    user.setOrganizationName(req.getOrganizationName());
+    user.setVerified(false);
+    user.setVerifiedAt(null);
 
-        switch (typeInscription.toUpperCase()) {
-            case "PLAYER" -> user.addRole(UserRole.PLAYER);
-            case "COACH" -> user.addRole(UserRole.COACH);
-            case "CLUB_ADMIN" -> user.addRole(UserRole.CLUB_ADMIN);
-            case "ORGANIZER" -> user.addRole(UserRole.ORGANIZER);
-            case "SUPER_ADMIN" -> user.addRole(UserRole.SUPER_ADMIN);
-            default -> {
-            } // USER seulement
+    user.getRoles().clear();
+
+    // ==========================================================
+    // 🔥 LOGIQUE SELON typeInscription
+    // ==========================================================
+switch (req.getTypeInscription()) {
+
+    // 🏆 CLUB ADMIN
+    case CLUB_ADMIN -> {
+
+        if (!modeDev) {
+            if (req.getSiret() == null || req.getSiret().isBlank()) {
+                throw new BadRequestException("Le SIRET est obligatoire pour un club en mode production.");
+            }
         }
 
+        user.addRole(UserRole.CLUB_ADMIN);
+
+        if (req.getOrganizationName() == null || req.getOrganizationName().isBlank()) {
+            throw new BadRequestException("Le nom du club est obligatoire pour un compte club.");
+        }
+
+        user = userRepository.save(user);
+
+        Club club = new Club();
+        club.setName(req.getOrganizationName().trim());
+        club.setSiret(req.getSiret());
+        club.setType(ClubType.FOOTBALL);
+        club.setAdmin(user);
+        club = clubRepository.save(club);
+
+        ClubUser cu = new ClubUser();
+        cu.setUser(user);
+        cu.setClub(club);
+        cu.setRole(ClubRole.ADMIN);
+        clubUserRepository.save(cu);
+
+        user.getClubUsers().add(cu);
+    }
+
+    // 🎮 PLAYER
+    case PLAYER -> user.addRole(UserRole.PLAYER);
+
+    // 🎓 COACH
+    case COACH -> user.addRole(UserRole.COACH);
+
+    // 🛠️ ORGANIZER
+    case ORGANIZER -> user.addRole(UserRole.SUPER_ADMIN);
+
+    // 🧑 STAFF
+    case STAFF -> user.addRole(UserRole.USER);
+
+    // 👤 USER normal
+    case USER -> user.addRole(UserRole.USER);
+
+    default -> throw new BadRequestException("Type d'inscription non supporté.");
+}
+
+
+
+
+    // Sauvegarde finale
+    return userRepository.save(user);
+}
+
+
+
+    // =======================================================
+    // 🔎 6. VÉRIFICATION & UTILITAIRES
+    // =======================================================
+
+    public void requestVerification(User user) {
+        user.setVerified(false);
+        user.setVerifiedAt(null);
         userRepository.save(user);
+    }
+
+   @Transactional(readOnly = true)
+public User findByUsername(String username) {
+    return userRepository.findByUsernameWithClubs(username)
+            .orElseThrow(() -> new UserNotFoundException("username", username));
+}
+
+@Transactional(readOnly = true)
+public User findUserForAuth(String username) {
+    return userRepository.findByUsernameWithClubs(username)
+            .orElseThrow(() -> new UserNotFoundException("username", username));
+}
+
+
+
+    public User getByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("email", email));
     }
 }

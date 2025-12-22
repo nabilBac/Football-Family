@@ -1,0 +1,381 @@
+/* ==========================================
+   🏆 TOURNAMENT SUMMARY PAGE - STYLE GOALCLIPS
+   Style cohérent avec l'app foot amateur
+   ========================================== */
+
+
+   /* ===== FIX SCROLL TOURNAMENT ===== */
+body {
+    overflow-y: auto !important;
+    height: auto !important;
+}
+
+html {
+    overflow-y: auto !important;
+    height: auto !important;
+}
+
+.tournament-summary-wrapper {
+    min-height: 100vh;
+    background: #000;
+    color: #fff;
+    padding: 20px 15px 150px;  /* Plus de padding en bas */
+    font-family: 'Poppins', 'Roboto', sans-serif;
+    overflow-y: visible;
+    position: relative;
+}
+
+.tournament-summary-wrapper {
+    min-height: 100vh;
+    background: #000;
+    color: #fff;
+    padding: 20px 15px 90px;
+    font-family: 'Poppins', 'Roboto', sans-serif;
+}
+
+.tournament-summary-wrapper h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 25px;
+    color: #fff;
+    letter-spacing: -0.5px;
+}
+
+#tournament-summary-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* ===== 🏆 CLASSEMENTS DES GROUPES ===== */
+
+.tournament-rankings {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 20px 15px;
+    margin-bottom: 25px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.tournament-rankings h3 {
+    font-size: 1.4rem;
+    margin-bottom: 15px;
+    color: #10B981;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rankings-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.rankings-table thead {
+    background: rgba(16, 185, 129, 0.15);
+}
+
+.rankings-table th {
+    padding: 12px 10px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: #10B981;
+    letter-spacing: 0.5px;
+}
+
+.rankings-table tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background 0.2s;
+}
+
+.rankings-table tbody tr:hover {
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.rankings-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.rankings-table td {
+    padding: 14px 10px;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.rankings-table td:first-child {
+    font-weight: 700;
+    color: #10B981;
+}
+
+.rankings-empty {
+    text-align: center;
+    padding: 30px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.95rem;
+}
+
+/* ===== ⚽ BRACKET PRINCIPAL ===== */
+
+.tournament-bracket {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 20px 15px;
+    margin-bottom: 25px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.tournament-bracket h3 {
+    font-size: 1.4rem;
+    margin-bottom: 18px;
+    color: #10B981;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bracket-matches {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bracket-match {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.bracket-match:hover {
+    transform: translateY(-2px);
+    border-color: rgba(16, 185, 129, 0.5);
+}
+
+.bracket-match span {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+.bracket-match span:nth-child(2) {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+.bracket-match .winner {
+    color: #10B981;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.bracket-empty {
+    text-align: center;
+    padding: 30px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.95rem;
+}
+
+/* ===== 🔄 TABLEAU CONSOLANTE ===== */
+
+.tournament-consolante {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 20px 15px;
+    margin-bottom: 25px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.tournament-consolante h3 {
+    font-size: 1.4rem;
+    margin-bottom: 18px;
+    color: #F59E0B;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.consolante-matches {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.consolante-match {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.consolante-match:hover {
+    transform: translateY(-2px);
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+.consolante-match span {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+.consolante-match span:nth-child(2) {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+.consolante-match .winner {
+    color: #F59E0B;
+    font-weight: 700;
+}
+
+.consolante-empty {
+    text-align: center;
+    padding: 30px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.95rem;
+}
+
+/* ===== 🎊 RÉSULTATS FINAUX (PODIUM) ===== */
+
+.tournament-final-results {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.15));
+    border-radius: 16px;
+    padding: 25px 20px;
+    margin-bottom: 25px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.2);
+}
+
+.tournament-final-results h3 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #10B981;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.podium {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+}
+
+.podium-place {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 18px 25px;
+    border-radius: 14px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    border: 2px solid;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.podium-place:hover {
+    transform: scale(1.05);
+}
+
+.podium-place.first {
+    border-color: #FFD700;
+    color: #FFD700;
+    font-size: 1.3rem;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.podium-place.second {
+    border-color: #C0C0C0;
+    color: #C0C0C0;
+    box-shadow: 0 0 15px rgba(192, 192, 192, 0.3);
+}
+
+.podium-place.third {
+    border-color: #CD7F32;
+    color: #CD7F32;
+    box-shadow: 0 0 15px rgba(205, 127, 50, 0.3);
+}
+
+.final-results-empty {
+    text-align: center;
+    padding: 30px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.95rem;
+}
+
+/* ===== 📱 RESPONSIVE DESKTOP ===== */
+
+@media (min-width: 768px) {
+    .tournament-summary-wrapper {
+        padding: 30px 25px 100px;
+    }
+
+    .tournament-summary-wrapper h2 {
+        font-size: 2.2rem;
+        margin-bottom: 35px;
+    }
+
+    .tournament-rankings h3,
+    .tournament-bracket h3,
+    .tournament-consolante h3,
+    .tournament-final-results h3 {
+        font-size: 1.6rem;
+    }
+
+    .bracket-matches,
+    .consolante-matches {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .podium {
+        flex-direction: row;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .podium-place {
+        max-width: 250px;
+    }
+
+    .podium-place.first {
+        order: 2;
+    }
+
+    .podium-place.second {
+        order: 1;
+    }
+
+    .podium-place.third {
+        order: 3;
+    }
+}

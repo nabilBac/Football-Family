@@ -1,7 +1,10 @@
 package com.footballdemo.football_family.dto;
 
-import com.footballdemo.football_family.model.RegistrationStatus;
+import com.footballdemo.football_family.model.EventRegistration;
 import lombok.*;
+
+import java.time.LocalDate;
+
 
 @Data
 @Builder
@@ -10,30 +13,57 @@ import lombok.*;
 public class EventRegistrationDTO {
 
     private Long id;
-    private Long playerId;
-    private String playerUsername;
+
     private Long eventId;
     private String eventName;
-    private RegistrationStatus status;
 
-    // 🆕 NOUVEAUX CHAMPS UTF
-    private Long assignedTeamId; // Équipe assignée (mode UTF)
-    private String assignedTeamName; // Nom de l'équipe assignée
-    private String level; // Niveau du joueur (BEGINNER, INTERMEDIATE, etc.)
+    // ========== INDIVIDUAL ==========
+    private Long playerId;
+    private String playerUsername;
 
-    public static EventRegistrationDTO from(com.footballdemo.football_family.model.EventRegistration reg) {
+    // ========== CLUB_ONLY (inscription par club) ==========
+    private Long teamId;
+    private String teamName;
+    private String clubName;  // ✅ NOUVEAU
+
+    // ========== Status ==========
+    private String status;
+
+    // ========== Date ==========
+    private LocalDate registrationDate;  // ✅ APRÈS ✅ NOUVEAU
+
+    // ========== UTF Temporary Teams ==========
+    private Long assignedTeamId;
+    private String assignedTeamName;
+
+    public static EventRegistrationDTO from(EventRegistration reg) {
         return EventRegistrationDTO.builder()
                 .id(reg.getId())
-                .playerId(reg.getPlayer().getId())
-                .playerUsername(reg.getPlayer().getUsername())
                 .eventId(reg.getEvent().getId())
                 .eventName(reg.getEvent().getName())
-                .status(reg.getStatus())
 
-                // 🆕 NOUVEAUX CHAMPS UTF
+                // ⭐ INDIVIDUAL
+                .playerId(reg.getPlayer() != null ? reg.getPlayer().getId() : null)
+                .playerUsername(reg.getPlayer() != null ? reg.getPlayer().getUsername() : null)
+
+                // ⭐ CLUB_ONLY (team registration)
+                .teamId(reg.getTeam() != null ? reg.getTeam().getId() : null)
+                .teamName(reg.getTeam() != null ? reg.getTeam().getName() : null)
+                .clubName(reg.getTeam() != null && reg.getTeam().getClub() != null 
+                        ? reg.getTeam().getClub().getName() 
+                        : null)  // ✅ NOUVEAU
+
+                .status(reg.getStatus() != null ? reg.getStatus().name() : null)
+
+                // ✅ NOUVEAU - Date d'inscription
+               // ✅ NOUVEAU - Date d'inscription
+.registrationDate(reg.getCreatedAt() != null 
+        ? reg.getCreatedAt().toLocalDate() 
+        : reg.getRegistrationDate())
+
+                // ⭐ UTF temporary teams (assigned by organizer)
                 .assignedTeamId(reg.getAssignedTeam() != null ? reg.getAssignedTeam().getId() : null)
                 .assignedTeamName(reg.getAssignedTeam() != null ? reg.getAssignedTeam().getName() : null)
-                .level(reg.getLevel() != null ? reg.getLevel().name() : null)
 
                 .build();
     }

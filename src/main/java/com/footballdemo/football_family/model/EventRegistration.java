@@ -5,20 +5,20 @@ import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Représente l'inscription d'un joueur à un événement.
- * Supporte 2 modes :
- * - Inscription INDIVIDUELLE (UTF) : assignedTeam NULL jusqu'à formation des
- * équipes
- * - Inscription par ÉQUIPE (Spond) : team pré-remplie
- */
 @Entity
-@Table(name = "event_registration", uniqueConstraints = @UniqueConstraint(columnNames = { "event_id",
-        "player_id" }), indexes = {
-                @Index(name = "idx_registration_event", columnList = "event_id"),
-                @Index(name = "idx_registration_player", columnList = "player_id"),
-                @Index(name = "idx_registration_status", columnList = "status")
-        })
+@Table(name = "event_registration",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "event_id", "player_id" }),
+        @UniqueConstraint(columnNames = { "event_id", "team_id" })
+    },
+    indexes = {
+        @Index(name = "idx_registration_event", columnList = "event_id"),
+        @Index(name = "idx_registration_player", columnList = "player_id"),
+        @Index(name = "idx_registration_team", columnList = "team_id"),
+        @Index(name = "idx_registration_status", columnList = "status"),
+        @Index(name = "idx_registration_event_status", columnList = "event_id, status") // 🆕
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,53 +30,39 @@ public class EventRegistration {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔹 Relations principales
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "player_id", nullable = false)
+    @JoinColumn(name = "player_id")
     private User player;
 
-    // 🔹 Dates
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private Team team;
+
     @Column(nullable = false)
     private LocalDate registrationDate;
 
     private LocalDateTime confirmedAt;
 
-    // 🔹 Statut de l'inscription
+    @Builder.Default // 🆕
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
-    private RegistrationStatus status = RegistrationStatus.EN_ATTENTE;
+    private RegistrationStatus status = RegistrationStatus.PENDING; // 🆕
 
-    // 🔹 Pour mode TEAM_BASED : équipe du joueur (pré-remplie)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id")
-    private Team team;
-
-    // 🆕 NOUVEAU : Pour mode INDIVIDUAL (UTF) : équipe assignée APRÈS inscription
+    /**
+     * Pour INDIVIDUAL uniquement : équipe assignée après formation automatique.
+     * NULL pour CLUB_ONLY (team contient déjà l'équipe).
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_team_id")
-    private Team assignedTeam; // NULL jusqu'à ce que l'organisateur forme les équipes
+    private Team assignedTeam;
 
-    // 🆕 NOUVEAU : Préférences du joueur (pour équilibrage UTF)
-    @Enumerated(EnumType.STRING)
-    private PlayerLevel level; // Niveau de compétence
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 
-    @Enumerated(EnumType.STRING)
-    private PlayerPosition preferredPosition; // Position préférée
-
-    @Column(length = 500)
-    private String notes; // Notes du joueur (ex: "Disponible que l'après-midi")
-
-    // 🆕 NOUVEAU : Paiement (si événement payant)
-    private Boolean paid = false;
-    private Double amount;
-    private LocalDateTime paidAt;
-
-    // 🔹 Métadonnées
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -89,140 +75,72 @@ public class EventRegistration {
         if (registrationDate == null) {
             registrationDate = LocalDate.now();
         }
+        validateInvariants(); // 🆕
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // MÉTHODES UTILITAIRES
-    // ═══════════════════════════════════════════════════════════
-
-    /**
-     * Vérifie si l'inscription est confirmée/validée
-     */
-    public boolean isConfirmed() {
-        return status == RegistrationStatus.VALIDE;
+        validateInvariants(); // 🆕
     }
 
     /**
-     * Vérifie si l'inscription est en attente
+     * Validation des règles métier.
      */
-    public boolean isPending() {
-        return status == RegistrationStatus.EN_ATTENTE;
+    private void validateInvariants() {
+        if (event == null) {
+            throw new IllegalStateException("EventRegistration doit avoir un event");
+        }
+
+        if (status == null) {
+            throw new IllegalStateException("EventRegistration doit avoir un status");
+        }
+
+        boolean hasPlayer = (player != null);
+        boolean hasTeam = (team != null);
+
+        if (!hasPlayer && !hasTeam) {
+            throw new IllegalStateException(
+                "EventRegistration doit avoir soit un player, soit une team"
+            );
+        }
+
+        if (hasPlayer && hasTeam) {
+            throw new IllegalStateException(
+                "EventRegistration ne peut pas avoir à la fois un player ET une team"
+            );
+        }
     }
 
     /**
-     * Vérifie si l'inscription a été refusée
+     * Accepte l'inscription et enregistre la date de confirmation.
      */
-    public boolean isRejected() {
-        return status == RegistrationStatus.REFUSE;
-    }
-
-    /**
-     * Vérifie si le joueur est assigné à une équipe (mode UTF)
-     */
-    public boolean hasTeamAssigned() {
-        return assignedTeam != null;
-    }
-
-    /**
-     * Retourne l'équipe effective (assignedTeam pour UTF, team pour Spond)
-     */
-    public Team getEffectiveTeam() {
-        return assignedTeam != null ? assignedTeam : team;
-    }
-
-    /**
-     * Confirme l'inscription
-     */
-    public void confirm() {
-        this.status = RegistrationStatus.VALIDE;
+    public void accept() {
+        this.status = RegistrationStatus.ACCEPTED;
         this.confirmedAt = LocalDateTime.now();
     }
 
     /**
-     * Refuse l'inscription
+     * Refuse l'inscription et enregistre la date.
      */
     public void reject() {
-        this.status = RegistrationStatus.REFUSE;
+        this.status = RegistrationStatus.REJECTED;
+        this.confirmedAt = LocalDateTime.now();
     }
 
     /**
-     * Annule l'inscription
+     * Vérifie si l'inscription est en attente.
      */
-    public void cancel() {
-        this.status = RegistrationStatus.ANNULE;
+    @Transient
+    public boolean isPending() {
+        return status == RegistrationStatus.PENDING;
     }
 
     /**
-     * Marque le paiement comme effectué
+     * Vérifie si l'inscription est acceptée.
      */
-    public void markAsPaid(Double amount) {
-        this.paid = true;
-        this.amount = amount;
-        this.paidAt = LocalDateTime.now();
-    }
-
-    /**
-     * Vérifie si le paiement a été effectué
-     */
-    public boolean isPaid() {
-        return paid != null && paid;
-    }
-
-    /**
-     * Assigne le joueur à une équipe (mode UTF)
-     */
-    public void assignToTeam(Team team) {
-        this.assignedTeam = team;
-        if (!team.getRegistrations().contains(this)) {
-            team.getRegistrations().add(this);
-        }
-    }
-
-    /**
-     * Retire l'assignation d'équipe
-     */
-    public void removeTeamAssignment() {
-        if (this.assignedTeam != null) {
-            this.assignedTeam.getRegistrations().remove(this);
-            this.assignedTeam = null;
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // VALIDATION
-    // ═══════════════════════════════════════════════════════════
-
-    /**
-     * Vérifie si l'inscription peut être modifiée
-     */
-    public boolean canBeModified() {
-        return status == RegistrationStatus.EN_ATTENTE;
-    }
-
-    /**
-     * Vérifie si l'inscription peut être annulée
-     */
-    public boolean canBeCancelled() {
-        return status != RegistrationStatus.ANNULE &&
-                event != null &&
-                event.getStatus() == EventStatus.PLANNED;
-    }
-
-    @Override
-    public String toString() {
-        return "EventRegistration{" +
-                "id=" + id +
-                ", player=" + (player != null ? player.getUsername() : "null") +
-                ", event=" + (event != null ? event.getName() : "null") +
-                ", status=" + status +
-                ", assignedTeam=" + (assignedTeam != null ? assignedTeam.getName() : "none") +
-                ", level=" + level +
-                ", position=" + preferredPosition +
-                '}';
+    @Transient
+    public boolean isAccepted() {
+        return status == RegistrationStatus.ACCEPTED;
     }
 }

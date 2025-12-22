@@ -1,17 +1,26 @@
 package com.footballdemo.football_family.repository;
 
-
-
 import com.footballdemo.football_family.model.Team;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
+@Repository
 public interface TeamRepository extends JpaRepository<Team, Long> {
 
-    // Chercher les équipes par coach
-    List<Team> findByCoachId(Long coachId);
+    // Équipes d’un événement UTF
+    List<Team> findByEvent_Id(Long eventId);
 
-    // Chercher les équipes par catégorie
-    List<Team> findByCategory(String category);
+    List<Team> findByClubId(Long clubId);
+
+
+    // Équipes triées d’un event
+    List<Team> findByEvent_IdOrderByNameAsc(Long eventId);
+
+    // Coach
+    List<Team> findByCoach_Id(Long coachId);
+
+    // Club
+    List<Team> findByClub_Id(Long clubId);
 }
-

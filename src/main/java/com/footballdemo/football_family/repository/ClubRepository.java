@@ -1,8 +1,7 @@
 package com.footballdemo.football_family.repository;
 
 import com.footballdemo.football_family.model.Club;
-import com.footballdemo.football_family.model.ClubStatus;
-import com.footballdemo.football_family.model.ClubType;
+import com.footballdemo.football_family.model.ClubVerificationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,21 +18,17 @@ public interface ClubRepository extends JpaRepository<Club, Long> {
 
     Optional<Club> findByNameIgnoreCase(String name);
 
-    List<Club> findByType(ClubType type);
+    boolean existsBySiret(String siret);
 
-    Page<Club> findByType(ClubType type, Pageable pageable);
-
-    Page<Club> findByStatus(ClubStatus status, Pageable pageable);
+    boolean existsByNameIgnoreCase(String name);
 
     List<Club> findByCity(String city);
 
     Page<Club> findByNameContainingIgnoreCaseOrCityContainingIgnoreCase(
             String name, String city, Pageable pageable);
 
-    @Query("SELECT c FROM Club c WHERE c.status = com.footballdemo.football_family.model.ClubStatus.PENDING ORDER BY c.createdAt ASC")
+    Page<Club> findByVerificationStatus(ClubVerificationStatus status, Pageable pageable);
+
+    @Query("SELECT c FROM Club c WHERE c.verificationStatus = com.footballdemo.football_family.model.ClubVerificationStatus.PENDING ORDER BY c.createdAt ASC")
     List<Club> findPendingVerification();
-
-    boolean existsBySiret(String siret);
-
-    boolean existsByNameIgnoreCase(String name);
 }

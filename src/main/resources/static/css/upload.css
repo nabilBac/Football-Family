@@ -1,0 +1,103 @@
+/* 🔥 CONTAINER UPLOAD */
+.upload-page {
+    padding: 20px;
+    max-width: 480px;
+    margin: 0 auto 100px;
+    color: white;
+    font-family: "Poppins", sans-serif;
+}
+
+.upload-title {
+    font-size: 28px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.upload-title i {
+    color: #00ff88;
+}
+
+/* 🔥 INPUT GROUP */
+.upload-group {
+    margin-bottom: 20px;
+}
+
+.upload-group label {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 8px;
+}
+
+.upload-input,
+.upload-select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    background: #141414;
+    border: 1px solid #0f0f0f;
+    color: white;
+    font-size: 15px;
+    outline: none;
+    transition: 0.2s;
+}
+
+.upload-input:focus,
+.upload-select:focus {
+    border-color: #00ff88;
+    box-shadow: 0 0 8px rgba(0,255,120,0.4);
+}
+
+/* 🔥 BUTTON */
+.upload-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #00ff88, #00cc66);
+    border: none;
+    border-radius: 14px;
+    color: black;
+    font-size: 17px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: 0.15s ease-in-out;
+}
+
+.upload-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,255,120,0.3);
+}
+
+/* 🔥 LOADER */
+.upload-loader {
+    width: 100%;
+    text-align: center;
+    margin-top: 15px;
+    font-size: 15px;
+    color: #00ff88;
+    display: none;
+}
+
+/* 🔥 TOAST */
+.toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(40px);
+    background: #00cc66;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    opacity: 0;
+    color: black;
+    transition: 0.3s ease;
+    z-index: 9999;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}

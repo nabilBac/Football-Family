@@ -15,24 +15,22 @@ import java.util.Collections;
 @Value
 @Builder
 public class VideoDto {
+    Long id;
+    String title;
+    String uploaderUsername;
+    Long uploaderId;
+    String category;
+    LocalDateTime dateUpload;
+    String filename;
+    String thumbnailUrl;
 
-    private final Long id;
-    private final String title;
-    private final String uploaderUsername;
-    private final Long uploaderId;
-    private final String category;
-    private final java.time.LocalDateTime dateUpload;
-    private final String filename;
-    private final String thumbnailUrl;
     @Builder.Default
-    private final List<CommentDto> topComments = Collections.emptyList();
+    List<CommentDto> topComments = Collections.emptyList();
 
-    // Statistiques optimisées, lues directement depuis l'entité Video
-    private final int likesCount;
-    private final long commentsCount; // <-- REMPLACEMENT de la List<CommentDto>
-    private final boolean likedByCurrentUser;
-    private LocalDateTime date;
+    int likesCount;
+    long commentsCount;
+    boolean likedByCurrentUser;
 
-    private final boolean live; // ajoute et initialise via Builder
-    private final boolean top;
+    boolean live;
+    boolean top;
 }

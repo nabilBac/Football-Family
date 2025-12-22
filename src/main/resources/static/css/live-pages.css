@@ -1,0 +1,463 @@
+/* ==== Liste des lives ==== */
+.live-list-page,
+.live-archives-page {
+    min-height: 100vh;
+    background: #000;
+    color: #fff;
+    padding: 80px 16px 120px;
+    font-family: 'Poppins', sans-serif;
+}
+
+.live-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.live-header h1 {
+    font-size: 1.6rem;
+}
+
+.live-back-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    background: #2563EB;
+    color: #fff;
+    cursor: pointer;
+}
+
+.live-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.live-card {
+    background: rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+}
+
+.live-card h2 {
+    margin: 0 0 6px;
+}
+
+.live-card p {
+    margin: 0 0 8px;
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
+.streamer-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.streamer-info img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid #10B981;
+}
+
+.live-watch-link {
+    display: inline-block;
+    margin-top: 10px;
+    color: #10B981;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* ============================
+   🎥 PAGE WATCH (VIEWER)
+   ============================ */
+
+.live-watch-root {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    background: #000;
+    overflow: hidden;
+}
+
+.live-video-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.live-video-wrapper video {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+.live-banner {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.55);
+    border: 2px solid #f33;
+    border-radius: 30px;
+    padding: 6px 12px;
+    color: #fff;
+    font-size: 0.9rem;
+    z-index: 10;
+    backdrop-filter: blur(6px);
+}
+
+.live-avatar {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #f33;
+}
+
+.live-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.connection-dot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1px solid #000;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.connection-dot.online {
+    background-color: #22c55e;
+    box-shadow: 0 0 6px rgba(34,197,94,0.8);
+}
+
+.connection-dot.offline {
+    background-color: #777;
+}
+
+/* ✅ OVERLAY CHAT - AVEC !important POUR FORCER */
+.chat-overlay,
+#chatOverlay {
+    position: fixed !important;
+    bottom: 100px !important;  /* ✅ 100px du bas */
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 90% !important;
+    max-width: 600px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    pointer-events: none !important;
+    z-index: 5 !important;
+    max-height: 450px !important;
+    overflow: visible !important;
+    background: transparent !important;  /* ✅ Pas de gradient */
+    right: auto !important;  /* ✅ Annuler l'ancien right: 0 */
+}
+
+/* ✅ BULLES DE CHAT */
+.chat-bubble {
+    background: rgba(37, 99, 235, 0.95) !important;
+    color: #fff !important;
+    padding: 14px 20px !important;
+    border-radius: 20px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    max-width: 85% !important;
+    word-wrap: break-word !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+    margin: 0 !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out !important;
+}
+
+/* Animation d'entrée */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.chat-bubble {
+    animation: slideInUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* Animation de sortie */
+.chat-bubble.fading-out {
+    opacity: 0 !important;
+    transform: translateY(-20px) scale(0.95) !important;
+}
+
+/* Couleurs selon utilisateur */
+.chat-bubble.viewer {
+    background: rgba(37, 99, 235, 0.95) !important;
+}
+
+.chat-bubble.streamer {
+    background: rgba(16, 185, 129, 0.95) !important;
+}
+
+/* ✅ FORMULAIRE CHAT */
+.chat-form {
+    position: fixed !important;
+    bottom: 12px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 90% !important;
+    max-width: 600px !important;
+    display: flex !important;
+    gap: 8px !important;
+    z-index: 6 !important;
+}
+
+.chat-input {
+    flex: 1;
+    border-radius: 25px;
+    border: none;
+    padding: 12px 18px;
+    outline: none;
+    font-size: 15px;
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.chat-input:focus {
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+}
+
+.chat-send-btn {
+    border-radius: 25px;
+    border: none;
+    padding: 12px 24px;
+    background: #2563EB;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.chat-send-btn:hover {
+    background: #1d4ed8;
+}
+
+.chat-send-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.live-watch-root .live-back-btn {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    z-index: 11;
+    background: rgba(37, 99, 235, 0.9);
+    padding: 10px 16px;
+    border: none;
+    border-radius: 25px;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+}
+
+/* ============================
+   🎥 PAGE GO-LIVE (STREAMER)
+   ============================ */
+
+.live-page {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    background: #000;
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    overflow: hidden;
+}
+
+.live-video-wrapper video#localVideo {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+/* STREAMER - Même style que viewer */
+.live-page .chat-overlay,
+.live-page #chatOverlay {
+    position: fixed !important;
+    bottom: 100px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 90% !important;
+    max-width: 600px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    pointer-events: none !important;
+    z-index: 5 !important;
+    max-height: 450px !important;
+    overflow: visible !important;
+    background: transparent !important;
+    right: auto !important;
+}
+
+.live-page #chatForm {
+    position: fixed !important;
+    bottom: 10px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 90% !important;
+    max-width: 600px !important;
+    display: flex !important;
+    gap: 8px !important;
+    z-index: 6 !important;
+}
+
+.live-page #chatInput {
+    flex: 1;
+    padding: 12px 18px;
+    border-radius: 25px;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.live-page #sendBtn,
+#startButton,
+#endButton,
+#backButton {
+    background: #10B981;
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+}
+
+#startButton {
+    position: fixed;
+    bottom: 80px;
+    right: 15px;
+    z-index: 7;
+}
+
+#endButton {
+    position: fixed;
+    bottom: 130px;
+    right: 15px;
+    background-color: #e11d48;
+    z-index: 7;
+}
+
+#backButton {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    background-color: rgba(37, 99, 235, 0.9);
+    z-index: 7;
+}
+
+.live-page #liveBanner {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 2px solid #f33;
+    border-radius: 30px;
+    padding: 6px 12px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    z-index: 10;
+    backdrop-filter: blur(6px);
+}
+
+.live-page #liveAvatar {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #f33;
+    animation: pulseHalo 1.6s infinite alternate ease-in-out;
+}
+
+.live-page #liveAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.live-page #connectionDot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid #000;
+    background-color: #777;
+}
+
+.live-page #connectionDot.online {
+    background-color: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+}
+
+@keyframes pulseHalo {
+    from {
+        box-shadow: 0 0 4px rgba(255, 0, 0, 0.4), 0 0 12px rgba(255, 0, 0, 0.2);
+    }
+    to {
+        box-shadow: 0 0 8px rgba(255, 0, 0, 0.7), 0 0 20px rgba(255, 0, 0, 0.4);
+    }
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .chat-overlay,
+    #chatOverlay,
+    .live-page #chatOverlay {
+        bottom: 80px !important;
+        width: 95% !important;
+        max-height: 350px !important;
+    }
+    
+    .chat-bubble {
+        font-size: 14px !important;
+        padding: 10px 14px !important;
+    }
+}
+

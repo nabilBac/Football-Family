@@ -3,28 +3,18 @@ package com.footballdemo.football_family.model;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.*;
 
-/**
- * Représente un événement sportif dans le système.
- * Supporte 2 modes :
- * - INDIVIDUAL (UTF) : Tournoi ouvert avec inscriptions individuelles
- * - TEAM_BASED (Spond) : Match entre équipes pré-existantes
- */
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "event", indexes = {
-        @Index(name = "idx_event_visibility", columnList = "visibility"),
-        @Index(name = "idx_event_date", columnList = "date"),
-        @Index(name = "idx_event_registration_type", columnList = "registrationType")
+    @Index(name = "idx_event_visibility", columnList = "visibility"),
+    @Index(name = "idx_event_date", columnList = "date")
 })
 @Getter
 @Setter
@@ -47,11 +37,9 @@ public class Event {
     @Column(nullable = false)
     private EventType type;
 
-    // 🆕 NOUVEAU : Type d'inscription (INDIVIDUAL ou TEAM_BASED)
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
-    private RegistrationType registrationType = RegistrationType.INDIVIDUAL;
+    private RegistrationType registrationType;
 
     @Column(nullable = false)
     private LocalDate date;
@@ -59,260 +47,233 @@ public class Event {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 
-    @Column(nullable = false, length = 255)
     private String location;
-
     private String address;
     private String city;
     private String zipCode;
 
-    // 🔹 Relations avec Club et Organisateur
+    /**
+ * Capacité TOTALE de l'événement :
+ * - INDIVIDUAL : nombre max de JOUEURS (ex: 20)
+ * - CLUB_ONLY : nombre max d'ÉQUIPES (ex: 16)
+ */
+    private Integer maxParticipants;
+/**
+ * Pour CLUB_ONLY uniquement : nombre max d'équipes PAR CLUB (ex: 2)
+ * Si null → pas de limite par club
+ */
+    private Integer maxTeamsPerClub;
+
+    // ========== CLÔTURE DES INSCRIPTIONS ==========
+
+@Builder.Default
+@Column(name = "registration_closed", nullable = false)
+private Boolean registrationClosed = false;
+
+@Column(name = "registration_deadline")
+private LocalDateTime registrationDeadline;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean teamsFormed = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "club_id")
-    private Club club; // Optionnel (NULL pour tournois ouverts)
+    @JsonIgnore
+    private Club club;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organizer_id", nullable = false)
+    @JsonIgnore
     private User organizer;
 
-    // 🔹 Visibilité et capacité
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    private EventVisibility visibility;
+
     @Builder.Default
-    private Visibility visibility = Visibility.PUBLIC;
-
-    private Integer maxParticipants;
-
-    // 🆕 NOUVEAU : Nombre d'équipes à former (pour mode INDIVIDUAL)
-    private Integer numberOfTeams;
-
-    // 🆕 NOUVEAU : Taille des équipes (5v5, 7v7, 11v11)
-    private Integer teamSize;
-
-    // 🔹 Statut de l'événement
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
-    private EventStatus status = EventStatus.PLANNED;
+    private EventStatus status = EventStatus.UPCOMING;
 
-    // 🆕 NOUVEAU : Indique si les équipes ont été formées (mode INDIVIDUAL)
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean teamsFormed = false;
-
-    // 🔹 Relations
-    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<Match> matches = new ArrayList<>();
-
-    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Builder.Default
+    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<EventRegistration> registrations = new ArrayList<>();
 
-    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Builder.Default
+    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<Team> teams = new ArrayList<>();
+
+    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<Media> mediaUploads = new ArrayList<>();
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "event_teams", joinColumns = @JoinColumn(name = "event_id"), inverseJoinColumns = @JoinColumn(name = "team_id"))
-    @Builder.Default
-    private Set<Team> teams = new HashSet<>();
+    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<Match> matches = new ArrayList<>();
 
-    // 🔹 Phases de tournoi (pour tournois à élimination)
-    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<TournamentPhase> phases = new ArrayList<>();
+    private String imageUrl;
 
-    // 🔹 Métadonnées
-    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
     private LocalDateTime updatedAt;
 
+@Column(name = "group_count")
+private Integer groupCount;
+
+@Column(name = "qualified_per_group")
+private Integer qualifiedPerGroup;
+
+@Builder.Default
+@Enumerated(EnumType.STRING)
+@Column(nullable = false)
+private TournamentPhase tournamentPhase = TournamentPhase.REGISTRATION;
+
+@ElementCollection
+@CollectionTable(name = "qualified_teams", joinColumns = @JoinColumn(name = "event_id"))
+@Column(name = "team_id")
+private List<Long> qualifiedTeamIds = new ArrayList<>();
+
+    /* =========================
+       LIFECYCLE
+       ========================= */
+
     @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+protected void onCreate() {
+    createdAt = LocalDateTime.now();
+    updatedAt = LocalDateTime.now();
+
+    if (tournamentPhase == null) {
+        tournamentPhase = TournamentPhase.REGISTRATION;
     }
+
+    validateInvariants();
+}
+
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        validateInvariants();
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // MÉTHODES UTILITAIRES
-    // ═══════════════════════════════════════════════════════════
+    /* =========================
+       MÉTIER
+       ========================= */
 
-    /**
-     * Vérifie si l'événement est en mode inscription individuelle (UTF)
-     */
-    public boolean isIndividualRegistration() {
+    @Transient
+    public boolean isClubOnly() {
+        return registrationType == RegistrationType.CLUB_ONLY;
+    }
+
+    @Transient
+    public boolean isIndividual() {
         return registrationType == RegistrationType.INDIVIDUAL;
     }
 
     /**
-     * Vérifie si l'événement est en mode équipes pré-existantes (Spond)
+     * 👉 CAPACITÉ UNIQUE POUR L’AFFICHAGE (0 / 16)
      */
-    public boolean isTeamBasedRegistration() {
-        return registrationType == RegistrationType.TEAM_BASED;
+    @Transient
+    public int getCapacity() {
+        return maxParticipants == null ? 0 : maxParticipants;
     }
+
+  @Transient
+public boolean isRegistrationOpen() {
+    // 🔒 1. Vérifier si les inscriptions sont manuellement fermées
+    if (Boolean.TRUE.equals(registrationClosed)) {
+        return false;
+    }
+
+    // ❌ 2. Vérifier le statut de l'événement
+    if (status == EventStatus.FINISHED || status == EventStatus.CANCELED) {
+        return false;
+    }
+
+    // ⏰ 3. Vérifier la deadline si définie
+    if (registrationDeadline != null && LocalDateTime.now().isAfter(registrationDeadline)) {
+        return false;
+    }
+
+    // 📅 4. Sinon, vérifier si l'événement est dans le futur
+    LocalDateTime cutoff = (endTime != null)
+            ? endTime
+            : (date != null ? date.atTime(LocalTime.MAX) : null);
+
+    return cutoff != null && cutoff.isAfter(LocalDateTime.now());
+}
+
 
     /**
-     * Vérifie si l'événement a atteint sa capacité maximale
-     */
-    public boolean isFull() {
-        if (maxParticipants == null)
-            return false;
-        return getConfirmedParticipantsCount() >= maxParticipants;
+ * Vérifie si l'événement est complet.
+ * ⚠️ Nécessite le comptage externe des participants acceptés.
+ * 
+ * @param acceptedParticipants Nombre de participants/équipes ACCEPTÉS
+ * @return true si capacité atteinte
+ */
+
+    @Transient
+    public boolean isFull(int acceptedParticipants) {
+        return getCapacity() > 0 && acceptedParticipants >= getCapacity();
     }
 
-    /**
-     * Compte le nombre de participants confirmés
-     */
-    public int getConfirmedParticipantsCount() {
-        if (registrations == null)
-            return 0;
-        return (int) registrations.stream()
-                .filter(r -> r.getStatus() == RegistrationStatus.VALIDE)
-                .count();
+    @Transient
+    public int remainingSlots(int acceptedParticipants) {
+        if (getCapacity() <= 0) return 0;
+        return Math.max(0, getCapacity() - acceptedParticipants);
     }
 
-    /**
-     * Vérifie si l'événement peut encore accepter des inscriptions
-     */
-    public boolean canAcceptRegistrations() {
-        return status == EventStatus.PLANNED && !isFull();
+    /* =========================
+       VALIDATIONS
+       ========================= */
+    private void validateInvariants() {
+
+        // 🔒 PHASE DE TOURNOI OBLIGATOIRE
+if (tournamentPhase == null) {
+    throw new IllegalStateException("tournamentPhase obligatoire");
+}
+
+
+        if (registrationType == null)
+            throw new IllegalStateException("registrationType obligatoire");
+
+        if (type == null)
+            throw new IllegalStateException("type obligatoire");
+
+        if (visibility == null)
+            throw new IllegalStateException("visibility obligatoire");
+
+        if (date == null)
+            throw new IllegalStateException("date obligatoire");
+
+        if (organizer == null)
+            throw new IllegalStateException("organizer obligatoire");
+
+        // ✅ CLUB_EVENT → capacité globale obligatoire (16)
+       if (isClubOnly()) {
+    if (maxParticipants == null || maxParticipants <= 0) {
+        throw new IllegalStateException(
+            "CLUB_EVENT requiert maxParticipants > 0"
+        );
     }
-
-    // ═══════════════════════════════════════════════════════════
-    // GESTION DES MATCHES
-    // ═══════════════════════════════════════════════════════════
-
-    public void addMatch(Match match) {
-        if (matches == null)
-            matches = new ArrayList<>();
-        matches.add(match);
-        match.setEvent(this);
+    if (maxTeamsPerClub == null || maxTeamsPerClub <= 0) {
+        throw new IllegalStateException(
+            "CLUB_EVENT requiert maxTeamsPerClub > 0"
+        );
     }
+}
 
-    public void removeMatch(Match match) {
-        if (matches != null) {
-            matches.remove(match);
-            match.setEvent(null);
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // GESTION DES ÉQUIPES
-    // ═══════════════════════════════════════════════════════════
-
-    public void addTeam(Team team) {
-        if (teams == null)
-            teams = new HashSet<>();
-        teams.add(team);
-    }
-
-    public void removeTeam(Team team) {
-        if (teams != null) {
-            teams.remove(team);
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // GESTION DES INSCRIPTIONS
-    // ═══════════════════════════════════════════════════════════
-
-    /**
-     * Ajoute un participant à l'événement (mode INDIVIDUAL)
-     */
-    public void addParticipant(User player) {
-        if (registrations == null)
-            registrations = new ArrayList<>();
-
-        boolean alreadyRegistered = registrations.stream()
-                .anyMatch(r -> r.getPlayer().equals(player));
-        if (alreadyRegistered)
-            return;
-
-        EventRegistration registration = EventRegistration.builder()
-                .event(this)
-                .player(player)
-                .registrationDate(LocalDate.now())
-                .status(RegistrationStatus.EN_ATTENTE)
-                .build();
-
-        registrations.add(registration);
-        if (player.getRegistrations() == null) {
-            player.setRegistrations(new ArrayList<>());
-        }
-        player.getRegistrations().add(registration);
-    }
-
-    /**
-     * Retire un participant de l'événement
-     */
-    public void removeParticipant(User player) {
-        if (registrations == null)
-            return;
-
-        registrations.removeIf(r -> {
-            if (r.getPlayer().equals(player)) {
-                if (player.getRegistrations() != null) {
-                    player.getRegistrations().remove(r);
-                }
-                return true;
+        // ✅ OPEN_EVENT individuel
+        if (isIndividual()) {
+            if (maxParticipants == null || maxParticipants <= 0) {
+                throw new IllegalStateException(
+                    "INDIVIDUAL requiert maxParticipants > 0"
+                );
             }
-            return false;
-        });
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // GESTION DES MÉDIAS
-    // ═══════════════════════════════════════════════════════════
-
-    public void addMedia(Media media) {
-        if (mediaUploads == null)
-            mediaUploads = new ArrayList<>();
-        mediaUploads.add(media);
-        media.setEvent(this);
-    }
-
-    public void removeMedia(Media media) {
-        if (mediaUploads != null) {
-            mediaUploads.remove(media);
-            media.setEvent(null);
         }
-    }
 
-    // ═══════════════════════════════════════════════════════════
-    // VALIDATION
-    // ═══════════════════════════════════════════════════════════
-
-    /**
-     * Vérifie si l'utilisateur est l'organisateur de cet événement
-     */
-    public boolean isOrganizer(User user) {
-        return organizer != null && organizer.getId().equals(user.getId());
-    }
-
-    /**
-     * Vérifie si l'utilisateur peut modifier cet événement
-     */
-    public boolean canBeModifiedBy(User user) {
-        return isOrganizer(user) || user.isSuperAdmin();
-    }
-
-    @Override
-    public String toString() {
-        return "Event{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", type=" + type +
-                ", registrationType=" + registrationType +
-                ", date=" + date +
-                ", status=" + status +
-                ", teamsFormed=" + teamsFormed +
-                '}';
+        if (startTime != null && endTime != null && !endTime.isAfter(startTime)) {
+            throw new IllegalStateException("endTime doit être après startTime");
+        }
     }
 }

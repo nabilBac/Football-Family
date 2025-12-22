@@ -5,144 +5,150 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
+
+import com.footballdemo.football_family.model.EventType;
+import com.footballdemo.football_family.model.RegistrationType;
+import com.footballdemo.football_family.model.EventVisibility;
+import com.footballdemo.football_family.validation.ValidEventDates;
+import com.footballdemo.football_family.validation.ValidEventQuotas;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * DTO pour la création d'un événement.
+ * ✅ VERSION SÉCURISÉE avec validations complètes
+ * 
  * Supporte les 2 modes :
  * - INDIVIDUAL (UTF) : Tournoi avec inscriptions individuelles
  * - TEAM_BASED (Spond) : Match entre équipes existantes
  */
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
+@ValidEventDates(message = "Les dates de l'événement sont invalides")
+@ValidEventQuotas(message = "Le quota par club ne peut pas dépasser le nombre total d'équipes")
 public class CreateEventDTO {
 
-    // ═══════════════════════════════════════════════════════════
-    // INFORMATIONS DE BASE (Obligatoires)
-    // ═══════════════════════════════════════════════════════════
+    // ============================================================
+    // 📝 INFORMATIONS GÉNÉRALES
+    // ============================================================
 
     @NotBlank(message = "Le nom de l'événement est obligatoire")
-    @Size(min = 3, max = 150, message = "Le nom doit contenir entre 3 et 150 caractères")
+    @Size(min = 3, max = 100, message = "Le nom doit contenir entre 3 et 100 caractères")
+    @Pattern(
+        regexp = "^[a-zA-Z0-9àâäéèêëïîôùûüç\\s\\-'\"()]+$",
+        message = "Le nom contient des caractères non autorisés"
+    )
     private String name;
 
-    @Size(max = 2000, message = "La description ne peut pas dépasser 2000 caractères")
+    // ✅ CATÉGORIE AJOUTÉE ICI
+    @NotBlank(message = "La catégorie est obligatoire")
+    @Pattern(
+        regexp = "^(U11|U13|U15|U17|U19|Seniors|Veterans)$",
+        message = "Catégorie invalide. Valeurs acceptées : U11, U13, U15, U17, U19, Seniors, Veterans"
+    )
+    private String category;
+
+    @Size(max = 500, message = "La description ne peut pas dépasser 500 caractères")
     private String description;
 
-    @NotBlank(message = "Le type d'événement est obligatoire")
-    private String type; // EventType en String (MATCH, TOURNOI, ENTRAINEMENT, etc.)
+    @NotNull(message = "Le type d'événement est obligatoire")
+    private EventType type;
 
-    @NotBlank(message = "Le type d'inscription est obligatoire")
-    private String registrationType; // RegistrationType (INDIVIDUAL ou TEAM_BASED)
+    @NotNull(message = "Le type d'inscription est obligatoire")
+    private RegistrationType registrationType;
+
+    // ============================================================
+    // 📅 DATES ET HORAIRES
+    // ============================================================
 
     @NotNull(message = "La date de l'événement est obligatoire")
-    @Future(message = "La date doit être dans le futur")
-    @DateTimeFormat(pattern = "yyyy-MM-dd")
+    @FutureOrPresent(message = "La date ne peut pas être dans le passé")
     private LocalDate date;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    // Validation custom via @ValidEventDates au niveau classe
     private LocalDateTime startTime;
-
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    
     private LocalDateTime endTime;
 
-    @NotBlank(message = "Le lieu est obligatoire")
-    @Size(max = 255, message = "Le lieu ne peut pas dépasser 255 caractères")
+    // ============================================================
+    // 📍 LOCALISATION
+    // ============================================================
+
+    @NotBlank(message = "Le lieu (location) est obligatoire")
+    @Size(min = 3, max = 200, message = "Le lieu doit contenir entre 3 et 200 caractères")
     private String location;
 
-    @Size(max = 255)
+    @Size(max = 200, message = "L'adresse ne peut pas dépasser 200 caractères")
     private String address;
 
-    @Size(max = 100)
+    @NotBlank(message = "La ville est obligatoire")
+    @Size(min = 2, max = 100, message = "La ville doit contenir entre 2 et 100 caractères")
+    @Pattern(
+        regexp = "^[a-zA-ZàâäéèêëïîôùûüçÀÂÄÉÈÊËÏÎÔÙÛÜÇ\\s\\-']+$",
+        message = "La ville contient des caractères non autorisés"
+    )
     private String city;
 
-    @Pattern(regexp = "\\d{5}", message = "Le code postal doit contenir 5 chiffres")
+    @Pattern(
+        regexp = "^[0-9]{5}$",
+        message = "Le code postal doit contenir exactement 5 chiffres"
+    )
     private String zipCode;
 
-    // ═══════════════════════════════════════════════════════════
-    // CONFIGURATION DE L'ÉVÉNEMENT
-    // ═══════════════════════════════════════════════════════════
+    // ============================================================
+    // 🔒 VISIBILITÉ ET ORGANISATION
+    // ============================================================
 
-    @NotBlank(message = "La visibilité est obligatoire")
-    private String visibility; // Visibility (PUBLIC, CLUB, PRIVATE)
+    @NotNull(message = "La visibilité de l'événement est obligatoire")
+    private EventVisibility visibility;
 
-    private Long clubId; // Optionnel (NULL pour événements publics)
+    // ClubId obligatoire pour CLUB_ONLY, validé dans le service
+    private Long clubId;
 
-    @Min(value = 2, message = "Il faut au moins 2 participants")
-    @Max(value = 500, message = "Maximum 500 participants")
+    // ============================================================
+    // 👥 CAPACITÉS ET QUOTAS
+    // ============================================================
+
+    @NotNull(message = "Le nombre maximum de participants est obligatoire")
+    @Min(value = 4, message = "Le nombre minimum de participants est de 4")
+    @Max(value = 64, message = "Le nombre maximum de participants est de 64")
     private Integer maxParticipants;
 
-    // ═══════════════════════════════════════════════════════════
-    // SPÉCIFIQUE AU MODE INDIVIDUAL (UTF)
-    // ═══════════════════════════════════════════════════════════
-
-    @Min(value = 2, message = "Il faut au moins 2 équipes")
-    @Max(value = 32, message = "Maximum 32 équipes")
-    private Integer numberOfTeams; // Nombre d'équipes à former
-
-    @Min(value = 5, message = "Minimum 5 joueurs par équipe")
-    @Max(value = 11, message = "Maximum 11 joueurs par équipe")
-    private Integer teamSize; // 5v5, 7v7, 11v11
-
-    // ═══════════════════════════════════════════════════════════
-    // SPÉCIFIQUE AU MODE TEAM_BASED (Spond)
-    // ═══════════════════════════════════════════════════════════
-
-    @Size(max = 10, message = "Maximum 10 équipes invitées")
-    private List<Long> invitedTeamIds; // IDs des équipes invitées
-
-    // ═══════════════════════════════════════════════════════════
-    // OPTIONS AVANCÉES
-    // ═══════════════════════════════════════════════════════════
-
-    private Boolean requiresPayment = false;
-
-    @DecimalMin(value = "0.0", message = "Le montant ne peut pas être négatif")
-    private Double registrationFee;
-
-    private Boolean autoConfirmRegistrations = false; // Valider automatiquement les inscriptions
-
-    // ═══════════════════════════════════════════════════════════
-    // VALIDATION PERSONNALISÉE
-    // ═══════════════════════════════════════════════════════════
-
     /**
-     * Vérifie que les champs spécifiques UTF sont présents en mode INDIVIDUAL
+     * 🔢 Quota max d'équipes par club (events fermés / tournois club)
+     * Validation : 1 ≤ maxTeamsPerClub ≤ min(32, maxParticipants)
      */
-    public boolean isValidForIndividualMode() {
-        if ("INDIVIDUAL".equals(registrationType)) {
-            return numberOfTeams != null &&
-                    teamSize != null &&
-                    numberOfTeams >= 2 &&
-                    teamSize >= 5;
-        }
-        return true;
-    }
+    @Min(value = 1, message = "Le nombre max d'équipes par club doit être au moins 1")
+    @Max(value = 32, message = "Le nombre max d'équipes par club ne peut pas dépasser 32")
+    private Integer maxTeamsPerClub;
 
-    /**
-     * Vérifie que les équipes invitées sont présentes en mode TEAM_BASED
-     */
-    public boolean isValidForTeamBasedMode() {
-        if ("TEAM_BASED".equals(registrationType)) {
-            return invitedTeamIds != null &&
-                    !invitedTeamIds.isEmpty() &&
-                    invitedTeamIds.size() >= 2;
-        }
-        return true;
-    }
+    // ============================================================
+    // ⚙️ CONFIGURATION ÉQUIPES (pour mode INDIVIDUAL)
+    // ============================================================
 
-    /**
-     * Calcule la capacité totale en fonction du mode
-     */
-    public Integer calculateMaxParticipants() {
-        if ("INDIVIDUAL".equals(registrationType) && numberOfTeams != null && teamSize != null) {
-            return numberOfTeams * teamSize;
-        }
-        return maxParticipants;
-    }
+    @Min(value = 2, message = "Le nombre d'équipes doit être au moins 2")
+    @Max(value = 64, message = "Le nombre d'équipes ne peut pas dépasser 64")
+    private Integer numberOfTeams;
+
+    @Min(value = 5, message = "La taille d'équipe doit être au moins 5")
+    @Max(value = 11, message = "La taille d'équipe ne peut pas dépasser 11")
+    private Integer teamSize;
+
+    // ============================================================
+    // 🖼️ MÉDIA
+    // ============================================================
+
+    @Size(max = 500, message = "L'URL de l'image ne peut pas dépasser 500 caractères")
+    @Pattern(
+        regexp = "^(https?://.*\\.(jpg|jpeg|png|gif|webp))?$",
+        message = "L'URL de l'image doit être valide (jpg, jpeg, png, gif, webp)"
+    )
+    private String imageUrl;
 }
+
+
+
+

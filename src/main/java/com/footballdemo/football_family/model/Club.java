@@ -7,10 +7,13 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+// ... (imports, annotations, etc.)
+
 @Entity
 @Table(name = "club", indexes = {
-        @Index(name = "idx_club_siret", columnList = "siret"),
-        @Index(name = "idx_club_verified", columnList = "verified")
+        @Index(name = "idx_club_siret", columnList = "siret")
 })
 @Getter
 @Setter
@@ -27,7 +30,7 @@ public class Club {
     private String name;
 
     @Column(unique = true, length = 14)
-    private String siret; // Numéro SIRET (14 chiffres)
+    private String siret;
 
     @Column(length = 200)
     private String address;
@@ -44,91 +47,62 @@ public class Club {
     @Column(length = 100)
     private String email;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    private String logo;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ClubType type;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
-    private String logo; // URL ou chemin du logo
-
-    @OneToMany(mappedBy = "club", cascade = CascadeType.ALL)
-    private List<User> members = new ArrayList<>();
-
-    @OneToMany(mappedBy = "club", cascade = CascadeType.ALL)
-    private List<Team> teams = new ArrayList<>();
+    @ManyToOne
+    @JoinColumn(name = "admin_id", nullable = false)
+    private User admin;
 
     @OneToMany(mappedBy = "club")
+    @JsonIgnore
     private List<Event> events = new ArrayList<>();
 
-    @Enumerated(EnumType.STRING)
+  
+@Enumerated(EnumType.STRING)
+private ClubVerificationStatus verificationStatus = ClubVerificationStatus.APPROVED; // auto-approved pour MVP
 
-    @Column(nullable = false)
 
-    private ClubStatus status = ClubStatus.PENDING;
-
-    @Column(nullable = false)
     private LocalDate createdAt;
-
-    private LocalDate verifiedAt; // Date de vérification
+    private LocalDate verifiedAt;
 
     @ManyToOne
     @JoinColumn(name = "verified_by")
-    private User verifiedBy; // Admin qui a vérifié
+    private User verifiedBy;
 
-    // Documents de vérification
-    private String kbisDocument; // Chemin vers le document Kbis
-    private String insuranceDocument; // Chemin vers l'assurance
+    private String kbisDocument;
+    private String insuranceDocument;
+
+    // =======================================
+    // 👥 CLUB USERS AVEC ROLES
+    // =======================================
+    @OneToMany(mappedBy = "club", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<ClubUser> clubUsers = new ArrayList<>();
+
+    public void addClubUser(ClubUser clubUser) {
+        clubUsers.add(clubUser);
+        clubUser.setClub(this);
+    }
+
+    public void removeClubUser(ClubUser clubUser) {
+        clubUsers.remove(clubUser);
+        clubUser.setClub(null);
+    }
+
+    public boolean isClubAdmin(User user) {
+        if (user == null || this.admin == null) return false;
+        return this.admin.getId().equals(user.getId());
+    }
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDate.now();
     }
-
-    // Méthodes helper
-    public void addMember(User user) {
-        if (!members.contains(user)) {
-            members.add(user);
-            user.setClub(this);
-        }
-    }
-
-    public void removeMember(User user) {
-        if (members.contains(user)) {
-            members.remove(user);
-            user.setClub(null);
-        }
-    }
-
-    public void addTeam(Team team) {
-        if (!teams.contains(team)) {
-            teams.add(team);
-            team.setClub(this);
-        }
-    }
-
-    public boolean isClubAdmin(User user) {
-        if (user == null)
-            return false;
-
-        // Si c’est un super admin global → accès complet
-        if (user.isSuperAdmin()) {
-            return true;
-        }
-
-        // Si l'utilisateur est le validateur officiel du club
-        if (verifiedBy != null && verifiedBy.getId().equals(user.getId())) {
-            return true;
-        }
-
-        // Si c’est un membre du club avec le rôle CLUB_ADMIN
-        if (members != null && members.stream()
-                .anyMatch(m -> m.getId().equals(user.getId()) && m.isClubAdmin())) {
-            return true;
-        }
-
-        return false;
-    }
-
 }

@@ -1,0 +1,129 @@
+/* ===========================
+   LAYOUT GLOBAL DES MATCHS
+   =========================== */
+
+.match-groups-wrapper {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-top: 10px;
+}
+
+/* Un bloc par groupe (A, B, C, ...) */
+.match-container {
+    margin-bottom: 10px;
+}
+
+/* ===========================
+   TITRE DU GROUPE
+   =========================== */
+
+.match-group-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a73e8;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #1a73e8;
+}
+
+/* Icône avant le titre */
+.match-group-title::before {
+    content: "⚽";
+    font-size: 20px;
+}
+
+/* ===========================
+   CARTE MATCH
+   =========================== */
+
+.match-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 16px 16px 14px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+    margin-bottom: 14px;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.match-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Match terminé → légèrement vert */
+.match-card.finished {
+    background: #e8f7ec;
+}
+
+/* ===========================
+   LIGNES DES ÉQUIPES
+   =========================== */
+
+.match-teams {
+    margin-bottom: 10px;
+}
+
+.match-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eef1f4;
+}
+
+.match-row:last-child {
+    border-bottom: none;
+}
+
+.match-team-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+    flex: 1;
+}
+
+/* Score à droite */
+.match-score {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2c3e50;
+    min-width: 36px;
+    text-align: right;
+}
+
+/* ===========================
+   BOUTON
+   =========================== */
+
+.match-button {
+    width: 100%;
+    padding: 11px 10px;
+    background: #1a73e8;
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background 0.18s ease, transform 0.1s ease;
+}
+
+.match-button:hover {
+    background: #0c57c9;
+    transform: translateY(-1px);
+}
+
+/* ===========================
+   RESPONSIVE
+   =========================== */
+
+@media (max-width: 768px) {
+    .match-groups-wrapper {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,6 +1,6 @@
 package com.footballdemo.football_family.controller;
 
-
+import com.footballdemo.football_family.controller.api.social.FollowController;
 import com.footballdemo.football_family.model.User;
 import com.footballdemo.football_family.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,18 +27,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-
-
 @WebMvcTest(FollowController.class)
 @Import(RestExceptionHandler.class)
-@AutoConfigureMockMvc(addFilters = false) 
+@AutoConfigureMockMvc(addFilters = false)
 public class FollowControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired // <-- Injecter le contexte web pour la configuration de sécurité
-    private WebApplicationContext context; 
+    private WebApplicationContext context;
 
     @MockBean
     private UserDetailsService userDetailsService;
@@ -59,7 +57,7 @@ public class FollowControllerTest {
                 .webAppContextSetup(context)
                 .apply(springSecurity()) // <-- APPLIQUE LA CONFIGURATION DE SÉCURITÉ
                 .build();
-        
+
         followerUser = new User();
         followerUser.setId(FOLLOWER_ID);
         followerUser.setUsername(FOLLOWER_USERNAME);
@@ -68,9 +66,10 @@ public class FollowControllerTest {
         targetUser.setId(TARGET_ID);
         targetUser.setUsername("targetUser");
 
-        // 1. Mocker l'utilisateur connecté (getCurrentUser() est appelé dans le contrôleur)
+        // 1. Mocker l'utilisateur connecté (getCurrentUser() est appelé dans le
+        // contrôleur)
         when(userService.getCurrentUser()).thenReturn(followerUser);
-        
+
         // 2. Mocker la récupération de l'utilisateur cible par ID
         when(userService.getUserById(eq(TARGET_ID))).thenReturn(Optional.of(targetUser));
     }
@@ -82,12 +81,14 @@ public class FollowControllerTest {
     @Test
     void testToggleFollow_shouldReturn401_WhenUnauthenticated() throws Exception {
         // ARRANGE: Simuler que l'utilisateur n'est pas authentifié
-        // ATTENTION : Le mock getCurrentUser() est écrasé ici pour simuler un non-authentifié
+        // ATTENTION : Le mock getCurrentUser() est écrasé ici pour simuler un
+        // non-authentifié
         when(userService.getCurrentUser()).thenReturn(null);
-        
-        // ACT & ASSERT: On s'attend maintenant à 401 grâce à la configuration springSecurity()
+
+        // ACT & ASSERT: On s'attend maintenant à 401 grâce à la configuration
+        // springSecurity()
         mockMvc.perform(post("/api/follow/{targetId}", TARGET_ID).with(csrf()))
-                .andExpect(status().isFound());  // Doit retourner 401
+                .andExpect(status().isFound()); // Doit retourner 401
     }
 
     @Test
@@ -106,7 +107,7 @@ public class FollowControllerTest {
 
         verify(userService, times(1)).toggleFollow(eq(followerUser), eq(targetUser));
     }
-    
+
     @Test
     @WithMockUser(username = FOLLOWER_USERNAME)
     void testToggleFollow_shouldReturn200AndUnfollow_WhenTogglingOff() throws Exception {
@@ -130,29 +131,31 @@ public class FollowControllerTest {
         // ARRANGE: Utiliser un ID inconnu
         final Long UNKNOWN_ID = 99L;
         when(userService.getUserById(eq(UNKNOWN_ID))).thenReturn(Optional.empty());
-        
-        // ACT & ASSERT: orElseThrow lève RuntimeException, qui, par défaut ou par ControllerAdvice, 
+
+        // ACT & ASSERT: orElseThrow lève RuntimeException, qui, par défaut ou par
+        // ControllerAdvice,
         // devrait résulter en 404 Not Found si l'erreur est gérée comme telle, ou 500.
-        // Puisque ce n'est pas géré explicitement comme 404 dans votre contrôleur, nous attendons 500 par défaut:
+        // Puisque ce n'est pas géré explicitement comme 404 dans votre contrôleur, nous
+        // attendons 500 par défaut:
         // (Si vous utilisez un RestExceptionHandler, cela peut être 404)
         mockMvc.perform(post("/api/follow/{targetId}", UNKNOWN_ID).with(csrf()))
                 .andExpect(status().isNotFound()); // 500 (RuntimeException non gérée spécifiquement)
-        
+
         verify(userService, never()).toggleFollow(any(), any());
     }
-    
- @Test
-@WithMockUser(username = FOLLOWER_USERNAME)
-void testToggleFollow_shouldReturn400_WhenFollowingSelf() throws Exception {
-    // L'utilisateur essaie de suivre son propre ID
-    final Long SELF_ID = FOLLOWER_ID;
-    when(userService.getUserById(eq(SELF_ID))).thenReturn(Optional.of(followerUser)); // le follower est la cible
 
-    mockMvc.perform(post("/api/follow/{targetId}", SELF_ID).with(csrf()))
-            .andExpect(status().isBadRequest()) // 400
-            .andExpect(jsonPath("$.error").value("Vous ne pouvez pas vous suivre vous-même."));
+    @Test
+    @WithMockUser(username = FOLLOWER_USERNAME)
+    void testToggleFollow_shouldReturn400_WhenFollowingSelf() throws Exception {
+        // L'utilisateur essaie de suivre son propre ID
+        final Long SELF_ID = FOLLOWER_ID;
+        when(userService.getUserById(eq(SELF_ID))).thenReturn(Optional.of(followerUser)); // le follower est la cible
 
-    // toggleFollow ne doit jamais être appelé
-    verify(userService, never()).toggleFollow(any(), any());
-}
+        mockMvc.perform(post("/api/follow/{targetId}", SELF_ID).with(csrf()))
+                .andExpect(status().isBadRequest()) // 400
+                .andExpect(jsonPath("$.error").value("Vous ne pouvez pas vous suivre vous-même."));
+
+        // toggleFollow ne doit jamais être appelé
+        verify(userService, never()).toggleFollow(any(), any());
+    }
 }

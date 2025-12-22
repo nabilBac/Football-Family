@@ -1,6 +1,7 @@
 package com.footballdemo.football_family.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -16,10 +17,10 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+
 
 import com.footballdemo.football_family.security.JwtAuthenticationFilter;
 import com.footballdemo.football_family.service.CustomUserDetailsService;
@@ -28,142 +29,142 @@ import com.footballdemo.football_family.service.CustomUserDetailsService;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-        @Autowired
-        private AuthenticationSuccessHandler loginSuccessHandler;
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthFilter;
 
-        @Autowired
-        private JwtAuthenticationFilter jwtAuthFilter;
+    @Autowired
+    private CustomUserDetailsService userDetailsService;
 
-        @Autowired
-        private CustomUserDetailsService userDetailsService;
+    @Value("${app.mode-dev:true}")
+    private boolean modeDev;
 
-        /**
-         * 🔐 Bean PasswordEncoder pour l'encodage des mots de passe
-         */
-        @Bean
-        public PasswordEncoder passwordEncoder() {
-                return new BCryptPasswordEncoder();
-        }
+    // Password encoder
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-        /**
-         * 🔑 AuthenticationManager
-         */
-        @Bean
-        public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-                return config.getAuthenticationManager();
-        }
+    // Authentication Manager
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
 
-        /**
-         * 🛡️ AuthenticationProvider avec UserDetailsService
-         */
-        @Bean
-        public AuthenticationProvider authenticationProvider() {
-                DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-                provider.setUserDetailsService(userDetailsService);
-                provider.setPasswordEncoder(passwordEncoder());
-                return provider;
-        }
+    // Authentication Provider
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
+    }
 
-        /**
-         * 🔒 Configuration REST API — pour les routes /api/**
-         * Renvoie 401 Unauthorized si non authentifié, sans redirection.
-         */
-        @Bean
-        @Order(1)
-        public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
-                http
-                                .securityMatcher("/api/**", "/ws/**")
-                                .authorizeHttpRequests(auth -> auth
-                                                // 🔓 Endpoints publics
-                                                .requestMatchers("/api/auth/**").permitAll()
-                                                .requestMatchers("/ws/**").permitAll()
-                                                .requestMatchers("/api/events/all").permitAll()
-                                                .requestMatchers("/api/events/filter").permitAll()
-                                                .requestMatchers("/api/events/{id}").permitAll()
-                                                .requestMatchers("/api/clubs/all").permitAll()
-                                                .requestMatchers("/api/clubs/verified").permitAll()
-                                                .requestMatchers("/api/clubs/search").permitAll()
-                                                .requestMatchers("/api/clubs/{id}").permitAll()
-                                                .requestMatchers("/api/events/*/register").permitAll()
+    // =====================================================================
+    // 🔥 1. API JWT Security (stateless)
+    // =====================================================================
+    @Bean
+    @Order(1)
+    public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
 
-                                                // 🔒 Endpoints protégés par rôle
-                                                .requestMatchers(HttpMethod.POST, "/api/events")
-                                                .hasAnyRole("COACH", "CLUB_ADMIN", "ORGANIZER", "SUPER_ADMIN")
+        http
+                .securityMatcher("/api/**")
+                .authenticationProvider(authenticationProvider())
+                .authorizeHttpRequests(auth -> {
 
-                                                .requestMatchers("/api/events/update/**")
-                                                .hasAnyRole("COACH", "CLUB_ADMIN", "ORGANIZER", "SUPER_ADMIN")
-                                                .requestMatchers("/api/events/delete/**")
-                                                .hasAnyRole("COACH", "CLUB_ADMIN", "ORGANIZER", "SUPER_ADMIN")
-                                                .requestMatchers("/api/events/*/register").authenticated()
+                    // -------------------------------------------
+                    // 🔓 MODE DEV — tout est ouvert pour travailler
+                    // -------------------------------------------
+                    if (modeDev) {
+                        auth.requestMatchers("/api/**").permitAll();
+                        return;
+                    }
 
-                                                // 🏢 Endpoints clubs
-                                                .requestMatchers("/api/clubs/register").authenticated()
-                                                .requestMatchers("/api/clubs/verify/**").hasRole("SUPER_ADMIN")
-                                                .requestMatchers("/api/clubs/reject/**").hasRole("SUPER_ADMIN")
-                                                .requestMatchers("/api/clubs/my-club").authenticated()
-                                                .requestMatchers("/api/clubs/update/**")
-                                                .hasAnyRole("CLUB_ADMIN", "SUPER_ADMIN")
+                    // -------------------------------------------
+                    // 🔒 MODE PROD — RÈGLES STRICTES
+                    // -------------------------------------------
+                    auth
+                            // AUTH
+                            .requestMatchers("/api/auth/**").permitAll()
 
-                                                // 🔐 Tous les autres endpoints nécessitent authentification
-                                                .anyRequest().authenticated())
-                                .exceptionHandling(ex -> ex
-                                                .authenticationEntryPoint(
-                                                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                                .sessionManagement(session -> session
-                                                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)) // ⬅️
-                                                                                                           // CHANGEMENT
-                                                                                                           // CLÉ
-                                .authenticationProvider(authenticationProvider())
-                                // Le filtre JWT reste, mais la session est lue en priorité par les filtres de
-                                // base de Spring Security.
-                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                                .csrf(csrf -> csrf.disable());
+                            // PUBLIC
+                            .requestMatchers("/api/events/public/**").permitAll()
+                            .requestMatchers("/api/events/tournament/**").permitAll()
+                            .requestMatchers("/api/events/*/matches").permitAll()
 
-                return http.build();
-        }
+                            // ADMIN UTF
+                            .requestMatchers("/api/events/admin/**")
+                            .hasRole("SUPER_ADMIN")
 
-        /**
-         * 🌐 Configuration Web classique — pour le site (formulaires, pages HTML)
-         * Conserve le comportement normal avec login/logout.
-         */
-        @Bean
-        @Order(2)
-        public SecurityFilterChain webSecurityFilterChain(HttpSecurity http) throws Exception {
-                http
-                                .securityMatcher("/**")
-                                .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers(
-                                                                "/",
-                                                                "/login",
-                                                                "/register",
-                                                                "/home",
-                                                                "/events",
-                                                                "/clubs",
-                                                                "/css/**",
-                                                                "/js/**",
-                                                                "/images/**",
-                                                                "/webjars/**",
-                                                                "/h2-console/**",
-                                                                "/favicon.ico")
-                                                .permitAll()
-                                                .anyRequest().authenticated())
-                                .formLogin(form -> form
-                                                .loginPage("/login")
-                                                .loginProcessingUrl("/login")
-                                                .successHandler(loginSuccessHandler)
-                                                .failureUrl("/login?error=true")
-                                                .permitAll())
-                                .logout(logout -> logout
-                                                .logoutUrl("/logout")
-                                                .logoutSuccessUrl("/login?logout=true")
-                                                .permitAll())
-                                .csrf(csrf -> csrf
-                                                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                                                .ignoringRequestMatchers("/h2-console/**", "/ws/**", "/api/**"))
-                                .headers(headers -> headers
-                                                .frameOptions(frame -> frame.disable())
-                                                .cacheControl(cache -> cache.disable()));
+                            // ORGANIZER & CLUB
+                            .requestMatchers("/api/events/manage/**")
+                            .hasAnyRole("SUPER_ADMIN", "CLUB_ADMIN", "COACH")
 
-                return http.build();
-        }
+                            // CLUB ONLY (register-team)
+                            .requestMatchers(HttpMethod.POST,
+                                    "/api/events/registration/*/register-team")
+                            .hasAnyRole("SUPER_ADMIN", "CLUB_ADMIN", "COACH", "MANAGER")
+
+                            // INSCRIPTION INDIVIDUELLE
+                            .requestMatchers(HttpMethod.POST, "/api/events/registration")
+                            .hasAnyRole("PLAYER", "USER")
+
+                            // MES INSCRIPTIONS
+                            .requestMatchers("/api/events/registration/me").authenticated()
+
+                            // VIDEOS
+                            .requestMatchers("/api/videos/feed", "/api/videos/public/**").permitAll()
+
+                            // LIVE
+                            .requestMatchers(HttpMethod.GET, "/api/live/all").authenticated()
+
+                            // Default
+                            .anyRequest().authenticated();
+                })
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .csrf(csrf -> csrf.disable());
+
+        return http.build();
+    }
+
+    // =====================================================================
+    // 🌍 2. MVC Security (SPA + static + WebSocket)
+    // =====================================================================
+    @Bean
+    @Order(2)
+    public SecurityFilterChain webSecurity(HttpSecurity http) throws Exception {
+
+        http
+                .securityMatcher("/**")
+                .authenticationProvider(authenticationProvider())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/topic/**").permitAll()
+                        .requestMatchers("/app/**").permitAll()
+                        .requestMatchers("/api/**").permitAll()
+                        .requestMatchers("/", "/home", "/login", "/register",
+                                "/app/**", "/assets/**", "/css/**", "/js/**", "/images/**",
+                                "/favicon.ico", "/manifest.json",
+                                "/service-worker.js", "/service-worker-register.js",
+                                "/webjars/**", "/h2-console/**", "/.well-known/**"
+                        ).permitAll()
+                        .anyRequest().permitAll()
+                )
+                .formLogin(form -> form.disable())
+                .logout(logout -> logout.disable())
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers(
+                                "/api/**", "/ws/**", "/topic/**",
+                                "/assets/**", "/app/**", "/h2-console/**"
+                        )
+                )
+                .headers(headers -> headers.frameOptions(frame -> frame.disable()));
+
+        return http.build();
+    }
+
+
+
 }

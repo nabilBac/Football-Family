@@ -1,0 +1,603 @@
+/* ============================================================================
+   🎨 EVENT LIVE - STYLE POUR SPECTATEURS
+   Style inspiré des applications de paris sportifs
+   ============================================================================ */
+
+:root {
+    --live-red: #ef4444;
+    --live-green: #10b981;
+    --live-blue: #3b82f6;
+    --live-orange: #f59e0b;
+    --live-gray: #6b7280;
+    --live-dark: #1f2937;
+    --live-light: #f9fafb;
+}
+
+/* ============================================================================
+   🔴 INDICATEUR LIVE
+   ============================================================================ */
+
+.live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--live-red);
+    animation: pulse-live 2s ease-in-out infinite;
+}
+
+@keyframes pulse-live {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* ============================================================================
+   🔴 MATCHS EN DIRECT
+   ============================================================================ */
+
+.live-matches-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, #fef2f2 0%, #fff 100%);
+    border-radius: 12px;
+    border-left: 4px solid var(--live-red);
+}
+
+.live-matches-section h4 {
+    margin: 0 0 15px 0;
+    font-size: 1.1em;
+    color: var(--live-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#liveMatchesContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.live-match-card {
+    background: white;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-left: 3px solid var(--live-red);
+}
+
+.live-match-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.live-match-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.live-match-round {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--live-gray);
+    text-transform: uppercase;
+}
+
+.live-match-time {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9em;
+    font-weight: 700;
+    color: var(--live-red);
+}
+
+.live-match-teams {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.live-match-team {
+    flex: 1;
+    font-weight: 600;
+    color: var(--live-dark);
+    font-size: 0.95em;
+}
+
+.live-match-team.winner {
+    color: var(--live-green);
+    font-weight: 700;
+}
+
+.live-match-score {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.3em;
+    font-weight: 700;
+    color: var(--live-dark);
+    padding: 8px 16px;
+    background: #f3f4f6;
+    border-radius: 8px;
+}
+
+.live-match-score span {
+    min-width: 20px;
+    text-align: center;
+}
+
+.live-match-vs {
+    font-size: 0.7em;
+    color: var(--live-gray);
+    font-weight: 400;
+}
+
+/* ============================================================================
+   📊 CLASSEMENTS
+   ============================================================================ */
+
+.rankings-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.rankings-section h4 {
+    margin: 0 0 15px 0;
+    font-size: 1.1em;
+    color: var(--live-dark);
+}
+
+#rankingsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.ranking-group {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.ranking-group-header {
+    background: linear-gradient(135deg, var(--live-blue), #2563eb);
+    color: white;
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ranking-table thead {
+    background: #f9fafb;
+}
+
+.ranking-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: var(--live-gray);
+    text-transform: uppercase;
+}
+
+.ranking-table td {
+    padding: 12px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.9em;
+}
+
+.ranking-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.ranking-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.ranking-position {
+    font-weight: 700;
+    color: var(--live-dark);
+    min-width: 30px;
+    text-align: center;
+}
+
+.ranking-position.qualified {
+    color: var(--live-green);
+}
+
+.ranking-team-name {
+    font-weight: 600;
+    color: var(--live-dark);
+}
+
+.ranking-points {
+    font-weight: 700;
+    color: var(--live-blue);
+}
+
+/* ============================================================================
+   🏆 BRACKET / PHASE FINALE
+   ============================================================================ */
+
+.bracket-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.bracket-section h4 {
+    margin: 0 0 15px 0;
+    font-size: 1.1em;
+    color: var(--live-dark);
+}
+
+#bracketContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.bracket-round {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f9fafb;
+}
+
+.bracket-round-header {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 0.95em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bracket-match {
+    background: #111827;
+    border-radius: 10px;
+    padding: 16px;
+    margin: 12px;
+    border: 1px solid #374151;
+    transition: all 0.3s;
+    min-height: 120px;
+}
+
+.bracket-match:hover {
+    border-color: var(--primary, #3b82f6);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.bracket-match-teams {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bracket-team {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: #1f2937;
+    border-radius: 6px;
+    transition: all 0.2s;
+    min-height: 50px;
+}
+
+.bracket-team.winner {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.bracket-team-name {
+    flex: 1;
+    font-size: 0.95rem;
+    color: #f9fafb;
+    font-weight: 500;
+}
+
+.bracket-team.winner .bracket-team-name {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.bracket-team-score {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #9ca3af;
+    min-width: 40px;
+    text-align: center;
+}
+
+.bracket-team.winner .bracket-team-score {
+    color: #ffffff;
+}
+
+/* ============================================================================
+   📰 FIL D'ACTUALITÉ
+   ============================================================================ */
+
+.live-feed-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.live-feed-section h4 {
+    margin: 0 0 15px 0;
+    font-size: 1.1em;
+    color: var(--live-dark);
+}
+
+#liveFeedContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.feed-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border-left: 3px solid var(--live-blue);
+    transition: background 0.2s;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.feed-item:hover {
+    background: #f3f4f6;
+}
+
+.feed-item.goal {
+    border-left-color: var(--live-green);
+}
+
+.feed-item.card {
+    border-left-color: var(--live-orange);
+}
+
+.feed-item.match-start {
+    border-left-color: var(--live-blue);
+}
+
+.feed-item.match-end {
+    border-left-color: var(--live-gray);
+}
+
+.feed-icon {
+    font-size: 1.5em;
+    min-width: 30px;
+    text-align: center;
+}
+
+.feed-content {
+    flex: 1;
+}
+
+.feed-message {
+    font-weight: 500;
+    color: var(--live-dark);
+    margin-bottom: 4px;
+}
+
+.feed-meta {
+    font-size: 0.8em;
+    color: var(--live-gray);
+}
+
+/* ============================================================================
+   ⏳ LOADER
+   ============================================================================ */
+
+.loader-small {
+    text-align: center;
+    padding: 20px;
+    color: var(--live-gray);
+}
+
+.loader-small i {
+    font-size: 1.5em;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   🎨 EMPTY STATES
+   ============================================================================ */
+
+.empty-state-live {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--live-gray);
+}
+
+.empty-state-live i {
+    font-size: 3em;
+    margin-bottom: 10px;
+    opacity: 0.3;
+}
+
+.empty-state-live p {
+    margin: 0;
+    font-size: 0.95em;
+}
+
+/* ============================================================================
+   📱 RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 768px) {
+    .live-match-teams {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .live-match-team {
+        text-align: center;
+    }
+
+    .live-match-score {
+        font-size: 1.1em;
+        padding: 6px 12px;
+    }
+
+    .ranking-table th,
+    .ranking-table td {
+        padding: 8px 6px;
+        font-size: 0.8em;
+    }
+
+    .bracket-team {
+        font-size: 0.85em;
+    }
+
+    #liveFeedContainer {
+        max-height: 300px;
+    }
+}
+
+/* ============================================================================
+   ✨ ANIMATIONS SUPPLÉMENTAIRES
+   ============================================================================ */
+
+.refresh-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8em;
+    color: var(--live-gray);
+    margin-left: 10px;
+}
+
+.refresh-indicator i {
+    animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ========================================
+   📰 FIL D'ACTUALITÉ
+   ======================================== */
+
+.live-feed-section {
+    margin-top: 30px;
+}
+
+.feed-item {
+    display: flex;
+    gap: 12px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid #4ade80;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+}
+
+.feed-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateX(5px);
+}
+
+.feed-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.feed-content {
+    flex: 1;
+}
+
+.feed-text {
+    color: #fff;
+    font-size: 14px;
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
+.feed-text strong {
+    color: #4ade80;
+    font-weight: 600;
+}
+
+.feed-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.feed-time {
+    font-weight: 500;
+}
+
+.feed-match {
+    opacity: 0.7;
+}
+
+/* Types d'événements */
+.feed-goal {
+    border-left-color: #4ade80;
+}
+
+.feed-yellow_card {
+    border-left-color: #fbbf24;
+}
+
+.feed-red_card {
+    border-left-color: #ef4444;
+}
+
+.feed-full_time {
+    border-left-color: #3b82f6;
+}
+
+.feed-match_started {
+    border-left-color: #8b5cf6;
+}

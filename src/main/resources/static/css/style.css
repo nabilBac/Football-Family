@@ -1,852 +1,456 @@
+
+
+/* UTF Modal : caché */
+.utf-modal.hidden {
+    display: none !important;
+}
+
+/* UTF Modal : visible */
+.utf-modal:not(.hidden) {
+    display: flex !important;
+}
+
+
 /* ==================== VARIABLES ==================== */
 :root {
-    /* Le header Desktop sera masqué en mobile, donc sa hauteur est fixée à 0 pour les calculs mobiles */
-    --header-height: 0px;
-    /* NOUVEAU: Hauteur fixe de la navbar inférieure (CRUCIAL) */
-    --navbar-height: 50px;
-    /* Hauteur du panneau de commentaires (ajustez ce pourcentage si nécessaire) */
-  --comments-panel-height: 50vh;  /* augmente un peu */
-    --comments-input-height: 60px;  
-     /* NOUVELLES COULEURS D'ACCENTUATION */
-    --accent-blue: #00BFFF; /* Bleu Ciel Profond (électrique) */
-    --accent-green: #39FF14; /* Vert Fluo/Pomme (dynamique) */
-    --like-color: #FF3366; /* Conserve le rose pour le "J'aime" */
+    --navbar-height: 70px;
+    --comments-visible-height: 50vh;
+    --accent-blue: #00BFFF;
+    --accent-green: #39FF14;
+    --like-color: #FF3366;
 }
 
-/* ==================== RESET & BASE PWA IMMERSIF ==================== */
-*{box-sizing:border-box;margin:0;padding:0}
+/* ==================== RESET ==================== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
 html, body {
-    /* 100vh : Prend la hauteur complète (car le PWA est 'standalone') */
-    height: 100vh;
-    width: 100%;
-    overflow: hidden; /* Empêche le scroll du body (le conteneur de vidéos scrolle) */
+    background: #000;
+    color: #fff;
+    font-family: Poppins, Roboto, sans-serif;
+    height: auto;
+    overflow: auto;
 }
 
-body {
-    background:#000;
-    color:#fff;
-    font-family: 'Poppins','Roboto',sans-serif;
-}
 
-/* 🚨 MASQUAGE DU HEADER : Crucial pour le look natif sur mobile */
-header {
-    display: none;
-}
+/* ==================== APP ==================== */
 
-/* ==================== CONTENEUR VIDEO (commun) ==================== */
-#video-container {
-    width: 100%;
-    /* HAUTEUR CRITIQUE : Plein écran moins la hauteur de la barre inférieure */
+/* 🔥 FEED IMMERSIF : le scroll doit être ici */
+.main-content-scrollable {
+    position: relative;
     height: calc(100vh - var(--navbar-height));
-    /* On retire le flex-direction:column globalement pour le PWA scroll-snap */
-    display: block;
     overflow-y: scroll;
     scroll-snap-type: y mandatory;
     -webkit-overflow-scrolling: touch;
-     /* 1. Masque la barre de défilement elle-même (Webkit) */
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
 }
 
-.video-card {
-    position: relative;
-    overflow: hidden;
-    width: 100%;
-    max-width: none;
-    /* HAUTEUR CRITIQUE : Chaque carte prend l'espace du conteneur de vidéos */
-    height: calc(100vh - var(--navbar-height));
-    aspect-ratio: auto;
-    margin: 0;
-    scroll-snap-align: start;
-    border-radius: 0;
-    background:#111;
-}
-
-.video-card video {
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    display:block;
-    transition: height 0.3s ease-out;
-}
-
-#video-container::-webkit-scrollbar {
+.main-content-scrollable::-webkit-scrollbar {
     display: none;
 }
 
-/* Overlay / actions */
+/* ==================== VIDEO LIST ==================== */
+
+#video-container {
+    width: 100%;
+    height: auto;  
+    display: block;
+}
+
+/* Chaque carte = 1 écran */
+.video-card {
+    width: 100%;
+    height: calc(100vh - var(--navbar-height));
+    position: relative;
+    scroll-snap-align: start;
+    overflow: hidden;
+    background: #111;
+}
+
+.video-card video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ==================== OVERLAY ==================== */
+
+.video-title {
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+
+
+#loader {
+    color: #aaa;
+    padding: 12px;
+    text-align: center;
+}
+
+
+
+/* ==================== HIDE OVERLAY WHEN COMMENTS OPEN ==================== */
+
+.video-card.comments-open .overlay {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.video-card.comments-open video {
+    height: calc(100vh - var(--comments-visible-height));
+}
+
+/* ==================== DESKTOP ==================== */
+
+@media (min-width: 1024px) {
+    html, body {
+        overflow-y: auto;
+        height: auto;
+    }
+
+    .mobile-navbar {
+        display: none !important;
+    }
+
+    .main-content-scrollable {
+        height: auto;
+        overflow: visible;
+        scroll-snap-type: none;
+    }
+
+    #video-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 20px;
+        padding: 80px 20px;
+    }
+
+    .video-card {
+        height: auto;
+        aspect-ratio: 16/9;
+        border-radius: 10px;
+    }
+
+    .overlay { display: none; }
+}
+/* ==================== OVERLAY & ACTIONS (STYLE TIKTOK) ==================== */
+
+/* Empêche le voile d'envahir la navbar */
+/* Overlay propre qui ne dépasse pas et sans ombre */
 .overlay {
     position: absolute;
     inset: 0;
     display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    /* AJUSTEMENT PADDING : Espace pour la navbar inférieure (50px) + un peu de marge (10px) = 60px */
-    padding: 12px 12px 60px 12px;
+    justify-content: space-between;
+    align-items: flex-end;
+
+    padding: 12px 12px 20px 12px !important;
+    background: none !important;
+
     z-index: 50;
-    pointer-events: none;
-    /* Dégradé pour améliorer la lisibilité du texte */
-    background: linear-gradient(to top, rgba(0,0,0,0.5), transparent 25%);
+    pointer-events: none; /* ← ENLEVEZ le !important */
 }
-.overlay > * { pointer-events: auto; }
 
-/* cacher la zone desktop d'infos */
-.video-info-desktop{display:none !important;}
+/* AJOUTEZ CES 2 RÈGLES JUSTE APRÈS */
+.video-info,
+.video-info * {
+    pointer-events: auto !important;
+}
 
-/* loader centré en bas */
-#loader{display:block;text-align:center;padding:14px;color:#aaa;}
-
-/* ==================== MODE MOBILE (TikTok) ==================== */
-@media (max-width:1023px){
-    /* 🚨 RÉDUCTION DE LA VIDÉO : Lorsque les commentaires sont ouverts */
-    .video-card.comments-open video {
-        /* Calcule la hauteur restante : Hauteur totale - Hauteur du panneau */
-        height: calc(100% - var(--comments-panel-height));
-    }
-
-    /* Masquer l'overlay lorsque les commentaires sont ouverts */
-    .video-card.comments-open .overlay {
-        display: none !important;
-    }
-    
- .video-card .overlay .video-title {
-        /* Force le retour au flux Flexbox */
-        position: relative !important; 
-        bottom: unset !important; 
-        left: unset !important; 
-        
-        /* Utilise flex-basis pour forcer la prise d'espace horizontal */
-        width: 100% !important; 
-        flex-basis: 100% !important; 
-        
-        /* Assure qu'il n'y ait pas de "remontée" due à une marge négative non vue */
-        margin-top: 0 !important;
-        
-        /* Reste en première position */
-        order: 1 !important; 
-
-        /* Le reste de vos styles... */
-        margin-left: 15px !important; 
-        font-size: 1.1em;
-        font-weight: bold;
-        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
-        margin-bottom: 12px; 
-    }
-    /* Conteneur des boutons d'action */
-.actions {
-    position: absolute;
-    right: 15px; /* Déplace-le légèrement vers le centre du côté droit */
-    bottom: 20%; /* Conserve la position verticale */
+/* Infos vidéo (en bas à gauche) */
+.video-info {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 20px; /* Augmente l'espace entre les boutons épurés */
-    z-index: 60;
+    gap: 0.5rem;
+    max-width: 65%;
 }
-    
-    /* BOUTONS VERTICAUX STYLE TIKTOK */
-   /* NOUVEAU STYLE ÉPURÉ POUR LES BOUTONS D'ACTION */
-.actions button {
-    /* Suppression du cercle */
-    background: none; 
-    border: none;
-    border-radius: 0; 
-    
-    /* Taille et alignement de la zone cliquable */
-    width: 50px; /* Réduit un peu la largeur */
-    height: 50px; /* Réduit un peu la hauteur */
-    
-    /* Couleur et taille des icônes */
+
+.video-title {
+    font-size: 1rem;
+    font-weight: 600;
     color: white;
-    font-size: 1.8rem; /* Agrandit l'icône seule */
-    
-    /* Alignement vertical pour les icônes */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    
-    /* Effets de transition */
-    transition: transform 0.2s ease;
-    cursor: pointer;
-    
-    /* Ombre de texte pour la lisibilité sur la vidéo */
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
-}
-
-.actions button:hover {
-    transform: scale(1.1); /* Conserve l'animation au survol */
-    background: none; /* Assure qu'aucun fond n'apparaît au survol */
-}
-
-/* Ajustement pour l'icône de cœur (Font Awesome) */
-.actions button i {
-    font-size: 1em; /* Utilise la taille définie sur le parent (.actions button) */
-    line-height: 1; /* Assure un bon alignement */
-}
-
-    /* Ajustement des Compteurs (Likes et Commentaires) */
-/* Note: Vos variables CSS actuelles s'appellent .likes-count et .count */
-.likes-count, 
-.count {
-    display: block;
-    font-size: 0.8rem; /* Taille plus petite pour le chiffre */
-    margin-top: 2px; /* Espacement minimal entre l'icône et le chiffre */
-    text-align: center;
-    color: #fff;
-    font-weight: 500;
-    /* Conserve l'ombre de texte pour la lisibilité */
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
-}
-
-    /* Position auteur et boutons édition/suppression */
-    .video-author-actions {
-        position: absolute;
-        right: 12px;
-        bottom: 15%; 
-        flex-direction: column;
-        gap: 8px;
-        z-index: 65; 
-    }
-    
-    /* 🚨 RÈGLE D'ÉCRASEMENT : Masquer les actions CRUD quand les commentaires sont ouverts */
-    .video-card.comments-open .video-author-actions {
-        visibility: hidden !important; 
-        opacity: 0 !important; 
-        pointer-events: none !important; 
-        transform: translateX(100vw) !important; 
-        transition: transform 0.3s, opacity 0.3s;
-    }
-    
-}
-
-
-/* --- Barre de Navigation Inférieure (mobile-navbar) --- */
-
-.mobile-navbar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: var(--navbar-height); /* Utilise la variable */
-    background-color: rgba(0, 0, 0, 0.9);
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 100; /* Le plus haut */
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.mobile-navbar .nav-item {
-    color: #fff;
-    text-decoration: none;
-    font-size: 18px;
-    padding: 0 10px;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-}
-
-.mobile-navbar .nav-item:hover, .mobile-navbar .nav-item.active {
-    opacity: 1;
-    color: var(--accent-blue);
-}
-
-.mobile-navbar .upload-btn i {
-    font-size: 24px;
-    color: var(--accent-blue);
-}
-
-.mobile-navbar .nav-item.active i {
-    color: var(--accent-blue);
-}
-
-/* Positionnement et Style du Nom d'Utilisateur dans la Superposition */
-.video-author-overlay {
-    z-index: 55;
-    
-    /* 💥 RÈGLE CLÉ : Devient son propre Flexbox interne */
-    display: flex !important; 
-    flex-direction: row; /* Aligne l'icône et le texte horizontalement */
-    align-items: center; /* Centre verticalement les éléments sur la ligne */
-    
-    position: relative !important; 
-    float: none !important; 
-    
-    color: white; 
-    font-size: 1em;
-    font-weight: 500;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7); 
-    pointer-events: auto; 
-    
-    margin-left: 15px; 
-    
-    order: 2 !important; 
-}
- .video-author-overlay {
-        margin-top: 0 !important; /* Neutralise un potentiel remonter */
-        margin-bottom: 0 !important;
-        position: relative !important; /* Déjà présent dans votre CSS global, mais on s'assure qu'il est forcé ici */
-    }
-
-/* Style des ENFANTS (Icône et Lien) */
-
-.video-author-overlay i {
-    margin-right: 8px; 
-    /* vertical-align: middle !important; <--- PLUS NÉCESSAIRE */
-}
-
-.video-author-overlay .video-author-link span {
-    color: white !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .video-author-link {
-    color: white !important; 
-    text-decoration: none !important; 
-    /* display: inline-block !important; <--- PLUS NÉCESSAIRE */
-    line-height: 1.2; 
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.95);
+    text-decoration: none;
+    font-weight: 500;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
 }
 
-/* Au cas où le navigateur utilise :visited, :hover, etc. (à conserver) */
-.video-author-link:visited,
-.video-author-link:link,
-.video-author-link:hover,
-.video-author-link:active {
-    color: white !important;
-    text-decoration: none !important;
+.video-author-link:hover {
+    text-decoration: underline;
 }
 
-
-/* ==================== MODE DESKTOP (YouTube) ==================== */
-@media (min-width:1024px){
-    /* Réactive le scroll sur le body et masque la navbar mobile */
-    body{overflow-y:auto;}
-    .mobile-navbar { display: none !important; } 
-    header { display: flex !important; height: 60px; z-index: 100; } /* Réactiver le header desktop */
-
-    #video-container{
-        display:grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap:20px;
-        /* Padding pour laisser la place au header fixe (60px + 20px de marge) */
-        padding: 80px 20px 40px; 
-        justify-items:center;
-        align-items:start;
-        height:auto;
-        overflow:auto;
-        width:90%;
-        max-width:1400px;
-        margin:0 auto;
-    }
-
-    .video-card{
-        margin:0;
-        width:100%;
-        max-width:none;
-        aspect-ratio:16/9;
-        height:auto;
-        border-radius:10px;
-        box-shadow:0 6px 18px rgba(0,0,0,0.25);
-    }
-
-    /* masquer les éléments d'immersion */
-    .overlay, .actions, .video-author-actions, .comments-section {
-        display:none !important;
-    }
-
-    .video-info-desktop{display:block !important;padding:10px 0;color:#ddd;}
-}
-
-/* ================================================= */
-/* 🚨 GESTION DE LA SECTION COMMENTAIRE (GLISSEMENT ET REDUCTION) 🚨 */
-/* ================================================= */
-
-.comments-section {
-    position: fixed;
-    
-    /* 1. Définir la hauteur de la zone vidéo visible (ex: 250px) */
-    --video-visible-height: 250px; 
-    
-    /* 2. Ancrer le haut de la modale juste en dessous de la vidéo */
-    top: var(--video-visible-height); 
-    left: 0;
-    width: 100%;
-    
-    /* 3. Calculer la hauteur de la modale (100% de l'écran moins la zone vidéo) */
-    height: calc(100vh - var(--video-visible-height)); 
-    
-    background: #f9f9f9;
-    color: #111;
-    z-index: 101; 
-    
-    /* 4. Configuration Flexbox pour le wrapper et l'input */
-    display: flex; 
-    flex-direction: column; 
-    
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    
-    /* 5. 🔑 L'ÉTAT INITIAL CACHÉ CRITIQUE : Déplacement vers le bas de 100% de SA PROPRE hauteur */
-    transform: translateY(100%); 
-     transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-     will-change: transform;
-}
-/* AJOUTER CE BLOC (le .comment-input-area existant peut rester pour les styles généraux) */
-/* Règle qui s'active UNIQUEMENT lorsque le panneau de commentaires est ouvert */
-.video-card.comments-open .comment-input-area {
-    /* ANCRAGE FIXE AU BAS */
-    position: fixed; /* 👈 CRITIQUE : Positionnement par rapport à la viewport */
-    bottom: 0; /* 👈 CRITIQUE : Au-dessus de la navbar */
-    left: 0;
-    right: 0;
-    width: 100%;
-      display: flex !important; /* Ligne à ajouter */
-    align-items: center; /* Ligne à ajouter */
-    gap: 10px; 
-    /* Assurez-vous qu'il est au-dessus du reste du contenu */
-    z-index: 102; 
-    
-    /* Vous devez définir une hauteur pour l'espace qu'il occupe */
-    height: 60px; /* Ajustez cette hauteur pour qu'elle corresponde à votre padding (10px haut + 40px input + 10px bas = 60px) */
-    
-    /* Styles pour la barre de saisie (déjà définis) */
-    background: #1a1a1a; 
-    border-top: 1px solid rgba(255, 255, 255, 0.1); 
-    
-    /* Annuler les propriétés Flex qui ne sont plus nécessaires avec position: fixed */
-    order: unset; 
-    margin-top: unset; 
-}
-.comments-content-wrapper {
-    /* Retirez flex-grow: 1, il n'est plus nécessaire si le parent n'est pas un flex container qui gère le input */
-    
-    /* 🔑 NOUVELLE RÈGLE : Gère la hauteur en fonction de la barre de saisie fixe */
-    height: calc(100% - 60px); /* 🟢 CORRECTION : Utilisé 60px pour correspondre à la hauteur de l'input-area */
-    
-    overflow-y: auto; /* Permet aux commentaires de défiler */
-    position: relative; 
-    
-    display: flex; 
-    flex-direction: column; 
-}
-
-.video-card.comments-open .comments-section {
-    /* 🚨 Position d'ouverture : Il monte jusqu'à sa nouvelle position 'top' */
-    transform: translateY(0);
-}
-
-/* Ajustement du .existing-comments pour qu'il défile DANS le wrapper */
-.existing-comments {
-    flex-grow: 1; /* C'est bon */
-    flex-shrink: 1; /* C'est bon */
-    min-height: 0; /* C'est bon */
-    overflow-y: auto;
-    
-    /* 🔑 AJOUT CRITIQUE : Padding pour faire de la place au bouton 'X' */
-    padding-top: 15px; /* Augmenté à 45px pour le bouton X (30px) + marge */
-    
-    /* 🔑 AJOUT CRITIQUE : Padding horizontal pour les commentaires */
-    padding-left: 15px; 
-    padding-right: 15px; 
-    padding-bottom: 60px; 
-
-    /* Retirez les autres paddings si vous en aviez, et assurez-vous de la largeur */
-    width: 100%; 
-}
-
-/* Modifiez votre bloc .comment-input-area existant (autour de la ligne 306) */
-.comment-input-area {
-    /* 🔑 RÉTABLIR LE POSITIONNEMENT FIXE */
-    position: fixed; 
-    bottom: 0; /* Ancrage tout en bas du viewport */
-    left: 0;
-    
-    /* 🔑 Rétablir display: flex pour l'alignement interne */
-    display: flex !important; 
-    
-    /* Supprimer les styles liés à Flexbox de ce bloc, car il est fixe */
-    /* (Vous les aviez déjà retirés, c'est bien) */
-    
-    align-items: center;
-    gap: 10px;
-    flex-shrink: 0; 
-    width: 100%;
-    padding: 10px 15px; 
-    background: #1a1a1a; 
-    border-top: 1px solid rgba(255, 255, 255, 0.1); 
-    z-index: 102; /* IMPORTANT: Doit être au-dessus du .comments-section */
-}
-
-/* Styles du textarea pour un look 'pro' */
-.comment-input-area textarea { 
-    flex-grow: 1;
-    height: 40px;
-    min-height: 40px; 
-    
-    /* 🔑 FIX DÉFINITIF POUR LE STYLE: Supprime les styles par défaut du navigateur */
-    -webkit-appearance: none !important; 
-    -moz-appearance: none !important;
-    appearance: none !important;
-    
-    /* STYLES CLÉS POUR LE LOOK PRO, FORCÉS */
-    padding: 10px 15px !important;
-    border-radius: 20px !important;
-    border: none !important; /* CRITIQUE */
-    outline: none;
-    
-    background: #282828 !important; /* CRITIQUE : Force le fond sombre */
-    color: #e0e0e0 !important; /* CRITIQUE : Force le texte clair */
-    
-    resize: none;
-    
-    font-family: 'Poppins', 'Roboto', sans-serif;
-    font-size: 0.95em;
-}
-
-/* 🔑 EFFET AU FOCUS : Ajoute une bordure subtile quand l'utilisateur clique */
-.comment-input-area textarea:focus {
- box-shadow: 0 0 0 2px var(--accent-blue);
-}
-
-
-.comment-input-area button.submit-comment {
-    flex-shrink: 0;
-    height: 40px;
-    
-    /* 🔑 STYLES CLÉS POUR LE LOOK PRO, FORCÉS */
-    padding: 0 20px !important;
-    border-radius: 20px !important; /* CRITIQUE */
-    border: none !important;
-    
-    background: var(--accent-green) !important; /* CRITIQUE : Force le vert */
-    color: #000 !important; /* CRITIQUE : Force le texte noir */
-    
-    font-weight: bold;
-    font-size: 0.95em;
-    cursor: pointer;
-    transition: background-color 0.2s, transform 0.1s;
-
+/* 🔥 Actions vidéo (à droite en vertical) */
+.video-actions {
     display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.comment-input-area button.submit-comment:hover {
-background-color: #30e610;
- transform: translateY(-1px);
-}
-
-/* 🚨 RÈGLE CRITIQUE POUR LE BOUTON DE FERMETURE 🚨 */
-.close-comments-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    left: unset;
-    
-    /* 🚨 CHANGEMENT MAJEUR 1: Fond plus sombre pour contraster avec le fond clair (#f9f9f9) */
-    /* Utilisez un noir semi-transparent (0.5 de transparence) */
-    background: rgba(0, 0, 0, 0.5); 
-    
-    border: none;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    
-    /* 🚨 CHANGEMENT MAJEUR 2: Conservez le blanc pour la croix pour un contraste maximal */
-    color: #fff; 
-    
-    font-size: 1.2rem;
-    cursor: pointer;
-    
-    /* Optionnel: Ajoutez une légère ombre pour le faire ressortir encore plus */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); 
-    
-    z-index: 103; /* Assurez-vous qu'il est au-dessus de tout le contenu de la section */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    pointer-events: auto;
-    transition: background-color 0.2s;
-}
-.close-comments-btn:hover {
-    /* Rendre le fond légèrement plus opaque au survol pour l'effet */
-    background: rgba(0, 0, 0, 0.7);
-}
-
-/* ================================================= */
-/* 🎯 ACTIONS DE COMMENTAIRE (Détails) 🎯 */
-/* ================================================= */
-
-.comment {
-    /* Garder display: flex et flex-direction: column */
-    display: flex; 
     flex-direction: column;
-    padding: 10px 0; 
-    /* Ligne de séparation plus douce et plus claire */
-    border-bottom: 1px solid #e0e0e0; /* Changé de #222 (sombre) à #e0e0e0 (clair) */
-    margin-bottom: 0; 
-    transition: background-color 0.1s;
-    position: relative; /* CRITIQUE : Pour positionner les actions en absolu */
-    padding-right: 40px; /* Ajoute un espace pour les actions positionnées */
+    gap: 1.5rem;
+    align-items: center;
+    padding-right: 4px;
+    padding-bottom: 20px;
 }
-/* Style spécifique pour le mode édition */
-.comment.editing {
-    background-color: #1a1a1a;
-    border-radius: 5px;
-    padding: 10px; /* Ajoute un padding en mode édition */
-    margin: 5px 0;
+
+.video-actions button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    transition: transform 0.2s;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
 }
+
+.video-actions button:active {
+    transform: scale(0.85);
+}
+
+/* Compteurs (likes, comments) */
+.like-count,
+.comment-count {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* Like actif */
+.like-btn.active i {
+    color: #FF3366;
+}
+
+.like-btn.active {
+    animation: heartBeat 0.4s ease;
+}
+
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    30% { transform: scale(1.25); }
+    50% { transform: scale(1.1); }
+}
+
+/* Bouton partage */
+.share-btn {
+    font-size: 1.8rem;
+}
+
+/* Bouton mute */
+.mute-btn {
+    font-size: 1.6rem;
+}
+
+/* ===== 💬 MODALE GLOBALE ===== */
+
+#comments-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 9990;
+}
+
+#comments-modal.open {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+}
+
+/* Fond flouté derrière la modal */
+.comments-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(8px);
+    z-index: 1;
+}
+
+/* ===== 💬 PANEL COMMENTAIRES (Style Instagram/TikTok) ===== */
+
+.comments-panel {
+    position: relative;
+    width: 100%;
+    height: 60vh;
+    max-height: 600px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.98) 100%);
+    backdrop-filter: blur(20px);
+    border-radius: 20px 20px 0 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+/* ===== ANIMATION DE FERMETURE DU PANEL COMMENTAIRES (FEED) ===== */
+
+
+
+.comments-panel.close-animation {
+    animation: slideDown 0.25s ease-out forwards;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+}
+
+/* ===== HEADER ===== */
+.comments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    color: white;
+}
+
+#comments-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.6rem;
+    color: white;
+    cursor: pointer;
+}
+
+/* ===== LISTE COMMENTAIRES ===== */
+.comments-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px 20px;
+}
+
+.comments-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.comments-list::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 10px;
+}
+
+/* Item */
+.comment {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+    animation: fadeIn 0.3s ease;
+}
+
 .comment-header {
     display: flex;
     align-items: center;
-    margin-bottom: 4px; 
-    font-size: 0.9em; 
-    color: #555; /* Rend les méta-informations discrètes */
-    width: 100%; 
+    gap: 10px;
 }
 
-/* 1. Espacement après l'icône */
-.comment-header .fa-user {
-    margin-right: 6px; /* Légèrement réduit l'espace */
-    color: #888; /* Rendre l'icône un peu plus claire */
-}
-
-/* 2. Style et espacement du nom d'utilisateur */
 .comment-username {
-    font-weight: 600;
-    color: #111; /* Couleur presque noire (plus contrastée) */
-    margin-right: 12px; 
-    font-size: 1em; /* Mettre légèrement plus grand que la date */
+    font-weight: 700;
+    font-size: 14px;
+    color: white;
 }
 
-/* 3. La date reste discrète */
 .comment-date {
-    font-weight: 400; /* Normal */
-    color: #888; /* Gris clair pour être discret */
-    font-size: 0.9em;
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
 }
 
-/* Conteneur des boutons d'édition/suppression (poussé à droite) */
-.comment-actions {
-    /* 🚨 Changement CRITIQUE : Positionnement absolu 🚨 */
-    position: absolute; 
-    top: 10px; /* Alignement avec le haut du commentaire */
-    right: 0; 
-    
-    display: flex; 
-    gap: 8px;
-    align-items: center;
-    
-    /* 🚨 Masquage par défaut 🚨 */
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s, visibility 0.2s; 
-    
-    /* Retirez les autres styles de positionnement qui ne sont plus nécessaires */
-    margin-left: unset; 
-    padding-left: unset;
-    min-height: unset;
-    margin-top: unset; 
-}
-.comment:hover .comment-actions {
-    opacity: 1;
-    visibility: visible;
-}
-.edit-comment-btn {
-    /* NOUVEAU: Icône d'édition en vert */
-    color: var(--accent-green); 
-}
-
-.edit-comment-btn, 
-.delete-comment-btn,
-.cancel-edit-btn {
-    background: none;
-    border: none;
-    color: #aaa; 
-    cursor: pointer;
-    padding: 0;
-    font-size: 0.8rem;
-    line-height: 1;
-    transition: color 0.2s;
-}
-.edit-comment-btn:hover { color: #50ff50; }
-.delete-comment-btn:hover { color: #ff8080; }
-.cancel-edit-btn:hover { color: #fff; }
-
-.delete-comment-btn {
-    color: #ff4d4d;
-}
-
-/* Style du textarea quand on édite un commentaire existant */
-.comment-content .edit-comment-input {
-    width: 100%;
-    min-height: 80px; /* Plus grand pour l'édition */
-    padding: 10px;
-    margin-top: 5px;
-    border-radius: 5px;
-    border: 1px solid #333;
-    background: #000;
-    color: #fff;
-    resize: vertical;
-    outline: none;
-    box-shadow: 0 0 0 2px var(--accent-blue);
-    font-family: 'Poppins', 'Roboto', sans-serif;
-    font-size: 0.95em;
-}
-
-/* ------------------------------------------------- */
-/* 🎨 Esthétique et Structure de chaque Commentaire 🎨 */
-/* ------------------------------------------------- */
-/* Retire la ligne de séparation sous le dernier commentaire de la liste */
-.comment:last-child {
-    border-bottom: none; 
-}
-
-/* Contenu du commentaire (le paragraphe de texte) */
 .comment-content {
-    /* Aligner le contenu du commentaire pour qu'il ne colle pas à l'icône */
-    margin-left: 20px; /* Espace équivalent à l'icône + marge */
-    margin-top: 2px; 
-    line-height: 1.4; 
-    font-size: 0.95em;
-    color: #333; /* Texte plus sombre pour la lisibilité */
-    word-wrap: break-word;
-    width: 100%; 
+    font-size: 14px;
+    color: rgba(255,255,255,0.9);
+    margin-top: 4px;
+    line-height: 1.4;
 }
 
-/* ================================================= */
-/* 🎯 STYLES POUR L'ÉDITION ET LA SUPPRESSION DE VIDÉO 🎯 */
-/* (Complète le fragment ThymeLeaf) */
-/* ================================================= */
-
-/* Style pour le conteneur CRUD (boutons d'édition/suppression en haut à droite de la vidéo) */
-.video-crud-actions {
-    position: absolute;
-    top: 20px;
-    right: 15px;
+/* ===== INPUT ===== */
+.comments-input {
     display: flex;
     gap: 10px;
-    z-index: 60;
-    pointer-events: auto;
+    padding: 12px 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.6);
 }
 
-.video-crud-actions .action-btn {
-    background: rgba(0, 0, 0, 0.4);
-    border: none;
-    border-radius: 50%;
+#comments-input-field {
+    flex: 1;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 25px;
+    padding: 12px 18px;
     color: white;
-    width: 35px;
-    height: 35px;
-    font-size: 1rem;
+    font-size: 14px;
+    outline: none;
+}
+
+#comments-input-field::placeholder {
+    color: rgba(255,255,255,0.5);
+}
+
+#comments-send-btn {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10B981, #059669);
+    color: white;
+    border: none;
+    font-size: 18px;
     cursor: pointer;
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: background-color 0.2s;
-}
-
-.video-crud-actions .edit-video-btn i {
-    /* Utilisation du bleu électrique défini dans les variables */
-    color: var(--accent-blue);
-}
-
-.video-crud-actions .delete-video-btn i {
-    /* Utilisation du rouge pour l'icône de suppression (bonne pratique) */
-    color: #ff4d4d;
-}
-
-/* Formulaire d'édition de la vidéo (apparaît au centre de l'écran par-dessus la vidéo) */
-.video-edit-form {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 90;
-    display: none; /* Masqué par défaut (à afficher via JS) */
-    flex-direction: column;
-    gap: 10px;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.85);
-    border-radius: 10px;
-    max-width: 90%;
-}
-
-.video-edit-form input {
-    padding: 10px;
-    border: 1px solid #555;
-    border-radius: 5px;
-    background: #333;
-    color: white;
-    width: 250px;
-}
-
-.video-edit-form button {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 5px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.video-edit-form .save-video-btn {
-    /* Utilisation du vert fluo défini dans les variables */
-    background: var(--accent-green); 
-    color: #000;
-}
-
-.video-edit-form .cancel-video-edit-btn {
-    background: #555;
-    color: white;
-}
-/* 🚨 FIX FINAL : Masque la navbar mobile lorsque la modale des commentaires est ouverte */
-.video-card.comments-open ~ .mobile-navbar,
-.video-card.comments-open .mobile-navbar {
-    display: none !important;
 }
 
 /* ================================================= */
-/* 🎯 STYLES POUR LES PAGES D'AUTHENTIFICATION (LOGIN/REGISTER) 🎯 */
+/* 🎨 STYLES POUR LES PAGES D'AUTHENTIFICATION       */
 /* ================================================= */
 
-/* ------------------ BODY ET CONTENEUR ------------------ */
-
-/* 🚨 RÈGLE D'ÉCRASEMENT pour les pages d'auth 🚨
-   Ceci est nécessaire car le body a 'overflow: hidden' et 'background: #000' par défaut pour le PWA. 
-   Nous le corrigeons pour le formulaire de connexion.
-*/
-
-
-body.auth-page {
-    /* Écrase les styles du PWA (background: #000 et overflow: hidden) */
-    background-color: #f4f7f6 !important; /* Arrière-plan CLAIR FORCÉ */
-    color: #333 !important; /* Texte sombre FORCÉ */
-    height: auto !important; 
-    overflow: auto !important; 
-    
-    /* Styles de centrage (transférés du bloc 'body' générique) */
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
+.auth-page {
+    background-color: #f4f7f6;
+    color: #333;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     padding: 20px;
     font-family: 'Poppins', 'Roboto', sans-serif;
 }
 
 .container {
     width: 100%;
-    max-width: 400px; /* Limite la largeur du contenu principal */
-    padding: 0; /* Retrait du padding car il est géré dans le body et form-card */
+    max-width: 400px;
+    padding: 0;
 }
 
-/* ------------------ HEADER ET MESSAGE ------------------ */
-
+/* Hero section */
 .hero {
     text-align: center;
     color: #333;
+    margin-bottom: 2rem;
 }
 
 .hero h1 {
     font-size: 2em;
-    color: #4b0082; /* Couleur principale */
+    color: #4b0082;
     margin-bottom: 5px;
 }
 
@@ -855,8 +459,7 @@ body.auth-page {
     margin-top: 0;
 }
 
-/* ------------------ FORMULAIRE ------------------ */
-
+/* Formulaire */
 .form-card {
     background-color: #ffffff;
     padding: 30px;
@@ -883,9 +486,9 @@ body.auth-page {
     border-radius: 6px;
     box-sizing: border-box;
     transition: border-color 0.3s;
-    /* Assure que le texte est sombre dans le champ */
-    color: #333; 
+    color: #333;
     background-color: #fff;
+    font-size: 1rem;
 }
 
 .form-group input:focus {
@@ -894,12 +497,11 @@ body.auth-page {
     box-shadow: 0 0 0 3px rgba(75, 0, 130, 0.1);
 }
 
-/* ------------------ BOUTON ------------------ */
-
+/* Boutons */
 .btn-primary {
     width: 100%;
     padding: 12px;
-    background-color: #4b0082; 
+    background-color: #4b0082;
     color: white;
     border: none;
     border-radius: 6px;
@@ -910,81 +512,224 @@ body.auth-page {
 }
 
 .btn-primary:hover {
-    background-color: #380064; 
+    background-color: #380064;
 }
 
 .btn-primary:active {
     transform: translateY(1px);
 }
 
-/* ------------------ LIEN D'INSCRIPTION ------------------ */
-
-p a {
-    text-decoration: none;
-}
-/* PAGINATION CSS (Mimic Bootstrap) */
-/* ---------------------------------------------------- */
-.pagination {
-    display: flex;
-    padding-left: 0;
-    list-style: none;
-    border-radius: .25rem;
-    justify-content: center; /* Centre les liens de pagination */
-    margin-top: 1.5rem;
-}
-
-.page-item {
-    margin: 0 4px;
-}
-
-.page-link {
-    position: relative;
-    display: block;
-    padding: .5rem .75rem;
-    margin-left: -1px;
-    line-height: 1.25;
-    color: var(--primary-blue);
-    background-color: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: .25rem;
-    transition: all 0.3s;
-    text-decoration: none;
-}
-
-.page-link:hover {
-    z-index: 2;
-    color: #fff;
-    background-color: var(--primary-blue);
-    border-color: var(--primary-blue);
-}
-
-.page-item.active .page-link {
-    z-index: 3;
-    color: #fff;
-    background-color: var(--primary-blue);
-    border-color: var(--primary-blue);
-}
-
-.page-item.disabled .page-link {
-    color: #6c757d;
-    pointer-events: none;
-    background-color: #fff;
-    border-color: #dee2e6;
-    opacity: 0.6;
-}
-
-/* Styles pour les flèches */
-.page-link span[aria-hidden="true"] {
-    font-size: 0.9em;
-}
-
-.comments-loading {
+/* Séparateur "OU" */
+.separator {
     text-align: center;
-    padding: 15px;
-    color: #888;
-    font-size: 14px;
+    margin: 20px 0;
+    position: relative;
 }
 
-.comments-loading p {
-    margin: 0;
+.separator::before,
+.separator::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background: #ddd;
+}
+
+.separator::before {
+    left: 0;
+}
+
+.separator::after {
+    right: 0;
+}
+
+.separator span {
+    background: white;
+    padding: 0 10px;
+    color: #999;
+    font-size: 0.9rem;
+}
+
+/* Bouton OAuth (GitHub) */
+.btn-oauth {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #24292e;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+.btn-oauth:hover {
+    background: #1a1e22;
+}
+
+/* Lien d'inscription */
+.auth-page a[data-link] {
+    color: #4b0082;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.auth-page a[data-link]:hover {
+    text-decoration: underline;
+}
+
+/* Message d'erreur */
+#errorMsg {
+    color: #ef4444;
+    background: #fee2e2;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 10px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+/* ================================
+   🔥 Login Page - PWA Modern Style
+   ================================ */
+
+.login-page {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #000;
+    padding: 20px;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 380px;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 35px 28px;
+    border-radius: 20px;
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.login-title {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 25px;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+/* Inputs */
+.login-input {
+    width: 100%;
+    padding: 14px 15px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 1rem;
+}
+
+.login-input::placeholder {
+    color: #bbb;
+}
+
+.login-input:focus {
+    outline: 2px solid #00e676;
+}
+
+/* Bouton */
+.login-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    background: #00e676;
+    border: none;
+    color: #000;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.login-btn:hover {
+    background: #00c868;
+    transform: translateY(-2px);
+}
+
+/* Lien register */
+.login-register {
+    margin-top: 18px;
+    text-align: center;
+}
+
+.login-register a {
+    color: #00e676;
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.login-register a:hover {
+    text-decoration: underline;
+}
+
+/* Error message */
+#errorMsg {
+    background: rgba(255, 0, 0, 0.18);
+    color: #ff6b6b;
+    padding: 10px 14px;
+    text-align: center;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    display: none;
+}
+.video-actions * {
+    pointer-events: auto !important;
+}
+/* Force l’affichage des compteurs likes / commentaires */
+.like-count,
+.comment-count {
+    opacity: 1 !important;
+    display: block !important;
+}
+/* Zone sécurisée pour la navbar (évite l'ombre grise) */
+
+/* Empêche le voile de recouvrir la navbar + rend les clics possibles */
+
+
+/* Navbar au-dessus de tout */
+.mobile-navbar {
+    z-index: 9999 !important;
+}
+.video-card video {
+    height: calc(100vh - var(--navbar-height)) !important;
+}
+
+.video-card {
+    height: calc(100vh - var(--navbar-height)) !important;
+    background: #000 !important; /* pas de bord gris */
+    margin: 0 !important;
+    padding: 0 !important;
+}
+/* Empêche le voile de descendre trop bas (supprime la ligne sombre) */
+
+ /* Remonte la zone d'infos et les actions pour ne pas toucher la navbar */
+.overlay {
+    padding-bottom: calc(var(--navbar-height) + 10px) !important;
+}
+/* FIX : Remonter les icônes pour éviter le badge Admin */
+.video-actions {
+    padding-bottom: 120px !important;
 }

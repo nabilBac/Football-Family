@@ -1,5 +1,6 @@
 package com.footballdemo.football_family.controller;
 
+import com.footballdemo.football_family.controller.api.comments.CommentApiController;
 import com.footballdemo.football_family.service.CommentService; // Importez votre service
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +18,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.security.Principal;
-
 
 // Assurez-vous que cette classe correspond au contrôleur réel !
 @WebMvcTest(CommentApiController.class)

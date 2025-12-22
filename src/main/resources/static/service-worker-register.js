@@ -1,8 +1,10 @@
 // service-worker-register.js
 
+// service-worker-register.js
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
+    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
       .then(registration => {
         console.log('ServiceWorker registration successful with scope:', registration.scope);
 
@@ -30,3 +32,4 @@ if ('serviceWorker' in navigator) {
     registration.active?.postMessage({ action: 'cleanOldCaches' });
   });
 }
+

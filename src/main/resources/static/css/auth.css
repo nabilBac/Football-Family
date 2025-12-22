@@ -1,0 +1,289 @@
+/* ================================================= */
+/* 🎨 STYLES POUR LES PAGES D'AUTHENTIFICATION       */
+/* ================================================= */
+
+.auth-page {
+    background-color: #f4f7f6;
+    color: #333;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    font-family: 'Poppins', 'Roboto', sans-serif;
+}
+
+.container {
+    width: 100%;
+    max-width: 400px;
+    padding: 0;
+}
+
+/* Hero section */
+.hero {
+    text-align: center;
+    color: #333;
+    margin-bottom: 2rem;
+}
+
+.hero h1 {
+    font-size: 2em;
+    color: #4b0082;
+    margin-bottom: 5px;
+}
+
+.hero p {
+    color: #666;
+    margin-top: 0;
+}
+
+/* Formulaire */
+.form-card {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input[type="text"],
+.form-group input[type="password"] {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+    color: #333;
+    background-color: #fff;
+    font-size: 1rem;
+}
+
+.form-group input:focus {
+    border-color: #4b0082;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(75, 0, 130, 0.1);
+}
+
+/* Boutons */
+.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background-color: #4b0082;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s;
+}
+
+.btn-primary:hover {
+    background-color: #380064;
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+}
+
+/* Séparateur "OU" */
+.separator {
+    text-align: center;
+    margin: 20px 0;
+    position: relative;
+}
+
+.separator::before,
+.separator::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background: #ddd;
+}
+
+.separator::before {
+    left: 0;
+}
+
+.separator::after {
+    right: 0;
+}
+
+.separator span {
+    background: white;
+    padding: 0 10px;
+    color: #999;
+    font-size: 0.9rem;
+}
+
+/* Bouton OAuth (GitHub) */
+.btn-oauth {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #24292e;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+.btn-oauth:hover {
+    background: #1a1e22;
+}
+
+/* Lien d'inscription */
+.auth-page a[data-link] {
+    color: #4b0082;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.auth-page a[data-link]:hover {
+    text-decoration: underline;
+}
+
+/* Message d'erreur */
+#errorMsg {
+    color: #ef4444;
+    background: #fee2e2;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 10px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+/* ================================
+   🔥 Login Page - PWA Modern Style
+   ================================ */
+
+.login-page {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #000;
+    padding: 20px;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 380px;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 35px 28px;
+    border-radius: 20px;
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.login-title {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 25px;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+/* Inputs */
+.login-input {
+    width: 100%;
+    padding: 14px 15px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 1rem;
+}
+
+.login-input::placeholder {
+    color: #bbb;
+}
+
+.login-input:focus {
+    outline: 2px solid #00e676;
+}
+
+/* Bouton */
+.login-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    background: #00e676;
+    border: none;
+    color: #000;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.login-btn:hover {
+    background: #00c868;
+    transform: translateY(-2px);
+}
+
+/* Lien register */
+.login-register {
+    margin-top: 18px;
+    text-align: center;
+}
+
+.login-register a {
+    color: #00e676;
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.login-register a:hover {
+    text-decoration: underline;
+}
+
+/* Error message */
+#errorMsg {
+    background: rgba(255, 0, 0, 0.18);
+    color: #ff6b6b;
+    padding: 10px 14px;
+    text-align: center;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    display: none;
+}
+/* ⭐ Corrige l'affichage du select sur la page Register */
+select.login-input {
+    background: #fff !important;
+    color: #000 !important;
+    appearance: auto !important;
+    -webkit-appearance: auto !important;
+    border: 1px solid #ccc !important;
+}
+
+select.login-input option {
+    background: #fff !important;
+    color: #000 !important;
+}

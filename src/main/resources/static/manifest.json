@@ -5,6 +5,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#f4f7f6",
   "theme_color": "#007bff",
@@ -17,3 +18,4 @@
     {"src": "/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png"}
   ]
 }
+

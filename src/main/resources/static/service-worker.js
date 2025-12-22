@@ -1,64 +1,60 @@
-// service-worker.js
 
-const CACHE_NAME = 'vidsync-cache-v3';
+self.importScripts();
 
-// ⚠️ Liste des ressources statiques à mettre en cache
+
+const CACHE_NAME = "goalclips-v1";
+
 const urlsToCache = [
-    '/', 
-    '/profile',
-    '/css/style.css',
-    '/js/main.js',
-    '/manifest.json',
-    '/service-worker-register.js',
-    '/assets/icons/icon-48.png',
-    '/assets/icons/icon-72.png',
-    '/assets/icons/icon-96.png',
-    '/assets/icons/icon-144.png',
-    '/assets/icons/icon-192.png',
-    '/assets/icons/icon-512.png'
+    "/",
+    "/index.html",
+    "/manifest.json",
+    "/css/style.css",
+    "/css/auth.css",
+    "/css/navbar-common.css",
+    "/app/js/router.js",
+    "/app/js/auth.js",
+    "/service-worker-register.js"
 ];
 
-// Étape 1 : Installation
-self.addEventListener('install', event => {
+// INSTALL
+self.addEventListener("install", event => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            console.log('Cache ouvert, ajout des ressources statiques...');
-            return cache.addAll(urlsToCache);
+        caches.open(CACHE_NAME).then(cache =>
+            cache.addAll(urlsToCache).catch(err => {
+                console.warn("Erreur cache :", err);
+            })
+        )
+    );
+    self.skipWaiting();
+});
+
+// FETCH
+self.addEventListener("fetch", event => {
+    const req = event.request;
+
+    // Ne pas intercepter l'API ni les POST
+    if (req.method !== "GET" || req.url.includes("/api/")) return;
+
+    event.respondWith(
+        caches.match(req).then(cached => {
+            return cached || fetch(req).catch(() => {
+                if (req.mode === "navigate") {
+                    return caches.match("/index.html");
+                }
+            });
         })
     );
 });
 
-// Étape 2 : Fetch
-self.addEventListener('fetch', event => {
-    const requestUrl = new URL(event.request.url);
-
-    // Ne jamais mettre en cache les endpoints sensibles
-    const sensitivePaths = ['/login', '/register', '/logout'];
-    if (sensitivePaths.includes(requestUrl.pathname) 
-        || requestUrl.pathname.startsWith('/api/') 
-        || event.request.method !== 'GET') {
-        return; // passe directement par le réseau
-    }
-
-    // Sinon, répondre depuis le cache si disponible
-    event.respondWith(
-        caches.match(event.request)
-            .then(response => response || fetch(event.request))
-    );
-});
-
-// Étape 3 : Activation
-self.addEventListener('activate', event => {
-    const cacheWhitelist = [CACHE_NAME];
+// ACTIVATE
+self.addEventListener("activate", event => {
     event.waitUntil(
-        caches.keys().then(cacheNames => 
+        caches.keys().then(keys =>
             Promise.all(
-                cacheNames.map(cacheName => {
-                    if (!cacheWhitelist.includes(cacheName)) {
-                        return caches.delete(cacheName);
-                    }
-                })
+                keys.map(k => (k !== CACHE_NAME ? caches.delete(k) : null))
             )
         )
     );
+
+    self.clients.claim();
 });
