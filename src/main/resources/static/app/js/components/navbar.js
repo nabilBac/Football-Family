@@ -4,27 +4,8 @@ export function Navbar({ hidePostButton = false } = {}) {
 
     const user = Auth.currentUser;
 
-    // Boutons dynamiques selon le rôle
-    let adminButton = "";
+   
 
-    if (user?.highestRole === "SUPER_ADMIN") {
-        adminButton = `
-            <a href="/admin" class="nav-item nav-admin" data-link>
-                <i class="fa-solid fa-user-shield"></i>
-                <span>Admin UTF</span>
-            </a>
-        `;
-    }
-
-    if (user?.highestRole === "CLUB_ADMIN") {
-        adminButton = `
-            <a href="/admin" class="nav-item nav-admin" data-link>
-
-                <i class="fa-solid fa-users-gear"></i>
-                <span>Mon Club</span>
-            </a>
-        `;
-    }
 return `
     <div class="navbar-wrapper">
 
@@ -61,8 +42,7 @@ return `
 
         </nav>
 
-        <!-- ⭐ Bouton Admin EN DEHORS -->
-        ${adminButton}
+       
 
     </div>
 `;

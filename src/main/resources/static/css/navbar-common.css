@@ -2,156 +2,118 @@
    📱 BARRE DE NAVIGATION INFÉRIEURE (MOBILE)
    ========================================== */
 
-.mobile-navbar {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-   
-    background: #1a1a1a !important;
-    display: grid !important;
-    grid-template-columns: repeat(5, 1fr) !important;
-    align-items: center !important;
-    justify-items: center !important;
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5) !important;
-    z-index: 45 !important;
-   
+:root{
+  --bottom-nav-h: 70px;
+  --safe-b: env(safe-area-inset-bottom);
+}
+
+.mobile-navbar{
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+
+  background: #1a1a1a !important;
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  align-items: center !important;
+  justify-items: center !important;
+
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5) !important;
+ z-index: 9999 !important;
+
+
+  /* ✅ Safe area + hauteur stable */
+  height: calc(var(--bottom-nav-h) + var(--safe-b)) !important;
+  padding: 0 10px !important;
+  padding-bottom: var(--safe-b) !important;
+  box-sizing: border-box;
 }
 
 /* Items */
-.nav-item {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    color: #888 !important;
-    text-decoration: none !important;
-    font-size: 0.7rem !important;
-    transition: color 0.2s ease !important;
-    padding: 0.5rem 0 !important;
+.nav-item{
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #888 !important;
+  text-decoration: none !important;
+  font-size: 0.7rem !important;
+  transition: color 0.2s ease !important;
+  padding: 0.5rem 0 !important;
 }
 
-.nav-item.active {
-    color: white !important;
-}
+.nav-item.active{ color: white !important; }
 
-.nav-item i {
-    font-size: 1.4rem !important;
-    margin-bottom: 4px !important;
-}
-
-/* ==========================================
-   ⭐ BOUTON ADMIN FLOTTANT
-   ========================================== */
-
-.nav-admin {
-    position: fixed !important;
-    bottom: 85px !important;
-    right: 15px !important;
-    background: #1a1a1a !important;
-    padding: 8px 14px !important;
-    border-radius: 12px !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    color: #ffcc00 !important;
-    font-weight: 600 !important;
-    font-size: 0.9rem !important;
-    box-shadow: 0 0 10px rgba(0,0,0,0.4) !important;
-    z-index: 999 !important;
-}
-
-.nav-admin i {
-    font-size: 1.2rem !important;
-}
-
-/* ==========================================
-   📱 RESPONSIVE DESKTOP
-   ========================================== */
-
-@media (min-width: 768px) {
-    body {
-        max-width: 480px !important;
-        margin: 0 auto !important;
-        box-shadow: 0 0 50px rgba(0, 0, 0, 0.5) !important;
-    }
-
-    .mobile-navbar {
-        display: none !important;
-    }
+.nav-item i{
+  font-size: 1.4rem !important;
+  margin-bottom: 4px !important;
 }
 
 /* ==========================================================
-   🎯 FIX FINAL — BOUTON UPLOAD (+) TOUJOURS SIMPLE
+   🎯 BOUTON UPLOAD (+) SIMPLE
    ========================================================== */
 
-.mobile-navbar .nav-upload {
-    all: unset !important;
-    cursor: pointer !important;
+.mobile-navbar .nav-upload{
+  all: unset !important;
+  cursor: pointer !important;
 
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
 
-    background: none !important;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 
-    height: auto !important;
-    width: auto !important;
+  height: auto !important;
+  width: auto !important;
 
-    place-self: center !important;
-
-    box-shadow: none !important;
+  place-self: center !important;
+  box-shadow: none !important;
 }
 
-.mobile-navbar .nav-upload i {
-    all: unset !important;
+.mobile-navbar .nav-upload i{
+  all: unset !important;
 
-    font-family: "Font Awesome 6 Free" !important;
-    font-weight: 900 !important;
+  font-family: "Font Awesome 6 Free" !important;
+  font-weight: 900 !important;
 
-    font-size: 30px !important;
-    color: #10B981 !important;
+  font-size: 30px !important;
+  color: #10B981 !important;
 
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 
-    line-height: 1 !important;
+  line-height: 1 !important;
 }
 
 /* Suppression totale des effets actifs / hover */
 .mobile-navbar .nav-upload.active,
-.mobile-navbar .nav-item:has(.nav-upload),
-.mobile-navbar .nav-upload:before,
-.mobile-navbar .nav-upload:after {
-    background: none !important;
-    box-shadow: none !important;
+.mobile-navbar .nav-upload::before,
+.mobile-navbar .nav-upload::after{
+  background: none !important;
+  box-shadow: none !important;
 }
 
-/* NAVBAR FIX SAFE AREA */
-/* ==========================================================
-   📱 FIX SAFE AREA POUR MOBILE-NAVBAR (Android + iOS)
-   ========================================================== */
-
-/* ==========================================================
-   📱 FIX SAFE AREA POUR MOBILE-NAVBAR
-   ========================================================== */
-
-.mobile-navbar {
-    height: calc(70px + env(safe-area-inset-bottom)) !important;
-
-    /* Padding correct + compatible */
-    padding: 0 10px !important;
-    padding-bottom: calc(env(safe-area-inset-bottom)) !important;
+/* ✅ Empêche le contenu d’être sous la navbar (pas juste la safe-area) */
+body:not(.is-admin-page) #app{
+  padding-bottom: calc(var(--bottom-nav-h) + var(--safe-b));
 }
 
 
-/* Empêche la vidéo et le contenu d’être sous la gesture bar */
-.page-content,
-.video-wrapper,
-#app {
-    padding-bottom: env(safe-area-inset-bottom);
+/* ==========================================
+   📱 RESPONSIVE DESKTOP
+   ========================================== */
+@media (min-width: 768px){
+  body{
+    max-width: 480px !important;
+    margin: 0 auto !important;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .mobile-navbar{ display: none !important; }
 }

@@ -8,7 +8,6 @@ import com.footballdemo.football_family.exception.DuplicateResourceException;
 import com.footballdemo.football_family.exception.ResourceNotFoundException;
 import com.footballdemo.football_family.model.Event;
 import com.footballdemo.football_family.model.EventType;
-import com.footballdemo.football_family.model.RegistrationType;
 import com.footballdemo.football_family.model.EventRegistration;
 import com.footballdemo.football_family.model.User;
 import com.footballdemo.football_family.service.EventService;
@@ -55,7 +54,7 @@ public class EventRegistrationApiController {
             Event event = eventService.getEventById(dto.getEventId());
 
             // ✅ VÉRIFIER SI LES INSCRIPTIONS SONT FERMÉES
-            if (Boolean.TRUE.equals(event.getRegistrationClosed())) {
+           if (event.isRegistrationClosed()) {
                 return ResponseEntity.status(403)
                         .body(new ApiResponse<>(false, 
                                 "Les inscriptions sont clôturées pour cet événement", 
@@ -132,7 +131,7 @@ public ResponseEntity<ApiResponse<EventRegistrationDTO>> registerTeam(
     Event event = eventService.getEventById(eventId);
 
     // ⛔ 1. INSCRIPTIONS FERMÉES
-    if (Boolean.TRUE.equals(event.getRegistrationClosed())) {
+  if (event.isRegistrationClosed()) {
         return ResponseEntity.status(403)
                 .body(new ApiResponse<>(
                         false,

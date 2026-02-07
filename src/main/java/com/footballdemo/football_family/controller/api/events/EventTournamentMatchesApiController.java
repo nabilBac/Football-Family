@@ -13,7 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import com.footballdemo.football_family.security.EventSecurityService;
 import com.footballdemo.football_family.service.TournamentRulesService;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
 
 
 import java.security.Principal;

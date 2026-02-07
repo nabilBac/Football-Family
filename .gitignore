@@ -38,3 +38,16 @@ build/
 ####################################
 .DS_Store
 Thumbs.db
+
+####################################
+# Notes / docs locaux (pas à versionner)
+####################################
+ADMIN_FILES.txt
+ADMIN_ROUTES.txt
+FILES.txt
+logs.txt
+structure.txt
+
+_backup_exceptions/
+src/main/resources/db/
+*.backup

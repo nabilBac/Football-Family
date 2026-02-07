@@ -79,7 +79,7 @@ export const Comments = {
     },
 
     // -----------------------------------------------------
-    // 🔵 ENVOYER UN COMMENTAIRE
+    // 🔵 ENVOYER UN COMMENTAIRE - ✅ CORRIGÉ
     // -----------------------------------------------------
     async sendComment() {
         const input = document.getElementById("comments-input-field");
@@ -90,6 +90,9 @@ export const Comments = {
             `/api/videos/${this.state.videoId}/comments`,
             {
                 method: "POST",
+                headers: {
+                    "Content-Type": "application/json"  // ✅ AJOUTÉ
+                },
                 body: JSON.stringify({ content: text })
             }
         );
@@ -101,7 +104,7 @@ export const Comments = {
 
         input.value = "";
 
-        // Pas besoin de rafraîchir — WebSocket s’en charge ✔
+        // Pas besoin de rafraîchir — WebSocket s'en charge ✔
         const list = document.getElementById("comments-list");
         list.innerHTML = "";
 

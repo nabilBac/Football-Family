@@ -1,0 +1,399 @@
+/* events-ux.css — V2/V3 (UFT-like) — SAFE : ne touche pas aux tabs/scroll */
+
+.events-page{
+  --ux-surface: rgba(255,255,255,.06);
+  --ux-surface2: rgba(255,255,255,.10);
+  --ux-border: rgba(255,255,255,.10);
+  --ux-text: rgba(255,255,255,.92);
+  --ux-muted: rgba(255,255,255,.72);
+  --ux-radius: 18px;
+  --ux-accent: #10B981;
+}
+
+/* ===== CARD: bandeau + chevron ===== */
+.events-page .event-card{
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--ux-radius);
+  border: 1px solid var(--ux-border);
+  background: var(--ux-surface);
+  box-shadow: 0 10px 26px rgba(0,0,0,.25);
+ 
+}
+
+.events-page .event-card::before{
+  content:"";
+  position:absolute;
+  left:0; right:0; top:0;
+  height: 48px;
+  background: linear-gradient(90deg, rgba(16,185,129,.22), rgba(59,130,246,.12));
+  pointer-events:none;
+}
+
+.events-page .event-card::after{
+  content: "\203A"; /* U+203A */
+  position:absolute;
+  top: 14px;
+  right: 16px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ux-muted);
+  pointer-events:none;
+}
+
+.events-page .event-card > *{ position: relative; }
+
+/* ===== Header (ton HTML) ===== */
+.events-page .event-card-header{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.events-page .event-card-icon{
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+ background: rgba(16,185,129,.10);
+
+}
+
+
+
+/* ===== Type badge ===== */
+.events-page .event-type-badge,
+.events-page .event-type,
+.events-page .event-category-badge{
+  display:inline-flex;
+  align-items:center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.12);
+  color: var(--ux-text);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  margin-top: 6px; /* placement propre sous le titre */
+}
+
+/* ===== Description ===== */
+.events-page .event-description{
+  color: var(--ux-muted);
+  opacity: .9;
+  font-size: .92rem;
+  margin: 8px 0 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ===== Infos: 2 colonnes ===== */
+.events-page .event-card-info{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+  margin: 10px 0 12px;
+}
+
+.events-page .event-info-item{
+  display:flex;
+  gap: 8px;
+  align-items:flex-start;
+  color: var(--ux-muted);
+  font-size: .88rem;
+}
+
+.events-page .event-info-item i{
+  margin-top: 2px;
+  opacity: .9;
+}
+
+.events-page .map-link{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+/* ===== Registration badge ===== */
+.events-page .event-registration-status{
+  margin: 6px 0 8px;
+}
+
+.events-page .registration-badge.open{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(16,185,129,.14);
+  border: 1px solid rgba(16,185,129,.35);
+  color: var(--ux-accent);
+  font-weight: 800;
+  font-size: .82rem;
+}
+
+/* ===== Footer ===== */
+.events-page .event-card-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255,255,255,.06);
+  padding-top: 10px;
+   padding-bottom: 2px;
+}
+
+
+/* CTA */
+.events-page .event-action-btn{
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: var(--ux-surface2);
+  border: 1px solid var(--ux-border);
+  animation: none !important;
+}
+
+/* Organisateur disabled = chip info */
+.events-page .event-action-btn[disabled]{
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  color: var(--ux-text);
+  border-radius: 999px;
+  padding: 7px 10px;
+  opacity: .78;
+  font-size: .80rem;
+}
+
+
+/* Live match banner */
+.events-page .live-score-banner{
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  padding: 12px;
+  border-radius: 12px;
+  margin: 10px 0 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(231, 76, 60, 0.25);
+}
+
+.events-page .live-score-left{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+}
+
+.events-page .live-dot{
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  animation: livePulse 1.5s infinite;
+}
+
+@keyframes livePulse{
+  0%{ transform: scale(1); opacity: .9; }
+  50%{ transform: scale(1.4); opacity: 1; }
+  100%{ transform: scale(1); opacity: .9; }
+}
+
+.events-page .live-label{
+  font-size: .9em;
+  font-weight: 800;
+}
+
+.events-page .live-score-display{
+  font-size: 1.15em;
+  font-weight: 900;
+}
+
+/* Live tournament banner */
+.events-page .live-tournament-banner{
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  padding: 10px 12px;
+  border-radius: 12px;
+  margin: 10px 0 12px;
+  color: #fff;
+  text-align: center;
+  font-weight: 800;
+  font-size: .9em;
+  box-shadow: 0 2px 10px rgba(52, 152, 219, 0.25);
+}
+
+.events-page .live-matches-count{
+  margin-left: 8px;
+  padding: 3px 10px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 999px;
+  font-size: .85em;
+}
+
+/* Fallback si imageUrl vide */
+.events-page .event-cover[style*='url("")']{
+  background-image: none !important;
+  background: linear-gradient(90deg, rgba(16,185,129,.20), rgba(59,130,246,.12));
+}
+
+/* Cover plus petite quand elle existe */
+.events-page .event-cover{
+  height: 56px;                 /* ↓ réduit fortement la hauteur */
+  margin: -14px -14px 8px;      /* garde l'effet “collé aux bords” */
+  border-radius: 18px 18px 12px 12px;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(255,255,255,.04);
+}
+
+
+/* Adresse: 1 ligne + ellipsis (c’est LE gros gain hauteur) */
+.events-page .event-info-item .map-link + span{
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Registration badge: un poil plus compact */
+.events-page .event-registration-status{ margin: 6px 0 6px; }
+.events-page .registration-badge.open{
+  padding: 5px 9px;
+  font-size: .78rem;
+}
+
+/* ================================
+   /events : UN SEUL SCROLL (propre)
+   scroll = .content-sections
+   ================================ */
+
+/* important pour que 100% / flex marchent */
+html, body { height: 100%; }
+
+body.is-events-page{
+  height: 100dvh;          /* fiable */
+  overflow: hidden;        /* empêche le scroll window */
+}
+
+/* layout vertical : header/tabs puis contenu */
+body.is-events-page .events-page{
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* zone scrollable */
+body.is-events-page .content-sections{
+  flex: 1 1 auto;          /* prend l’espace restant */
+  min-height: 0;           /* IMPORTANT sinon pas de scroll en flex */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+
+  /* laisse la dernière card visible (si navbar en bas) */
+  padding-bottom: 90px;
+}
+/* =========================================
+   FINAL OVERRIDES (verrouillage style pro)
+   ========================================= */
+
+/* Card compact */
+.events-page .event-card{ padding: 12px; }
+.events-page .event-card::before{ height: 48px; }
+
+/* Header propre */
+.events-page .event-card-header{
+  align-items: center;
+  padding-bottom: 2px;
+}
+
+/* Titre sur 1 ligne */
+.events-page .event-card-title h3{
+  font-size: 1.05rem;
+  font-weight: 900;
+  margin: 2px 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Titre + badge en ligne */
+.events-page .event-title-row{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.events-page .event-title-row h3{
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.events-page .event-title-row .event-type-badge{
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+/* Description plus discrète */
+.events-page .event-description{ opacity: .65; }
+
+/* Infos alignées (date/lieu) */
+.events-page .event-info-item{
+  align-items: center;
+  line-height: 1.1;
+}
+.events-page .event-info-item i{ margin-top: 0; }
+.events-page .event-info-item span{
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Statusline légère */
+.events-page .event-statusline{
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.015);
+  border: 1px solid rgba(255,255,255,.05);
+  color: rgba(255,255,255,.86);
+  font-weight: 800;
+  font-size: .83rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+ 
+}
+
+/* Footer mobile : rester en ligne */
+@media (max-width: 480px){
+  .events-page .event-card-footer{
+    flex-direction: row !important;
+    align-items: center !important;
+  }
+
+    .events-page .event-action-btn{
+    padding: 8px 10px;
+    font-size: .82rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+}
+
+/* Option PRO : on cache l’icône décorative */
+.events-page .event-card-icon{ display: none; }

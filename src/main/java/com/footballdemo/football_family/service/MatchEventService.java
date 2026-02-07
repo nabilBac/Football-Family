@@ -31,37 +31,56 @@ public class MatchEventService {
     // 📊 CRÉATION D'ÉVÉNEMENTS
     // ========================================
 
-    /**
-     * Créer un événement et le broadcaster via WebSocket
-     */
-    @Transactional
-    public MatchEventDTO createEvent(CreateMatchEventDTO dto) {
-        
-        Match match = matchRepo.findById(dto.getMatchId())
-                .orElseThrow(() -> new RuntimeException("Match introuvable"));
+  
+   /**
+ * Créer un événement et le broadcaster via WebSocket
+ */
+@Transactional
+public MatchEventDTO createEvent(CreateMatchEventDTO dto) {
+    
+    Match match = matchRepo.findById(dto.getMatchId())
+            .orElseThrow(() -> new RuntimeException("Match introuvable"));
 
-        Team team = null;
-        if (dto.getTeamId() != null) {
-            team = teamRepo.findById(dto.getTeamId()).orElse(null);
-        }
-
-        MatchEvent event = MatchEvent.builder()
-                .match(match)
-                .type(dto.getType())
-                .minute(dto.getMinute())
-                .playerName(dto.getPlayerName())
-                .team(team)
-                .details(dto.getDetails())
-                .build();
-
-        event = eventRepo.save(event);
-
-        // 🔥 BROADCAST VIA WEBSOCKET
-        MatchEventDTO eventDTO = new MatchEventDTO(event);
-        broadcastEvent(eventDTO);
-
-        return eventDTO;
+    Team team = null;
+    if (dto.getTeamId() != null) {
+        team = teamRepo.findById(dto.getTeamId()).orElse(null);
     }
+
+    MatchEvent event = MatchEvent.builder()
+            .match(match)
+            .type(dto.getType())
+            .minute(dto.getMinute())
+            .playerName(dto.getPlayerName())
+            .team(team)
+            .details(dto.getDetails())
+            .build();
+
+    event = eventRepo.save(event);
+
+    // 🔥 AUTO-INCRÉMENTATION DU SCORE SI BUT
+    if (dto.getType() == MatchEventType.GOAL && team != null) {
+        boolean isTeamA = match.getTeamA() != null && match.getTeamA().getId().equals(team.getId());
+        boolean isTeamB = match.getTeamB() != null && match.getTeamB().getId().equals(team.getId());
+        
+        if (isTeamA) {
+            int currentScore = match.getScoreTeamA() != null ? match.getScoreTeamA() : 0;
+            match.setScoreTeamA(currentScore + 1);
+            matchRepo.save(match);
+            System.out.println("✅ Score auto-incrémenté : Équipe A = " + match.getScoreTeamA());
+        } else if (isTeamB) {
+            int currentScore = match.getScoreTeamB() != null ? match.getScoreTeamB() : 0;
+            match.setScoreTeamB(currentScore + 1);
+            matchRepo.save(match);
+            System.out.println("✅ Score auto-incrémenté : Équipe B = " + match.getScoreTeamB());
+        }
+    }
+
+    // 🔥 BROADCAST VIA WEBSOCKET
+    MatchEventDTO eventDTO = new MatchEventDTO(event);
+    broadcastEvent(eventDTO);
+
+    return eventDTO;
+}
 
     /**
      * Créer un événement GOAL automatiquement
@@ -136,6 +155,24 @@ public class MatchEventService {
         event = eventRepo.save(event);
         broadcastEvent(new MatchEventDTO(event));
     }
+
+
+    /**
+ * Créer un événement TIRS AU BUT
+ */
+@Transactional
+public void createPenaltyShootoutEvent(Match match) {
+    
+    MatchEvent event = MatchEvent.builder()
+            .match(match)
+            .type(MatchEventType.PENALTY_SHOOTOUT)
+            .minute(120) // Après prolongations
+            .details("🎯 Tirs au but")
+            .build();
+
+    event = eventRepo.save(event);
+    broadcastEvent(new MatchEventDTO(event));
+}
 
     /**
      * Créer un événement CARTON JAUNE
@@ -262,4 +299,13 @@ public class MatchEventService {
     public void deleteMatchEvents(Long matchId) {
         eventRepo.deleteByMatchId(matchId);
     }
+
+
+    /**
+ * Supprimer UN événement spécifique
+ */
+@Transactional
+public void deleteEvent(Long eventId) {
+    eventRepo.deleteById(eventId);
+}
 }

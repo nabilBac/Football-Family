@@ -31,8 +31,8 @@ public class ClassementService {
             }
 
             // 2. Différence de buts
-            int diffA = a.getGoalsFor() - a.getGoalsAgainst();
-            int diffB = b.getGoalsFor() - b.getGoalsAgainst();
+            int diffA = a.getGoalDifference();
+            int diffB = b.getGoalDifference();
             if (diffA != diffB) {
                 return diffB - diffA;
             }
@@ -47,7 +47,8 @@ public class ClassementService {
             if (direct != 0) return direct;
 
             // 5. Tirage au sort
-            return Math.random() < 0.5 ? -1 : 1;
+            return Long.compare(a.getTeamId(), b.getTeamId());
+
         });
 
         return list;
@@ -56,52 +57,55 @@ public class ClassementService {
     // ------------------------
     //   CONFRONTATION DIRECTE
     // ------------------------
-  private int compareHeadToHead(TeamStats a, TeamStats b, List<Match> matches) {
+    private int compareHeadToHead(TeamStats a, TeamStats b, List<Match> matches) {
 
-    int goalsA = 0;
-    int goalsB = 0;
+        int goalsA = 0;
+        int goalsB = 0;
 
-    for (Match m : matches) {
+        for (Match m : matches) {
 
-        // 🔥 PROTECTION : ignorer les matchs KO, consolante, etc.
-        if (m.getTeamA() == null || m.getTeamB() == null) {
-            continue;
+            // 🔥 PROTECTION : ignorer les matchs KO, consolante, etc.
+            if (m.getTeamA() == null || m.getTeamB() == null) {
+                continue;
+                
+            }
+
+            // Match A → B
+            if (Objects.equals(m.getTeamA().getId(), a.getTeamId())
+                    && Objects.equals(m.getTeamB().getId(), b.getTeamId())) {
+
+                goalsA += m.getScoreTeamA() != null ? m.getScoreTeamA() : 0;
+                goalsB += m.getScoreTeamB() != null ? m.getScoreTeamB() : 0;
+            }
+
+            // Match B → A (retour)
+            if (Objects.equals(m.getTeamA().getId(), b.getTeamId())
+                    && Objects.equals(m.getTeamB().getId(), a.getTeamId())) {
+
+                goalsA += m.getScoreTeamB() != null ? m.getScoreTeamB() : 0;
+                goalsB += m.getScoreTeamA() != null ? m.getScoreTeamA() : 0;
+            }
         }
 
-        // Match A → B
-        if (Objects.equals(m.getTeamA().getId(), a.getTeamId())
-                && Objects.equals(m.getTeamB().getId(), b.getTeamId())) {
-
-            goalsA += m.getScoreTeamA() != null ? m.getScoreTeamA() : 0;
-            goalsB += m.getScoreTeamB() != null ? m.getScoreTeamB() : 0;
-        }
-
-        // Match B → A (retour)
-        if (Objects.equals(m.getTeamA().getId(), b.getTeamId())
-                && Objects.equals(m.getTeamB().getId(), a.getTeamId())) {
-
-            goalsA += m.getScoreTeamB() != null ? m.getScoreTeamB() : 0;
-            goalsB += m.getScoreTeamA() != null ? m.getScoreTeamA() : 0;
-        }
+        return Integer.compare(goalsB, goalsA);
     }
-
-    return Integer.compare(goalsB, goalsA);
-}
 
 
     // ------------------------
     //  STATS DES MATCHS DE POULE
     // ------------------------
- private Map<Long, TeamStats> computeBaseStats(List<Match> matches) {
+  private Map<Long, TeamStats> computeBaseStats(List<Match> matches) {
 
     Map<Long, TeamStats> stats = new HashMap<>();
 
     for (Match m : matches) {
 
-        // 🔥  PROTECTION ABSOLUE : ignorer les matchs sans équipes
-        if (m.getTeamA() == null || m.getTeamB() == null) {
-            continue;
-        }
+        // ignorer les matchs sans équipes
+        if (m.getTeamA() == null || m.getTeamB() == null) continue;
+        if (m.getScoreTeamA() == null || m.getScoreTeamB() == null) continue;
+
+        // ✅ ignorer les matchs non scorés (sinon tu les comptes en 0-0)
+        if (m.getScoreTeamA() == null || m.getScoreTeamB() == null) continue;
 
         Long idA = m.getTeamA().getId();
         Long idB = m.getTeamB().getId();
@@ -112,48 +116,36 @@ public class ClassementService {
         TeamStats sA = stats.get(idA);
         TeamStats sB = stats.get(idB);
 
-        int scoreA = m.getScoreTeamA() != null ? m.getScoreTeamA() : 0;
-        int scoreB = m.getScoreTeamB() != null ? m.getScoreTeamB() : 0;
+        int scoreA = m.getScoreTeamA();
+        int scoreB = m.getScoreTeamB();
 
-        // Buts
-        sA.addGoalsFor(scoreA);
-        sA.addGoalsAgainst(scoreB);
-
-        sB.addGoalsFor(scoreB);
-        sB.addGoalsAgainst(scoreA);
-
-        // Points
-        if (scoreA > scoreB) {
-            sA.addPoints(3);
-        } else if (scoreA < scoreB) {
-            sB.addPoints(3);
-        } else {
-            sA.addPoints(1);
-            sB.addPoints(1);
-        }
+        // ✅ UNE seule méthode qui met tout à jour (played, points, win/draw/loss, GF/GA)
+        sA.recordMatch(scoreA, scoreB);
+        sB.recordMatch(scoreB, scoreA);
     }
 
     return stats;
 }
 
 
+
     public Map<Long, List<TeamStats>> computeRankingsForEvent(Long eventId) {
 
-    Map<Long, List<TeamStats>> result = new HashMap<>();
+        Map<Long, List<TeamStats>> result = new HashMap<>();
 
-    // Trouver tous les groupes liés à l’event
-   List<Long> groupIds = matchRepository.findDistinctGroupIdsByEvent(eventId)
-        .stream()
-        .filter(Objects::nonNull) // supprime groupId = null (KO + Consolante)
-        .toList();
+        // Trouver tous les groupes liés à l'event
+        List<Long> groupIds = matchRepository.findDistinctGroupIdsByEvent(eventId)
+                .stream()
+                .filter(Objects::nonNull) // supprime groupId = null (KO + Consolante)
+                .toList();
 
 
-    for (Long groupId : groupIds) {
-        List<TeamStats> ranking = computeRanking(groupId);
-        result.put(groupId, ranking);
+        for (Long groupId : groupIds) {
+            List<TeamStats> ranking = computeRanking(groupId);
+            result.put(groupId, ranking);
+        }
+
+        return result;
     }
-
-    return result;
-}
 
 }

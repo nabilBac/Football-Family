@@ -4,6 +4,7 @@ import com.footballdemo.football_family.dto.*;
 import com.footballdemo.football_family.model.Event;
 import com.footballdemo.football_family.model.EventStatus;
 import com.footballdemo.football_family.model.User;
+import com.footballdemo.football_family.security.EventSecurityService;
 import com.footballdemo.football_family.service.EventService;
 import com.footballdemo.football_family.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +17,8 @@ import org.springframework.web.multipart.MultipartFile;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-
 import java.security.Principal;
+
 
 /**
  * ✅ VERSION SÉCURISÉE - Contrôleur de gestion d'événements
@@ -38,6 +39,7 @@ public class EventManagementApiController {
 
     private final EventService eventService;
     private final UserService userService;
+     private final EventSecurityService eventSecurityService;
 
     /**
      * ✅ Récupère l'utilisateur connecté depuis le Principal
@@ -104,7 +106,8 @@ public class EventManagementApiController {
 
         } catch (AccessDeniedException e) {
             log.warn("Accès refusé lors de la création d'événement - User: {}, Reason: {}", 
-                    principal.getName(), e.getMessage());
+                    principal != null ? principal.getName() : "null"
+, e.getMessage());
             return ResponseEntity
                     .status(403)
                     .body(new ApiResponse<>(false, "Accès refusé : " + e.getMessage(), null));
@@ -115,19 +118,20 @@ public class EventManagementApiController {
                     .status(400)
                     .body(new ApiResponse<>(false, e.getMessage(), null));
 
-        } catch (Exception e) {
-            log.error("Erreur lors de la création d'événement", e);
-            return ResponseEntity
-                    .status(500)
-                    .body(new ApiResponse<>(false, 
-                            "Une erreur est survenue lors de la création de l'événement", 
-                            null));
-        }
-    }
+       } catch (Exception e) {
+    log.error("Erreur lors de la création d'événement (user={}, dto={})",
+            principal != null ? principal.getName() : "null",
+            dto,
+            e);
 
-    // ============================================================
-    // 🟦 UPLOAD MEDIA (image/logo) POUR UN ÉVÉNEMENT
-    // ============================================================
+    return ResponseEntity
+            .status(500)
+            .body(new ApiResponse<>(false,
+                    "Erreur création: " + e.getClass().getSimpleName() + " - " + e.getMessage(),
+                    null));
+}
+
+    }
     
     /**
      * ✅ Ajouter une image/logo à un événement existant
@@ -214,9 +218,6 @@ public class EventManagementApiController {
         }
     }
 
-    // ============================================================
-    // 🟦 MISE À JOUR STATUT ÉVÉNEMENT
-    // ============================================================
     
     /**
      * ✅ Mettre à jour le statut d'un événement
@@ -261,10 +262,10 @@ public class EventManagementApiController {
             } catch (IllegalArgumentException e) {
                 log.warn("Statut invalide - EventId: {}, Status: {}", eventId, status);
                 return ResponseEntity
-                        .status(400)
-                        .body(new ApiResponse<>(false, 
-                                "Statut invalide. Valeurs acceptées : UPCOMING, LIVE, COMPLETED, CANCELLED", 
-                                null));
+        .status(400)
+        .body(new ApiResponse<>(false, 
+                "Statut invalide. Valeurs acceptées : DRAFT, PUBLISHED, REGISTRATION_CLOSED, ONGOING, COMPLETED, CANCELED", 
+                null));
             }
 
             Event updated = eventService.updateEventStatus(eventId, newStatus);
@@ -303,9 +304,6 @@ public class EventManagementApiController {
         }
     }
 
-    // ============================================================
-    // 🟦 SUPPRESSION D'ÉVÉNEMENT
-    // ============================================================
     
     /**
      * ✅ Supprimer un événement
@@ -343,15 +341,14 @@ public class EventManagementApiController {
                                 null));
             }
 
-            // Vérification du statut
-            if (event.getStatus() == EventStatus.LIVE) {
-                log.warn("Tentative de suppression d'événement en cours - EventId: {}", eventId);
-                return ResponseEntity
-                        .status(400)
-                        .body(new ApiResponse<>(false, 
-                                "Impossible de supprimer un événement en cours", 
-                                null));
-            }
+           if (event.getStatus() == EventStatus.ONGOING) {
+    log.warn("Tentative de suppression d'événement en cours - EventId: {}", eventId);
+    return ResponseEntity
+            .status(400)
+            .body(new ApiResponse<>(false, 
+                    "Impossible de supprimer un événement en cours", 
+                    null));
+}
 
             eventService.deleteEvent(eventId, currentUser);
 
@@ -377,4 +374,180 @@ public class EventManagementApiController {
                             null));
         }
     }
+    
+    /**
+     * Démarre un tournoi (passe en ONGOING)
+     * POST /api/events/manage/{eventId}/start
+     */
+ @PostMapping("/{eventId}/start")
+public ResponseEntity<ApiResponse<EventDTO>> startTournament(
+        @PathVariable Long eventId,
+        Principal principal) {
+    
+    try {
+        log.info("Démarrage tournoi demandé - EventId: {}", eventId);
+        
+        User currentUser = getCurrentUser(principal);
+        Event event = eventService.getEventById(eventId);
+        
+        // Vérification des droits
+        if (!eventService.canManageEvent(event, currentUser)) {
+            return ResponseEntity.status(403)
+                .body(new ApiResponse<>(false, "Accès refusé", null));
+        }
+        
+        // Vérifications métier
+        if (event.getStatus() == EventStatus.ONGOING) {
+            return ResponseEntity.status(400)
+                .body(new ApiResponse<>(false, "Tournoi déjà en cours", null));
+        }
+        
+        if (event.getStatus() == EventStatus.COMPLETED) {
+            return ResponseEntity.status(400)
+                .body(new ApiResponse<>(false, "Tournoi déjà terminé", null));
+        }
+        
+        // ✅ CORRECTION : Tout faire dans le service
+        Event savedEvent = eventService.startTournament(eventId);
+        
+        EventDTO response = EventDTO.from(
+            savedEvent,
+            currentUser.getId(),
+            eventService.countAcceptedParticipants(savedEvent.getId()),
+            null,
+            null
+        );
+        
+        log.info("✅ Tournoi démarré - EventId: {}", eventId);
+        
+        return ResponseEntity.ok(
+            new ApiResponse<>(true, "Tournoi démarré avec succès", response)
+        );
+        
+    } catch (Exception e) {
+        log.error("❌ Erreur démarrage tournoi - EventId: {}", eventId, e);
+        return ResponseEntity.status(500)
+            .body(new ApiResponse<>(false, "Erreur serveur", null));
+    }
+}
+    
+    // ========== ✅ NOUVEAU : TERMINER UN TOURNOI ==========
+    
+    /**
+     * Termine un tournoi (passe en COMPLETED)
+     * POST /api/events/manage/{eventId}/finish
+     */
+    @PostMapping("/{eventId}/finish")
+public ResponseEntity<ApiResponse<EventDTO>> finishTournament(
+        @PathVariable Long eventId,
+        @RequestParam(required = false, defaultValue = "false") boolean force,
+        Principal principal) {
+    
+    try {
+        log.info("Fin tournoi demandée - EventId: {}, Force: {}", eventId, force);
+        
+        User currentUser = getCurrentUser(principal);
+        Event event = eventService.getEventById(eventId);
+        
+        // Vérification des droits
+        if (!eventService.canManageEvent(event, currentUser)) {
+            return ResponseEntity.status(403)
+                .body(new ApiResponse<>(false, "Accès refusé", null));
+        }
+        
+        // Vérifications métier
+        if (event.getStatus() == EventStatus.COMPLETED) {
+            return ResponseEntity.status(400)
+                .body(new ApiResponse<>(false, "Tournoi déjà terminé", null));
+        }
+        
+        if (event.getStatus() != EventStatus.ONGOING && !force) {
+            return ResponseEntity.status(400)
+                .body(new ApiResponse<>(false, "Le tournoi n'est pas en cours. Utilisez force=true pour terminer quand même.", null));
+        }
+        
+        // ✅ CORRECTION : Appel direct au service
+        Event savedEvent = eventService.finishTournament(eventId);
+        
+        EventDTO response = EventDTO.from(
+            savedEvent,
+            currentUser.getId(),
+            eventService.countAcceptedParticipants(savedEvent.getId()),
+            null,
+            null
+        );
+        
+        log.info("✅ Tournoi terminé - EventId: {}", eventId);
+        
+        return ResponseEntity.ok(
+            new ApiResponse<>(true, "Tournoi terminé avec succès", response)
+        );
+        
+    } catch (Exception e) {
+        log.error("❌ Erreur fin tournoi - EventId: {}", eventId, e);
+        return ResponseEntity.status(500)
+            .body(new ApiResponse<>(false, "Erreur serveur", null));
+    }
+}
+
+
+
+/**
+ * Annule un événement (passe en CANCELED)
+ * POST /api/events/manage/{eventId}/cancel
+ */
+@Operation(summary = "Annuler un événement")
+@RequestMapping(value = "/{eventId}/cancel", method = {RequestMethod.PATCH, RequestMethod.PUT})
+public ResponseEntity<ApiResponse<EventDTO>> cancelEvent(
+        @PathVariable Long eventId,
+        Principal principal) {
+    
+    try {
+        log.info("Annulation événement demandée - EventId: {}", eventId);
+        
+        User currentUser = getCurrentUser(principal);
+        Event event = eventService.getEventById(eventId);
+        
+        // Vérification des droits
+        if (!eventService.canManageEvent(event, currentUser)) {
+            log.warn("Accès refusé pour annulation - EventId: {}, User: {}", 
+                    eventId, currentUser.getUsername());
+            return ResponseEntity.status(403)
+                .body(new ApiResponse<>(false, "Accès refusé", null));
+        }
+        
+        // Vérifications métier
+        if (event.getStatus() == EventStatus.COMPLETED) {
+            return ResponseEntity.status(400)
+                .body(new ApiResponse<>(false, "Impossible d'annuler un événement terminé", null));
+        }
+        
+        if (event.getStatus() == EventStatus.CANCELED) {
+            return ResponseEntity.status(400)
+                .body(new ApiResponse<>(false, "Événement déjà annulé", null));
+        }
+        
+        // Mise à jour du statut
+        Event updated = eventService.updateEventStatus(eventId, EventStatus.CANCELED);
+        
+        EventDTO response = EventDTO.from(
+            updated,
+            currentUser.getId(),
+            eventService.countAcceptedParticipants(updated.getId()),
+            null,
+            null
+        );
+        
+        log.info("✅ Événement annulé - EventId: {}", eventId);
+        
+        return ResponseEntity.ok(
+            new ApiResponse<>(true, "Événement annulé avec succès", response)
+        );
+        
+    } catch (Exception e) {
+        log.error("❌ Erreur annulation événement - EventId: {}", eventId, e);
+        return ResponseEntity.status(500)
+            .body(new ApiResponse<>(false, "Erreur lors de l'annulation", null));
+    }
+}
 }

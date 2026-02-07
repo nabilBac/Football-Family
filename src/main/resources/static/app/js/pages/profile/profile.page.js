@@ -6,12 +6,17 @@ import { Router } from "../../router.js";
 export async function render(params) {
 
     // Charger l'utilisateur courant si non présent
-    if (!Auth.currentUser && Auth.accessToken) {
-        await Auth.loadUser();
+   const token =
+  Auth.accessToken ||
+  localStorage.getItem("token") ||
+  localStorage.getItem("accessToken") ||
+  sessionStorage.getItem("token");
 
-        console.log("Auth.currentUser =", Auth.currentUser);
+if (!Auth.currentUser && token) {
+  Auth.accessToken = token; // si ton Auth s’appuie dessus
+  try { await Auth.loadUser(); } catch(e) { console.warn(e); }
+}
 
-    }
 
     // Qui afficher ?
     const username = params?.id || params?.username || Auth.currentUser?.username;
@@ -28,17 +33,30 @@ export async function render(params) {
         `;
     }
 
-    // Charger le profil API
+    // ✅ CHARGER LE PROFIL API AVEC CACHE-BUSTING
     let data;
     try {
-        const res = await fetch(`/api/profile/${encodeURIComponent(username)}`, {
+        // ✅ Ajoute timestamp pour forcer refresh + Cache-Control
+        const res = await fetch(`/api/profile/${encodeURIComponent(username)}?t=${Date.now()}`, {
             headers: {
-                "Authorization": Auth.getAuthHeader()
+                "Authorization": Auth.getAuthHeader(),
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache"
             }
         });
 
         if (!res.ok) throw new Error("Profil introuvable");
         data = await res.json();
+
+        console.log("DEBUG PROFILE", {
+  viewedUsername: username,
+  apiUserId: data.user?.id,
+  apiUsername: data.user?.username,
+  isCurrentUser: data.isCurrentUser,
+  authUser: Auth.currentUser?.username,
+  authUserId: Auth.currentUser?.id
+});
+
     } catch (e) {
         return `
             <div class="profile-page">
@@ -53,7 +71,13 @@ export async function render(params) {
 
     const user = data.user;
     const videos = data.videos || [];
-    const isCurrentUser = data.isCurrentUser === true;
+let isCurrentUser = data.isCurrentUser === true;
+
+// ✅ Fallback : si l'API se trompe, on compare les ids
+if (!isCurrentUser && Auth.currentUser?.id && user?.id && Number(Auth.currentUser.id) === Number(user.id)) {
+  isCurrentUser = true;
+}
+
 
     const followersCount = user.followersCount ?? user.followers ?? 0;
     const followingCount = user.followingCount ?? user.following ?? 0;
@@ -110,9 +134,10 @@ export async function render(params) {
                   Auth.currentUser?.clubId != null
 
                       ? `
-                        <a href="/admin" data-link class="btn btn-primary" style="padding:10px 20px; margin-bottom: 10px;">
-                            <i class="fas fa-users-gear"></i> Mon Club
-                        </a>
+ <a href="/club-admin" data-link class="btn btn-primary" style="padding:10px 20px; margin-bottom: 10px;">
+  <i class="fas fa-users-gear"></i> Mon Club
+</a>
+
                       `
                       : `
                         <a href="/account/club/create" data-link class="btn btn-primary" style="padding:10px 20px; margin-bottom: 10px;">
@@ -221,27 +246,49 @@ export function init(params) {
         });
     }
 
+
+     // Bouton Mon Club - REDIRECTION DIRECTE
+    const goToAdminBtn = document.getElementById("goToAdminBtn");
+    if (goToAdminBtn) {
+       goToAdminBtn.addEventListener("click", () => {
+    console.log("🔥 Navigation vers admin via Router");
+    Router.go("/admin");  // ✅ BON
+});
+    }
+
     // FOLLOW SYSTEM
     const followBtn = document.getElementById("followBtn");
     if (followBtn) {
         const targetId = followBtn.dataset.targetId;
 
-        async function refreshFollowStatus() {
-            try {
-                const res = await fetch(`/api/follow/check/${targetId}`, {
-                    headers: { "Authorization": Auth.getAuthHeader() }
-                });
+      async function refreshFollowStatus() {
+  try {
+    const res = await fetch(`/api/follow/check/${targetId}`, {
+      headers: { "Authorization": Auth.getAuthHeader() }
+    });
 
-                if (!res.ok) return;
+    // ✅ invité / interdit → on masque le module follow, sans casser la page
+    if (res.status === 401 || res.status === 403) {
+      followBtn.style.display = "none";
+      return;
+    }
 
-                const result = await res.json();
-                const data = result.data;
+    if (!res.ok) {
+      console.warn("follow check failed:", res.status);
+      return;
+    }
 
-                followBtn.classList.toggle("following", data.isFollowing);
-                followBtn.textContent = data.isFollowing ? "Abonné" : "S'abonner";
+    const result = await res.json();
+    const data = result.data;
 
-            } catch (e) {}
-        }
+    followBtn.classList.toggle("following", data.isFollowing);
+    followBtn.textContent = data.isFollowing ? "Abonné" : "S'abonner";
+
+  } catch (e) {
+    console.warn("refreshFollowStatus error:", e);
+  }
+}
+
 
         refreshFollowStatus();
 

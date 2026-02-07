@@ -25,27 +25,33 @@ public class EventMatchesApiController {
     private final MatchService matchService;
     private final EventAccessService eventAccessService; // 🔥 Injection du service
 
-    @GetMapping("/{eventId}/matches")
-    public ResponseEntity<?> getMatches(
-            @PathVariable Long eventId,
-            Principal principal) {
-
-        User user = userService.getUserByUsername(principal.getName())
-                .orElseThrow();
-
-        Event event = eventService.getEventById(eventId);
-
-        // 🔥 Vérification d’accès centralisée
-        eventAccessService.assertCanView(event, user);
-
-        // Accès OK → renvoyer les matchs
-        List<MatchDTO> matches = matchService.getMatchesByEvent(eventId)
-                .stream()
-                .map(MatchDTO::from)
-                .toList();
-
-        return ResponseEntity.ok(
-                new ApiResponse<>(true, "Matchs récupérés", matches)
-        );
+@GetMapping("/{eventId}/matches")
+public ResponseEntity<?> getMatches(
+        @PathVariable Long eventId,
+        Principal principal
+) {
+    User user = null;
+    if (principal != null) {
+        user = userService
+                .getUserByUsername(principal.getName())
+                .orElse(null);
     }
+
+    Event event = eventService.getEventById(eventId);
+    eventAccessService.assertCanView(event, user);
+
+    List<MatchDTO> matches = matchService.getMatchesByEvent(eventId)
+            .stream()
+            .map(MatchDTO::from)
+            .toList();
+
+    return ResponseEntity.ok(
+            new ApiResponse<>(true, "Matchs récupérés", matches)
+    );
+}
+
+
+
+
+
 }

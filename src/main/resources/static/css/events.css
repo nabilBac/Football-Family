@@ -1,4 +1,4 @@
-/* /static/css/events.css */
+/* events.css - Version nettoyée */
 
 :root {
     --primary: #10B981;
@@ -15,19 +15,20 @@
     --info: #3B82F6;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   LAYOUT PRINCIPAL
-═══════════════════════════════════════════════════════════ */
+/* ==================== LAYOUT ==================== */
 .events-page {
     min-height: 100vh;
     background: var(--bg-main);
     color: var(--text-primary);
     padding-bottom: 80px;
+    scrollbar-width: none;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   HEADER FIXE
-═══════════════════════════════════════════════════════════ */
+.events-page::-webkit-scrollbar {
+    display: none;
+}
+
+/* ==================== HEADER ==================== */
 .events-header {
     position: fixed;
     top: 0;
@@ -46,7 +47,7 @@
 .header-logo {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
 }
 
 .header-logo i {
@@ -80,9 +81,7 @@
     transform: translateX(-2px);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   TABS NAVIGATION
-═══════════════════════════════════════════════════════════ */
+/* ==================== TABS ==================== */
 .tabs-container {
     position: fixed;
     top: 60px;
@@ -120,16 +119,21 @@
 }
 
 .tab i {
-    margin-right: 0.5rem;
+    margin-right: 8px;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   CONTENT SECTIONS
-═══════════════════════════════════════════════════════════ */
+/* ==================== CONTENT ==================== */
 .content-sections {
-    margin-top: 120px; /* 60px header + 60px tabs */
+    margin-top: 120px;
     padding: 1rem;
-    
+    height: calc(100vh - 120px - 80px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+}
+
+.content-sections::-webkit-scrollbar {
+    display: none;
 }
 
 .tab-content {
@@ -142,25 +146,17 @@
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   FILTRES
-═══════════════════════════════════════════════════════════ */
+/* ==================== FILTERS ==================== */
 .filters-section {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
+    gap: 8px;
+    margin-bottom: 24px;
     overflow-x: auto;
-    padding-bottom: 0.5rem;
+    padding-bottom: 8px;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -169,7 +165,7 @@
 }
 
 .filter-chip {
-    padding: 0.6rem 1.2rem;
+    padding: 10px 20px;
     background: var(--bg-card);
     border: 2px solid var(--border);
     border-radius: 24px;
@@ -194,20 +190,19 @@
 }
 
 .filter-chip i {
-    margin-right: 0.5rem;
+    margin-right: 8px;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   EVENT CARDS
-═══════════════════════════════════════════════════════════ */
+/* ==================== EVENT CARDS ==================== */
 .event-card {
     background: var(--bg-card);
     border-radius: 20px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
+    padding: 24px;
+    margin-bottom: 16px;
     border: 1px solid var(--border);
     transition: all 0.3s ease;
     cursor: pointer;
+    animation: slideUp 0.3s ease;
 }
 
 .event-card:hover {
@@ -216,26 +211,31 @@
     border-color: var(--primary);
 }
 
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .event-card-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1.2rem;
+    margin-bottom: 20px;
 }
 
 .event-card-title h3 {
     color: var(--text-primary);
     font-size: 1.15rem;
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    margin-bottom: 8px;
     letter-spacing: -0.3px;
 }
 
 .event-type-badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.9rem;
+    gap: 6px;
+    padding: 6px 14px;
     border-radius: 16px;
     font-size: 0.75rem;
     font-weight: 700;
@@ -271,24 +271,33 @@
     color: var(--primary);
 }
 
+.event-logo-small {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.4);
+    padding: 6px;
+}
+
 .event-description {
     color: var(--text-secondary);
     font-size: 0.9rem;
-    margin-bottom: 1rem;
+    margin-bottom: 16px;
     line-height: 1.5;
 }
 
 .event-card-info {
     display: flex;
     flex-direction: column;
-    gap: 0.8rem;
-    margin-bottom: 1.2rem;
+    gap: 12px;
+    margin-bottom: 20px;
 }
 
 .event-info-item {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
+    gap: 12px;
     color: var(--text-secondary);
     font-size: 0.9rem;
 }
@@ -303,14 +312,14 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 1.2rem;
+    padding-top: 20px;
     border-top: 1px solid var(--border);
 }
 
 .event-participants {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 10px;
     color: var(--text-secondary);
     font-size: 0.85rem;
 }
@@ -320,11 +329,21 @@
     font-size: 1rem;
 }
 
+.event-participants.badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* ==================== BUTTONS ==================== */
 .event-action-btn {
     background: var(--primary);
     color: white;
     border: none;
-    padding: 0.7rem 1.4rem;
+    padding: 11px 22px;
     border-radius: 12px;
     font-size: 0.85rem;
     font-weight: 700;
@@ -332,7 +351,7 @@
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
 }
 
 .event-action-btn:hover:not(:disabled) {
@@ -361,30 +380,189 @@
     background: var(--danger);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   FORMULAIRE CRÉATION
-═══════════════════════════════════════════════════════════ */
+.event-action-btn.results-btn {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+}
+
+.event-action-btn.results-btn:hover {
+    background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.event-action-btn.results-btn i {
+    color: #ffd700;
+    font-size: 1.1em;
+}
+
+/* ==================== BADGES ==================== */
+.event-registration-status {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.registration-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: rgba(255,255,255,0.06);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.registration-badge.open {
+    color: #10b981;
+    border-color: rgba(16,185,129,0.4);
+}
+
+.registration-badge.closed {
+    color: #ef4444;
+    border-color: rgba(239,68,68,0.4);
+}
+
+.registration-badge.full {
+    color: #f59e0b;
+    border-color: rgba(245,158,11,0.4);
+}
+
+.registration-badge.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.registration-badge.completed {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+}
+
+.registration-deadline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    background: white;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+/* ==================== HISTORY CARDS ==================== */
+.event-card.history-card {
+    opacity: 0.95;
+    border-left: 4px solid #6c757d;
+    background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+}
+
+.event-card.history-card:hover {
+    opacity: 1;
+    box-shadow: 0 8px 25px rgba(108, 117, 125, 0.3);
+}
+
+.month-section {
+    margin-bottom: 50px;
+}
+
+.month-title {
+    color: var(--text-primary);
+    font-size: 1.4em;
+    font-weight: 700;
+    margin-bottom: 25px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid #00ff88;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-transform: capitalize;
+}
+
+.month-title i {
+    color: var(--primary);
+    font-size: 1.3em;
+}
+
+.month-events {
+    display: grid;
+    gap: 20px;
+}
+
+/* ==================== ACCORDION ==================== */
+.accordion-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s;
+    padding: 1rem 0;
+}
+
+.accordion-toggle:hover {
+    opacity: 0.8;
+}
+
+.accordion-toggle .fa-chevron-down {
+    transition: transform 0.3s ease;
+    color: var(--primary);
+}
+
+.accordion-toggle.active .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+.accordion-toggle .event-count {
+    background: var(--primary);
+    color: #000;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 700;
+    margin-left: 10px;
+}
+
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    opacity: 0;
+}
+
+.accordion-content.active {
+    max-height: 10000px;
+    transition: max-height 0.5s ease-in;
+    opacity: 1;
+}
+
+/* ==================== FORM ==================== */
 .create-form-container {
     background: var(--bg-card);
     border-radius: 20px;
-    padding: 2rem;
+    padding: 32px;
     border: 1px solid var(--border);
-    margin-bottom: 200px; /* 👈 Pour pouvoir scroller */
-    padding-bottom: 100px; /* 👈 AJOUTEZ AUSSI CETTE LIGNE */
+    margin-bottom: 200px;
+    padding-bottom: 100px;
 }
 
 .form-section {
-    margin-bottom: 2rem;
+    margin-bottom: 32px;
 }
 
 .form-section-title {
     color: var(--text-primary);
     font-size: 1rem;
     font-weight: 700;
-    margin-bottom: 1rem;
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
 }
 
 .form-section-title i {
@@ -392,20 +570,20 @@
 }
 
 .form-group {
-    margin-bottom: 1.25rem;
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
     color: var(--text-secondary);
     font-size: 0.85rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 8px;
     font-weight: 600;
 }
 
 .form-group label .required {
     color: var(--danger);
-    margin-left: 0.2rem;
+    margin-left: 4px;
 }
 
 .form-group input,
@@ -415,7 +593,7 @@
     background: var(--bg-input);
     border: 1px solid var(--border);
     color: var(--text-primary);
-    padding: 0.85rem 1rem;
+    padding: 14px 16px;
     border-radius: 12px;
     font-size: 0.9rem;
     transition: all 0.2s ease;
@@ -438,13 +616,13 @@
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: 16px;
 }
 
 .form-help-text {
     color: var(--text-tertiary);
     font-size: 0.75rem;
-    margin-top: 0.4rem;
+    margin-top: 6px;
     font-style: italic;
 }
 
@@ -453,7 +631,7 @@
     background: var(--primary);
     color: white;
     border: none;
-    padding: 1.1rem;
+    padding: 18px;
     border-radius: 14px;
     font-size: 1rem;
     font-weight: 700;
@@ -462,7 +640,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 8px;
 }
 
 .submit-btn:hover:not(:disabled) {
@@ -481,7 +659,6 @@
     transform: none;
 }
 
-/* Champs conditionnels */
 .conditional-field {
     display: none;
 }
@@ -490,39 +667,63 @@
     display: block;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   EMPTY STATE
-═══════════════════════════════════════════════════════════ */
+/* ==================== FOCUS STATES ==================== */
+.event-action-btn:focus,
+.filter-chip:focus,
+.tab:focus,
+.submit-btn:focus,
+.back-btn:focus,
+.accordion-toggle:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+    border-radius: 12px;
+}
+
+button:focus:not(:focus-visible) {
+    outline: none;
+}
+
+button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+/* ==================== STATES ==================== */
 .empty-state {
     text-align: center;
-    padding: 4rem 2rem;
+    padding: 64px 32px;
     color: var(--text-secondary);
 }
 
 .empty-state i {
     font-size: 4rem;
     color: var(--text-tertiary);
-    margin-bottom: 1.5rem;
+    margin-bottom: 24px;
     opacity: 0.5;
 }
 
 .empty-state h3 {
     color: var(--text-primary);
     font-size: 1.2rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 8px;
 }
 
 .empty-state p {
     font-size: 0.9rem;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   LOADER
-═══════════════════════════════════════════════════════════ */
 #loader,
 #my-events-loader {
     text-align: center;
-    padding: 2rem;
+    padding: 32px;
     color: var(--text-secondary);
 }
 
@@ -534,14 +735,27 @@
 }
 
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   TOAST NOTIFICATIONS
-═══════════════════════════════════════════════════════════ */
+.event-card.skeleton {
+    background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    pointer-events: none;
+    min-height: 250px;
+}
+
+.event-card.skeleton * {
+    visibility: hidden;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* ==================== TOAST ==================== */
 .toast {
     position: fixed;
     bottom: 100px;
@@ -549,11 +763,11 @@
     transform: translateX(-50%) translateY(100px);
     background: var(--primary);
     color: white;
-    padding: 1rem 1.5rem;
+    padding: 16px 24px;
     border-radius: 12px;
     font-weight: 600;
     font-size: 0.9rem;
-    z-index: 1000;
+    z-index: 200;
     opacity: 0;
     transition: all 0.3s ease;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
@@ -564,9 +778,7 @@
     transform: translateX(-50%) translateY(0);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   RESPONSIVE
-═══════════════════════════════════════════════════════════ */
+/* ==================== RESPONSIVE ==================== */
 @media (max-width: 767px) {
     .form-row {
         grid-template-columns: 1fr;
@@ -574,7 +786,7 @@
     
     .event-card-header {
         flex-direction: column;
-        gap: 1rem;
+        gap: 16px;
     }
     
     .event-card-icon {
@@ -582,149 +794,15 @@
         height: 48px;
         font-size: 1.3rem;
     }
-}
 
-@media (min-width: 768px) {
-    .events-page {
-        max-width: 480px;
-        margin: 0 auto;
-        box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+    .month-title {
+        font-size: 1.2em;
     }
-}
-
-/* ═══════════════════════════════════════════════════════════
-   ANIMATIONS SUPPLÉMENTAIRES
-═══════════════════════════════════════════════════════════ */
-.event-card {
-    animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
+    
+    .month-section {
+        margin-bottom: 35px;
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
 
-/* Effet de pulsation sur le bouton d'inscription */
-.event-action-btn:not(:disabled):not(.pending):not(.validated):not(.cancelled) {
-    animation: pulse 2s ease infinite;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-    }
-    50% {
-        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
-    }
-}
-
-/* === FIX SCROLL PWA === */
-.content-sections {
-    margin-top: 120px; /* header + tabs */
-    padding: 1rem;
-
-    height: calc(100vh - 120px - 80px); /* 120px header+tabs + 80px bottom navbar */
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-  /* MASQUER LA BARRE DE SCROLL (scroll toujours actif) */
-.events-page {
-    scrollbar-width: none; /* Firefox */
-}
-
-.events-page::-webkit-scrollbar {
-    display: none; /* Chrome, Safari */
-}
-/* MASQUER LA SCROLLBAR SUR LA SECTION QUI SCROLLE RÉELLEMENT */
-.content-sections {
-    scrollbar-width: none !important; /* Firefox */
-}
-
-.content-sections::-webkit-scrollbar {
-    display: none !important; /* Chrome, Edge, Safari */
-}
-.event-logo-small {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
-    border-radius: 10px;
-    background: rgba(0,0,0,0.4);
-    padding: 6px;
-}
-.event-participants.badge {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10B981;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-/* ========================================
-   BADGE STATUT INSCRIPTIONS
-   ======================================== */
-
-.event-registration-status {
-    display: flex;
-    gap: 8px;
-    margin: 0.8rem 0;
-}
-
-.registration-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-
-    padding: 6px 12px;
-    border-radius: 999px;
-
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-
-    background: rgba(255,255,255,0.06);
-    color: var(--text-secondary);
-    border: 1px solid var(--border);
-}
-
-.registration-badge.open {
-    color: #10b981;
-    border-color: rgba(16,185,129,0.4);
-}
-.registration-badge.closed {
-    color: #ef4444;
-    border-color: rgba(239,68,68,0.4);
-}
-
-.registration-badge.full {
-    color: #f59e0b;
-    border-color: rgba(245,158,11,0.4);
-}
-
-.registration-deadline {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    background: white;
-    color: #6b7280;
-    border: 1px solid #d1d5db;
-}
-
-.registration-badge i,
-.registration-deadline i {
-    font-size: 0.9em;
-}
-
-/* Responsive */
-@media (max-width: 480px) {
     .event-registration-status {
         padding: 10px 12px;
         gap: 8px;
@@ -736,8 +814,11 @@
         padding: 5px 10px;
     }
 }
-.registration-badge.pending {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.3);
+
+@media (min-width: 768px) {
+    .events-page {
+        max-width: 480px;
+        margin: 0 auto;
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+    }
 }

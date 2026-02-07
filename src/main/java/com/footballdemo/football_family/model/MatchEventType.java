@@ -1,7 +1,5 @@
 package com.footballdemo.football_family.model;
 
-
-
 /**
  * 📊 Types d'événements de match pour le fil d'actualité live
  */
@@ -21,6 +19,7 @@ public enum MatchEventType {
     HALF_TIME,      // Mi-temps
     SECOND_HALF,    // Début 2e mi-temps
     FULL_TIME,      // Fin du match
+    PENALTY_SHOOTOUT, // ✅ NOUVEAU : Tirs au but
     
     // 🔄 Changements
     SUBSTITUTION,   // Remplacement

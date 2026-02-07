@@ -26,4 +26,12 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
   @Query("SELECT c FROM Comment c JOIN FETCH c.author WHERE c.id = :id")
   Optional<Comment> findByIdWithAuthor(@Param("id") Long id);
+
+
+  // Ajoute cette méthode dans CommentRepository
+@Query("SELECT c FROM Comment c JOIN FETCH c.author WHERE c.video.id = :videoId ORDER BY c.createdAt DESC")
+Page<Comment> findByVideoIdWithAuthor(@Param("videoId") Long videoId, Pageable pageable);
+
+@Query("SELECT c FROM Comment c JOIN FETCH c.author WHERE c.video.id = :videoId ORDER BY c.createdAt DESC")
+List<Comment> findByVideoIdWithAuthor(@Param("videoId") Long videoId);
 }

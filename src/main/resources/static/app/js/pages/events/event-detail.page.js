@@ -1,1114 +1,1455 @@
 // /static/app/js/pages/events/event-detail.page.js
+// ✅ VERSION REFACTORÉE - CODE PROPRE ET OPTIMISÉ
 
 import { Auth } from "../../auth.js";
 import { Router } from "../../router.js";
+import * as Components from "./event-detail-components.js";
+
+/* ============================================================================ */
+/* 📦 VARIABLES GLOBALES                                                        */
+/* ============================================================================ */
+let event = null;
+let currentUser = null;
+let currentEventId = null;
+
+/* ============================================================================ */
+/* 🔁 LIVE POLLING CONTROL                                                      */
+/* ============================================================================ */
+let __liveInterval = null;
+
+let __feedInterval = null;
+
+let __filtersBound = false;
+
+let __liveFocusMatchId = null;
+
+
+let __matchFilter = "all"; // all | upcoming | live | finished
+let __feedFilter = "all";  // all | live | result | ranking | media
+
+let __matchesCache = null; // cache simple pour éviter de refetch en boucle
+
+function stopFeedPolling() {
+  if (__feedInterval) clearInterval(__feedInterval);
+  __feedInterval = null;
+}
+
+function startFeedPolling(eventId) {
+  stopFeedPolling();
+  __feedInterval = setInterval(() => {
+    if (document.hidden) return;
+    loadLiveFeed(eventId).catch(console.error);
+  }, 15000);
+}
 
 /* ============================================================================
-   RENDER PAGE
+   🎨 INJECTION CSS
+   ============================================================================ */
+function injectCSS() {
+    const cssFiles = [
+  '/css/event-detail.css'
+];
+
+    
+    cssFiles.forEach(href => {
+        if (!document.querySelector(`link[href="${href}"]`)) {
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = href;
+            document.head.appendChild(link);
+        }
+    });
+}
+
+/* ============================================================================
+   📊 CACHE POUR OPTIMISATION
+   ============================================================================ */
+const DataCache = {
+    lastLiveMatchesHash: null,
+    lastRankingsHash: null,
+    lastBracketHash: null,
+    
+    // Générer un hash simple pour détecter les changements
+    hash(data) {
+        return JSON.stringify(data);
+    },
+    
+    // Vérifier si les données ont changé
+    hasChanged(key, newData) {
+        const newHash = this.hash(newData);
+        const oldHash = this[key];
+        
+        if (newHash !== oldHash) {
+            this[key] = newHash;
+            return true;
+        }
+        return false;
+    }
+};
+
+/* ============================================================================
+   🎯 RENDER PAGE
    ============================================================================ */
 export async function render(params) {
+    const eventId = params.id;
+    currentEventId = eventId;
 
-    // Injecter CSS Live
-    if (!document.querySelector('link[href="/css/event-live.css"]')) {
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = "/css/event-live.css";
-        document.head.appendChild(link);
+    try {
+        // Fetch event data
+       const response = await fetch(`/api/events/public/${eventId}`);
+        if (!response.ok) throw new Error('Événement introuvable');
+const response_data = await response.json();
+
+// ✅ L'event est dans response_data.data (ApiResponse format)
+event = response_data.data;
+
+window.__EVENT__ = event;  
+
+// ✅ currentUser vient probablement d'Auth
+currentUser = Auth.currentUser;
+
+// ✅ Calculer isOrganizer localement
+const isOrganizer = currentUser && event.organizerId === currentUser.id;
+const isRegistered = false; // TODO: à implémenter si besoin
+const registrationStatus = null;
+        const isAuthenticated = currentUser !== null;
+        const hasClub = currentUser?.clubId != null;
+        const isSingleMatch = event?.format === "SINGLE_MATCH";
+
+        // Add body class for styling
+        document.body.classList.add('is-event-detail-page');
+
+        // Render user-specific section
+        function renderUserSpecificSection() {
+            if (!isAuthenticated) {
+                return Components.renderGuestSection();
+            }
+           if (isOrganizer) {
+ return "";
+}
+
+            if (isRegistered) {
+                return Components.renderPlayerSection(registrationStatus);
+            }
+            return Components.renderVisitorSection();
+        }
+
+        // 🎯 NOUVELLE STRUCTURE PRO
+        return `
+            <div class="event-detail-page event-pro">
+                ${Components.renderHeader(isOrganizer)}
+                
+                <!-- 🎨 HERO SECTION MODERNE -->
+                ${Components.renderHeroSectionPro(event)}
+
+                      <!-- Section utilisateur -->
+                    ${renderUserSpecificSection()}
+                <!-- 🆕 INFORMATIONS PRATIQUES -->
+                ${Components.renderPracticalInfoSection(event)}
+                
+                <!-- 📊 QUICK STATS SCROLL -->
+                ${Components.renderQuickStatsScroll(event)}
+                
+                <!-- 🔒 ONGLETS STICKY -->
+                ${Components.renderStickyTabsPro(event, isOrganizer, currentUser)}
+                
+                <!-- 📄 CONTENU -->
+                <div class="event-content-pro">
+                    <!-- Description si présente -->
+                    ${event.description ? Components.renderDescription(event.description) : ''}
+                    
+                    <!-- Contenus des onglets -->
+                    <div class="tab-contents-pro">
+                        <div id="tab-live" class="tab-content-pro active">
+                            <div id="liveMatchesContainer"></div>
+                        </div>
+                        
+                        ${!isSingleMatch ? `
+                        <div id="tab-rankings" class="tab-content-pro">
+                            <div id="rankingsContainer"></div>
+                        </div>
+                        
+                        <div id="tab-bracket" class="tab-content-pro">
+                            <div id="bracketContainer"></div>
+                        </div>
+                        ` : ''}
+                        
+                        <div id="tab-feed" class="tab-content-pro">
+                            <div id="feedFilters" class="feed-filters"></div>
+                            <div id="liveFeedContainer"></div>
+                        </div>
+                        
+                        <div id="tab-matches" class="tab-content-pro">
+                            <div id="matchFilters" class="match-filters"></div>
+                            <div id="allMatchesContainer"></div>
+                        </div>
+                    </div>
+                    
+                  
+                </div>
+                
+                <!-- 🎯 CTA STICKY BOTTOM -->
+                ${Components.renderStickyCTAPro(event, isAuthenticated, isOrganizer, isRegistered, hasClub)}
+                
+                <!-- Modales -->
+                ${Components.renderRegistrationModal()}
+                ${Components.renderClubRegistrationModal(event)}
+                ${Components.renderToast()}
+            </div>
+        `;
+    } catch (error) {
+        console.error('Erreur lors du chargement:', error);
+        return `
+            <div class="event-detail-page">
+                <div class="error-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <h2>Erreur</h2>
+                    <p>${error.message}</p>
+                    <button onclick="history.back()" class="btn-primary">Retour</button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+/* ============================================================================
+   🎭 HELPER : SECTION RÔLE
+   ============================================================================ */
+function renderRoleSection(event, isOrganizer, isRegistered, registrationStatus, isAuthenticated) {
+    if (isOrganizer) {
+        return Components.renderOrganizerSection(event);
     }
     
-    // Injecter CSS si pas déjà là
-    if (!document.querySelector('link[href="/css/event-detail.css"]')) {
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = "/css/event-detail.css";
-        document.head.appendChild(link);
+    if (isRegistered) {
+        return Components.renderPlayerSection(registrationStatus);
     }
-
-    const eventId = params.id;
-
-    if (!eventId) {
-        return `
-            <div class="event-detail-page">
-                <div class="error-container">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <h2>Événement introuvable</h2>
-                    <button class="btn-primary" onclick="history.back()">Retour</button>
-                </div>
-            </div>
-        `;
+    
+    if (isAuthenticated) {
+        return Components.renderVisitorSection();
     }
+    
+    return Components.renderGuestSection();
+}
 
-    // Charger l'événement
-  // ========= VARIABLES ÉVÉNEMENT + TOURNOI =========
-let event = null;
-let isTournament = false;
-let totalMatches = 0;
-let totalGroups = 0;
-
-// ========= CHARGER L'ÉVÉNEMENT =========
-try {
-    const res = await Auth.secureFetch(`/api/events/public/${eventId}`);
-    const data = await res.json();
-
-    if (!res.ok) throw new Error(data.message || "Événement introuvable");
-
-    event = data.data;
-    window.__EVENT__ = event;
-
-    // ✅ FIX : Inclure CLUB_EVENT
-    isTournament = event.type === "TOURNOI" || event.type === "TOURNAMENT" || event.type === "CLUB_EVENT";
-    totalMatches = (event.matches && event.matches.length) || 0;
-    totalGroups = event.groupsCount || 0;
-
-} catch (err) {
-        console.error("Erreur chargement événement:", err);
-        return `
-            <div class="event-detail-page">
-                <div class="error-container">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <h2>Erreur de chargement</h2>
-                    <p>${err.message}</p>
-                    <button class="btn-primary" onclick="history.back()">Retour</button>
-                </div>
-            </div>
-        `;
-    }
-
-    // Déterminer le rôle utilisateur
-    const currentUser = Auth.currentUser;
-    const isOrganizer = currentUser && event.organizerId === currentUser.id;
-    const isAuthenticated = Auth.accessToken !== null;
-
-    // Icônes
-    const icons = {
-        MATCH: "fa-futbol",
-        TOURNAMENT: "fa-trophy",
-        TRAINING: "fa-dumbbell",
-        COMPETITION: "fa-medal",
-    };
-
-    // Date
-    const eventDate = new Date(event.date);
-    const formattedDate = eventDate.toLocaleDateString("fr-FR", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-    });
-    const formattedTime = eventDate.toLocaleTimeString("fr-FR", {
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-
-    const registrationStatus = event.currentRegistrationStatus;
-    const isRegistered =
-    event.registrationType === "INDIVIDUAL"
-        ? registrationStatus != null
-        : false;
-
-
+/* ============================================================================
+   ❌ HELPER : ERREUR
+   ============================================================================ */
+function renderError(title, message) {
     return `
-    <div class="event-detail-page">
-        <!-- HEADER -->
-        <header class="event-detail-header">
-            <button class="back-btn" id="backBtn">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <h1>Détail</h1>
-            ${
-                isOrganizer
-                    ? `
-            <button class="menu-btn" id="menuBtn">
-                <i class="fas fa-ellipsis-v"></i>
-            </button>`
-                    : `<div style="width: 40px;"></div>`
-            }
-        </header>
-
-        <div class="event-detail-content">
-            
-            <!-- BANNIÈRE -->
-            <div class="event-banner">
-                <div class="event-banner-icon">
-                    <i class="fas ${icons[event.type]}"></i>
-                </div>
-                <div class="event-banner-gradient"></div>
-            </div>
-
-            <!-- TITRE -->
-            <div class="event-title-section">
-                <h2 class="event-title">${event.name}</h2>
-                <span class="event-type-badge badge-${event.type}">
-                    <i class="fas ${icons[event.type]}"></i>
-                    ${event.type}
-                </span>
-            </div>
-
-            <!-- INFOS -->
-            <div class="event-info-card">
-                <div class="info-item">
-                    <div class="info-icon">
-                        <i class="fas ${
-                            event.registrationType === "CLUB_ONLY"
-                                ? "fa-shield-alt"
-                                : "fa-users"
-                        }"></i>
-                    </div>
-
-                    <div class="info-content">
-                        <span class="info-label ${
-                            event.registrationType === "CLUB_ONLY" ? "club" : ""
-                        }">
-                            ${event.registrationType === "CLUB_ONLY"
-                                ? "Équipes"
-                                : "Participants"}
-                        </span>
-                        <span class="info-value">
-                            <strong>
-                                ${
-                                    event.registrationType === "CLUB_ONLY"
-                                        ? event.teamsRegisteredByMyClub
-                                        : event.acceptedParticipants ?? 0
-                                }
-                            </strong>
-                            /
-                            ${
-                                event.registrationType === "CLUB_ONLY"
-                                    ? event.maxTeamsPerClub ?? "∞"
-                                    : event.maxParticipants ?? "∞"
-                            }
-                        </span>
-                    </div>
-                </div>
-
-                <div class="info-item">
-                    <div class="info-icon">
-                        <i class="fas fa-map-marker-alt"></i>
-                    </div>
-                    <div class="info-content">
-                        <span class="info-label">Lieu</span>
-                        <span class="info-value">${event.location}</span>
-                    </div>
-                </div>
-
-                ${
-                    event.registrationType === "INDIVIDUAL"
-                        ? `
-                <div class="info-item">
-                    <div class="info-icon">
-                        <i class="fas fa-flag"></i>
-                    </div>
-                    <div class="info-content">
-                        <span class="info-label">
-                            ${event.registrationType === "CLUB_ONLY" ? "Équipes" : "Participants"}
-                        </span>
-                    </div>
-                </div>`
-                        : ""
-                }
-            </div>
-
-            <!-- DESCRIPTION -->
-            ${
-                event.description
-                    ? `
-            <div class="event-section">
-                <h3 class="section-title">
-                    <i class="fas fa-align-left"></i>
-                    Description
-                </h3>
-                <p class="event-description">${event.description}</p>
-            </div>`
-                    : ""
-            }
-
-            ${isTournament ? `
-<!-- ========= TOURNOI – VUE SPECTATEUR LIVE ========= -->
-<div class="event-section tournament-section">
-    <h3 class="section-title">
-        <i class="fas fa-trophy"></i>
-        ${isOrganizer || currentUser?.clubId ? 'Gestion du tournoi' : 'Suivi du tournoi en direct'}
-    </h3>
-
-    <!-- ✅ UNIQUEMENT POUR CLUBS / ORGANISATEURS -->
-    ${(isOrganizer || currentUser?.clubId) ? `
-        <div class="tournament-actions" style="margin-bottom: 20px;">
-            <button class="btn-secondary" id="viewGroupsBtn" data-event-id="${event.id}">
-                <i class="fas fa-layer-group"></i>
-                Voir les groupes
-            </button>
-            <button class="btn-secondary" id="viewAllMatchesBtn" data-event-id="${event.id}">
-                <i class="fas fa-calendar-day"></i>
-                Tous les matchs
-            </button>
-            ${isOrganizer ? `
-                <button class="btn-primary" onclick="location.href='/tournament/${event.id}/dashboard'" style="background: #10b981;">
-                    <i class="fas fa-cog"></i>
-                    Tableau de bord
-                </button>
-            ` : ''}
-        </div>
-
-        ${event.maxTeamsPerClub !== null ? `
-            <div class="club-quota-section" style="margin-bottom: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                <h4 style="margin: 0 0 8px 0; color: #1f2937;">📊 Quota de mon club</h4>
-                <p style="margin: 0; color: #4b5563;">
-                    ${event.teamsRegisteredByMyClub} / ${event.maxTeamsPerClub} équipes inscrites
-                    <br><strong>Restant :</strong> <span style="color: #10b981; font-weight: 700;">${event.remainingTeamsForMyClub}</span>
-                </p>
-            </div>
-        ` : ''}
-    ` : ''}
-
-    <!-- 🔴 MATCHS EN DIRECT (POUR TOUS) -->
-    <div class="live-matches-section">
-        <h4>
-            <span class="live-indicator">🔴 EN DIRECT</span>
-        </h4>
-        <div id="liveMatchesContainer">
-            <div class="loader-small">
-                <i class="fas fa-spinner fa-spin"></i>
-                Chargement des matchs...
+        <div class="event-detail-page">
+            <div class="error-container">
+                <i class="fas fa-exclamation-circle"></i>
+                <h2>${Components.escapeHtml(title)}</h2>
+                <p>${Components.escapeHtml(message)}</p>
+                <button class="btn-primary" onclick="history.back()">Retour</button>
             </div>
         </div>
-    </div>
-
-    <!-- 📊 CLASSEMENTS -->
-    <div class="rankings-section">
-        <h4>📊 Classements des poules</h4>
-        <div id="rankingsContainer">
-            <div class="loader-small">
-                <i class="fas fa-spinner fa-spin"></i>
-                Chargement des classements...
-            </div>
-        </div>
-    </div>
-
-    <!-- 🏆 PHASE FINALE -->
-    <div class="bracket-section">
-        <h4>🏆 Phase finale</h4>
-        <div id="bracketContainer">
-            <div class="loader-small">
-                <i class="fas fa-spinner fa-spin"></i>
-                Chargement du bracket...
-            </div>
-        </div>
-    </div>
-
-    <!-- 📰 FIL D'ACTUALITÉ -->
-    <div class="live-feed-section">
-        <h4>📰 Dernières actualités</h4>
-        <div id="liveFeedContainer">
-            <div class="empty-state-live">
-                <i class="fas fa-newspaper"></i>
-                <p>Le fil d'actualité sera disponible prochainement</p>
-            </div>
-        </div>
-    </div>
-</div>
-` : ""}
-
-            <!-- SECTION RÔLES -->
-            ${renderRoleSection(
-                event,
-                isOrganizer,
-                isRegistered,
-                registrationStatus,
-                isAuthenticated
-            )}
-
-        </div>
-
-      
-
-        <!-- MODAL INSCRIPTION UTF -->
-        <div id="registrationModal" class="utf-modal hidden">
-            <div class="utf-modal-overlay"></div>
-            <div class="utf-modal-box">
-                <h2>Inscription à l'événement</h2>
-
-                <div class="form-group">
-                    <label>Niveau</label>
-                    <select id="reg-level">
-                        <option value="BEGINNER">Débutant</option>
-                        <option value="INTERMEDIATE">Intermédiaire</option>
-                        <option value="ADVANCED">Avancé</option>
-                        <option value="EXPERT">Expert</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Poste préféré</label>
-                    <select id="reg-position">
-                        <option value="GOALKEEPER">Gardien</option>
-                        <option value="DEFENDER">Défenseur</option>
-                        <option value="MIDFIELDER">Milieu</option>
-                        <option value="FORWARD">Attaquant</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Notes</label>
-                    <textarea id="reg-notes" maxlength="500"></textarea>
-                </div>
-
-                <div class="modal-actions">
-                    <button id="cancelModal" class="btn-secondary">Annuler</button>
-                    <button id="confirmRegistration" class="btn-primary">Valider</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- MODAL INSCRIPTION CLUB -->
-        <div id="clubRegistrationModal" class="utf-modal hidden">
-            <div class="utf-modal-overlay"></div>
-            <div class="utf-modal-box">
-                <h2>Inscrire mon club</h2>
-
-                <!-- INFOS QUOTA -->
-                ${event.maxTeamsPerClub !== null ? `
-                <div class="club-quota-info">
-                    <p>🏟️ Quota par club : <strong>${event.maxTeamsPerClub}</strong></p>
-                    <p>✅ Déjà inscrites : <strong>${event.teamsRegisteredByMyClub}</strong></p>
-                    <p>🟢 Restantes : <strong>${event.remainingTeamsForMyClub}</strong></p>
-                </div>
-                ` : `
-                <div class="club-quota-info">
-                    <p>♾️ Nombre d'équipes illimité</p>
-                </div>
-                `}
-
-                <!-- LISTE DES ÉQUIPES -->
-                <div class="form-group">
-                    <label>Nombre d'équipes à inscrire</label>
-                    <select id="teamCountSelect"></select>
-                    <small class="help">Puis sélectionne les équipes ci-dessous</small>
-                </div>
-
-                <div class="form-group">
-                    <label>Choisissez vos équipes *</label>
-                    <div id="club-teams-checkboxes" class="teams-checkbox-list">
-                        <p>Chargement des équipes…</p>
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button id="cancelClubModal" class="btn-secondary">Annuler</button>
-                    <button id="confirmClubRegistration" class="btn-primary">
-                        Inscrire les équipes
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div id="toast" class="toast"></div>
-
-          ${renderActionButton(
-        event,
-        isOrganizer,
-        isRegistered,
-        registrationStatus,
-        isAuthenticated
-    )}
-    </div>
     `;
 }
 
 /* ============================================================================
-   SECTION RÔLES
-   ============================================================================ */
-function renderRoleSection(
-    event,
-    isOrganizer,
-    isRegistered,
-    registrationStatus,
-    isAuthenticated
-) {
-    // Bloc équipes formées (UTF)
-    const formedTeamsHTML = event.teamsFormed
-        ? `
-        <div class="formed-teams-section" id="formedTeamsSection">
-            <h3 class="section-title">
-                <i class="fas fa-users-line"></i>
-                Équipes formées
-            </h3>
-            <div id="formedTeamsLoader" style="display:flex;justify-content:center;padding:2rem;">
-                <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--primary);"></i>
-            </div>
-            <div id="formedTeamsContainer"></div>
-        </div>`
-        : "";
-
-    // Bloc clubs inscrits (SPOND) – seulement pour organisateur + tournois
-    const clubsSectionHTML = isOrganizer && event.type === "TOURNOI"
-        ? `
-        <div class="event-section organizer-section">
-            <h3 class="section-title">
-                <i class="fas fa-users"></i>
-                Clubs inscrits
-            </h3>
-
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
-                    <div class="stat-info"><span id="clubsPendingCount">-</span><span>En attente</span></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon validated"><i class="fas fa-check"></i></div>
-                    <div class="stat-info"><span id="clubsValidatedCount">-</span><span>Validés</span></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon total"><i class="fas fa-building"></i></div>
-                    <div class="stat-info"><span id="clubsTotalCount">-</span><span>Total</span></div>
-                </div>
-            </div>
-
-            <button class="action-btn primary" id="viewClubsBtn">
-                <i class="fas fa-list"></i> Gérer les clubs
-            </button>
-
-            <div id="clubsLoader" style="display:none;text-align:center;padding:2rem;">
-                <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--primary);"></i>
-            </div>
-
-            <div id="clubsList"></div>
-        </div>`
-        : "";
-
-   // ───────── ORGANISATEUR ─────────
-if (isOrganizer) {
-    return `
-    <div class="event-section organizer-section">
-        <h3 class="section-title">
-            <i class="fas fa-crown"></i>
-            Actions organisateur
-        </h3>
-        
-        <!-- Clôture inscriptions (action rapide) -->
-        <div class="registration-management-section">
-
-            ${event.isFull ? `
-                <!-- 🔴 ÉVÉNEMENT COMPLET -->
-                <div class="alert alert-danger">
-                    <i class="fas fa-users-slash"></i>
-                    Événement complet (quota atteint)
-                </div>
-                <p style="font-size: 0.9em; color: #6b7280;">
-                    Les inscriptions sont bloquées automatiquement.
-                </p>
-
-            ` : event.registrationClosed ? `
-                <!-- 🟠 FERMÉ MANUELLEMENT -->
-                <div class="alert alert-warning">
-                    <i class="fas fa-lock"></i>
-                    Inscriptions fermées par l’organisateur
-                </div>
-                <button class="action-btn success" id="reopenRegistrationsBtn">
-                    <i class="fas fa-lock-open"></i>
-                    Rouvrir les inscriptions
-                </button>
-
-            ` : `
-                <!-- 🟢 OUVERT -->
-                <div class="alert alert-success">
-                    <i class="fas fa-lock-open"></i>
-                    Inscriptions ouvertes
-                </div>
-                <button class="action-btn danger" id="closeRegistrationsBtn">
-                    <i class="fas fa-lock"></i>
-                    Clôturer les inscriptions
-                </button>
-            `}
-        </div>
-        
-        <!-- Stats rapides -->
-        <div class="stats-grid" style="margin: 20px 0;">
-            <div class="stat-card">
-                <span id="pendingCount">-</span>
-                <span>En attente</span>
-            </div>
-            <div class="stat-card">
-                <span id="validatedCount">-</span>
-                <span>Validés</span>
-            </div>
-        </div>
-        
-        <!-- BOUTON PRINCIPAL VERS DASHBOARD -->
-        <button class="action-btn primary"
-                onclick="location.href='/tournament/${event.id}/dashboard'"
-                style="width: 100%; padding: 15px; font-size: 1.1em;">
-            <i class="fas fa-cog"></i>
-            Tableau de bord du tournoi
-        </button>
-    </div>`;
-}
-
-
-    // ───────── JOUEUR INSCRIT ─────────
-    if (isRegistered) {
-        const statusConfig = {
-            EN_ATTENTE: { icon: "clock", color: "warning", text: "En attente de validation" },
-            PENDING: { icon: "clock", color: "warning", text: "En attente de validation" },
-            VALIDE: { icon: "check-circle", color: "success", text: "Inscription validée" },
-            VALIDATED: { icon: "check-circle", color: "success", text: "Inscription validée" },
-            ANNULE: { icon: "times-circle", color: "danger", text: "Inscription annulée" },
-            CANCELLED: { icon: "times-circle", color: "danger", text: "Inscription annulée" }
-        };
-
-        const status = statusConfig[registrationStatus] || statusConfig["PENDING"];
-
-        return `
-        <div class="event-section player-section">
-            <h3 class="section-title">
-                <i class="fas fa-user-check"></i>
-                Mon inscription
-            </h3>
-
-            <div class="status-card ${status.color}">
-                <div class="status-icon">
-                    <i class="fas fa-${status.icon}"></i>
-                </div>
-                <div class="status-content">
-                    <span class="status-label">Statut</span>
-                    <span class="status-text">${status.text}</span>
-                </div>
-            </div>
-
-            ${formedTeamsHTML}
-        </div>`;
-    }
-
-    // ───────── VISITEUR CONNECTÉ ─────────
-    if (isAuthenticated) {
-        return `
-        <div class="event-section visitor-section">
-            <div class="cta-card">
-                <div class="cta-icon"><i class="fas fa-user-plus"></i></div>
-                <h3>Rejoignez cet événement !</h3>
-                <p>Inscrivez-vous pour participer.</p>
-            </div>
-            ${formedTeamsHTML}
-        </div>`;
-    }
-
-    // ───────── NON CONNECTÉ ─────────
-    return `
-    <div class="event-section visitor-section">
-        <div class="cta-card">
-            <div class="cta-icon"><i class="fas fa-lock"></i></div>
-            <h3>Connectez-vous pour participer</h3>
-            <p>Créez un compte ou connectez-vous.</p>
-            <button class="btn-primary" onclick="location.href='/login'">Se connecter</button>
-        </div>
-    </div>`;
-}
-
-/* ============================================================================
-   BOUTON FLOTTANT
-   ============================================================================ */
-function renderActionButton(
-    event,
-    isOrganizer,
-    isRegistered,
-    registrationStatus,
-    isAuthenticated
-) {
-    // ❌ Pas de bouton pour :
-    if (!isAuthenticated || isOrganizer || isRegistered) return "";
-
-    const currentUser = Auth.currentUser;
-    const isClubEvent = event.registrationType === "CLUB_ONLY";
-    const hasClub = !!currentUser?.clubId;
-
-   // 🔒 ÉVÉNEMENT CLUB
-if (isClubEvent) {
-
-    // ⛔ PRIORITÉ ABSOLUE : inscriptions fermées ou event complet
-    if (event.registrationClosed || event.isFull) {
-        return ""; // RIEN, pas de bouton, pas de badge rouge
-    }
-
-    // ⏳ Équipes déjà en attente
-    if (event.pendingTeamsByMyClub > 0) {
-        return `
-        <div class="floating-info-badge pending">
-            <i class="fas fa-clock"></i>
-            <span>
-                ${event.pendingTeamsByMyClub} équipe${event.pendingTeamsByMyClub > 1 ? 's' : ''}
-                en attente de validation
-            </span>
-        </div>`;
-    }
-
-    // 📛 Quota atteint pour CE club
-    const quotaReached =
-        event.maxTeamsPerClub !== null &&
-        event.remainingTeamsForMyClub === 0;
-
-    if (hasClub && !quotaReached) {
-        return `
-        <button class="floating-action-btn" id="registerMyTeamBtn">
-            <i class="fas fa-shield"></i>
-            <span>Inscrire mon équipe</span>
-        </button>`;
-    }
-
-    return "";
-}
-
-
-    // 🌍 ÉVÉNEMENT OUVERT (INDIVIDUAL)
-    if (event.registrationClosed || event.isFull) {
-        return `
-        <div class="floating-info-badge closed">
-            <i class="fas fa-lock"></i>
-            <span>
-                ${event.registrationClosed 
-                    ? "Inscriptions fermées" 
-                    : "Événement complet"}
-            </span>
-        </div>`;
-    }
-
-    return `
-    <button class="floating-action-btn" id="registerBtn">
-        <i class="fas fa-user-plus"></i>
-        <span>S'inscrire</span>
-    </button>`;
-}
-
-/* ============================================================================
-   INIT PAGE
+   🚀 INIT PAGE
    ============================================================================ */
 export function init(params) {
-
-
-      let lastLiveMatchesJSON = null;
-    // ✅ APPLIQUER LA CLASSE CSS AU BODY (FIX LAYOUT)
-    document.body.className = '';
-    document.body.classList.add('is-event-detail-page');
+    injectCSS();
     
+    // 🔍 DEBUG
+    const cssLoaded = document.querySelector('link[href="/css/event-detail.css"]');
+    console.log("CSS event-detail chargé ?", cssLoaded !== null);
+    
+    // Appliquer classe CSS au body
+    document.body.classList.remove("is-events-page");
+    document.body.classList.add("is-event-detail-page");
+    
+    const eventId = params.id;  // ✅ RÉCUPÉRER L'ID
     const event = window.__EVENT__;
-    if (!event) return;
-
-    const eventId = params.id;
-    const toast = document.getElementById("toast");
-
-    // ================================
-    // 🔒 Helpers anti double-inscription (front)
-    // ================================
     
-
+    if (!event) {
+        console.error("❌ Event non trouvé dans window.__EVENT__");
+        return;
+    }
     
-
-    /* Toast helper */
-    function showToast(message, type = "info") {
-        toast.textContent = message;
-        toast.className = "toast show";
-
-        if (type === "success") toast.style.background = "#10B981";
-        if (type === "error") toast.style.background = "#ef4444";
-        if (type === "warning") toast.style.background = "#f59e0b";
-
-        setTimeout(() => toast.classList.remove("show"), 3000);
+    console.log("✅ Event chargé:", event.name);
+    
+    // ✅ Match unique : nettoyer l'onglet tournoi mémorisé
+    if (event?.format === "SINGLE_MATCH") {
+        localStorage.removeItem("tournamentActiveTab");
+    }
+    
+    const currentUser = Auth.currentUser;
+    const isOrganizer = currentUser && event.organizerId === currentUser.id;
+    
+    // Initialiser les handlers
+    initBackButton();
+    initToastSystem();
+    initRegistrationButtons(eventId, event);
+    
+    const isSingleMatch = event?.format === "SINGLE_MATCH";
+    const isTournament = !isSingleMatch;
+    
+    if (isTournament) {
+        initTournamentButtons(eventId, currentUser);
+        initTournamentTabs(event.status);
+        loadLiveMatches(eventId);  // ✅ CHARGER LES DONNÉES AU DÉMARRAGE
+    } else if (isSingleMatch) {
+        initTournamentTabs(event.status);
+        loadLiveMatches(eventId);  // ✅ AUSSI POUR MATCH UNIQUE
     }
 
-    /* Bouton retour */
+   if (!__filtersBound) {
+  __filtersBound = true;
+
+// ✅ Delegation filtres "Matchs"
+document.addEventListener("click", (e) => {
+  if (!document.body.classList.contains("is-event-detail-page")) return;
+
+  const btn = e.target.closest("[data-match-filter]");
+  if (!btn) return;
+  __matchFilter = btn.dataset.matchFilter;
+  renderAllMatches();
+});
+
+// ✅ Delegation filtres "Actu"
+document.addEventListener("click", (e) => {
+  if (!document.body.classList.contains("is-event-detail-page")) return;
+
+  const btn = e.target.closest("[data-feed-filter]");
+  if (!btn) return;
+  __feedFilter = btn.dataset.feedFilter;
+  const id = window.__EVENT__?.id;
+  if (id) loadLiveFeed(id);
+});
+
+// ✅ Delegation navigation (Tournoi terminé -> aller vers un onglet)
+document.addEventListener("click", (e) => {
+  if (!document.body.classList.contains("is-event-detail-page")) return;
+
+  const btn = e.target.closest("[data-goto-tab]");
+  if (!btn) return;
+  const tab = btn.dataset.gotoTab;
+  document.querySelector(`.tournament-tab[data-tab="${tab}"]`)?.click();
+});
+
+// ✅ Focus match live au clic (1 seule timeline)
+document.addEventListener("click", (e) => {
+  if (!document.body.classList.contains("is-event-detail-page")) return;
+
+  const card = e.target.closest('[data-live-focus="1"]');
+  if (!card) return;
+
+  const id = Number(card.dataset.matchId);
+  if (!id) return;
+
+  __liveFocusMatchId = id;
+
+  const eventId = window.__EVENT__?.id;
+  if (eventId) loadLiveMatches(eventId); // rerender avec le nouveau focus
+});
+
+
+
+}
+
+}
+
+/* ============================================================================
+   🔙 BOUTON RETOUR
+   ============================================================================ */
+function initBackButton() {
     const backBtn = document.getElementById("backBtn");
     if (backBtn) {
         backBtn.addEventListener("click", () => history.back());
     }
+}
 
-    // ========================================
-    // 🔴 CHARGEMENT AUTOMATIQUE POUR LES TOURNOIS
-    // ========================================
- const isTournament = event.type === "TOURNOI" || event.type === "TOURNAMENT" || event.type === "CLUB_EVENT";
+/* ============================================================================
+   📢 SYSTÈME TOAST
+   ============================================================================ */
+let toastTimeout = null;
+
+function showToast(message, type = "info") {
+    const toast = document.getElementById("toast");
+    if (!toast) return;
     
-   if (isTournament) {
+    // Annuler le timeout précédent
+    if (toastTimeout) clearTimeout(toastTimeout);
+    
+    toast.textContent = message;
+    toast.className = "toast show";
 
-    // Charger immédiatement
-    loadLiveData(eventId);
+    const colors = {
+        success: "#10B981",
+        error: "#ef4444",
+        warning: "#f59e0b",
+        info: "#3b82f6"
+    };
+    
+    toast.style.background = colors[type] || colors.info;
+    
+    toastTimeout = setTimeout(() => {
+        toast.classList.remove("show");
+    }, 3000);
+}
 
-    // Auto-refresh toutes les 30 secondes
-    const refreshInterval = setInterval(() => {
+function initToastSystem() {
+    // Exposer globalement pour faciliter l'usage
+    window.showToast = showToast;
+}
 
-        // 💤 Si l'onglet n'est pas actif, on ne fait rien
-        if (document.hidden) return;
+/* ============================================================================
+   🎮 BOUTONS INSCRIPTION
+   ============================================================================ */
+function initRegistrationButtons(eventId, event) {
+    // Inscription individuelle
+    initIndividualRegistration(eventId, event);
+    
+    // Inscription club
+    initClubRegistration(eventId, event);
+}
 
-        loadLiveData(eventId);
+/* ============================================================================
+   👤 INSCRIPTION INDIVIDUELLE
+   ============================================================================ */
+function initIndividualRegistration(eventId, event) {
+    const registerBtn = document.getElementById("registerBtn");
+    if (!registerBtn || event.registrationType !== "INDIVIDUAL") return;
 
-    }, 30000);
+    const modal = document.getElementById("registrationModal");
+    const cancelBtn = modal.querySelector("#cancelModal");
+    const submitBtn = modal.querySelector("#confirmRegistration");
+    const overlay = modal.querySelector(".utf-modal-overlay");
 
-    // Nettoyage propre quand on quitte la page
-    window.addEventListener("beforeunload", () => {
-        clearInterval(refreshInterval);
+    // Ouvrir
+    registerBtn.addEventListener("click", () => {
+        modal.classList.remove("hidden");
+        
+        // Focus sur premier champ
+        setTimeout(() => {
+            modal.querySelector('#reg-level').focus();
+        }, 100);
+    });
+
+    // Fermer
+    const closeModal = () => modal.classList.add("hidden");
+    
+    cancelBtn.addEventListener("click", closeModal);
+    overlay.addEventListener("click", closeModal);
+    
+    // ESC pour fermer
+    modal.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeModal();
+    });
+
+    // Soumettre
+    submitBtn.addEventListener("click", async () => {
+        const level = document.getElementById('reg-level').value;
+        const position = document.getElementById('reg-position').value;
+        const notes = document.getElementById('reg-notes').value;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inscription...';
+
+        try {
+            const res = await Auth.secureFetch(
+                `/api/events/registration/${eventId}/register`,
+                {
+                    method: "POST",
+                    body: JSON.stringify({ level, preferredPosition: position, notes })
+                }
+            );
+
+            const result = await res.json();
+
+            if (res.ok && result.success) {
+                showToast("✅ Inscription envoyée avec succès !", "success");
+                closeModal();
+                setTimeout(() => Router.go(`/events/${eventId}`), 1000);
+            } else {
+                throw new Error(result.message || "Erreur inscription");
+            }
+        } catch (err) {
+            showToast("❌ " + err.message, "error");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = "Valider";
+        }
     });
 }
 
+/* ============================================================================
+   🏟️ INSCRIPTION CLUB
+   ============================================================================ */
+function initClubRegistration(eventId, event) {
+    const registerMyTeamBtn = document.getElementById("registerMyTeamBtn");
+    if (!registerMyTeamBtn) return;
 
-    /* BOUTON INSCRIPTION */
-    const registerBtn = document.getElementById("registerBtn");
+    const modal = document.getElementById("clubRegistrationModal");
+    const cancelClubBtn = modal.querySelector("#cancelClubModal");
+    const confirmClubBtn = modal.querySelector("#confirmClubRegistration");
+    const teamsContainer = modal.querySelector("#club-teams-checkboxes");
+    const teamCountSelect = modal.querySelector("#teamCountSelect");
+    const overlay = modal.querySelector(".utf-modal-overlay");
 
-    if (registerBtn && event.registrationType === "INDIVIDUAL") {
-        const modal = document.getElementById("registrationModal");
-        const cancelBtn = modal.querySelector("#cancelModal");
-        const submitBtn = modal.querySelector("#confirmRegistration");
+    // Ouvrir
+registerMyTeamBtn.addEventListener("click", () => {
+    // Vérifier quota
+    const quota = Number(event.maxTeamsPerClub ?? 0);
+    const already = Number(event.teamsRegisteredByMyClub ?? 0);
+    const remaining = quota > 0 ? Math.max(0, quota - already) : Infinity;
 
-        registerBtn.addEventListener("click", () => {
-            modal.classList.remove("hidden");
-        });
-
-        cancelBtn.addEventListener("click", () => {
-            modal.classList.add("hidden");
-        });
-
-        modal.addEventListener("click", (e) => {
-            if (e.target === modal) modal.classList.add("hidden");
-        });
-
-        submitBtn.addEventListener("click", async () => {
-            // logique inscription UTF
-        });
+    if (quota > 0 && remaining === 0) {
+        showToast("Quota d'équipes atteint pour votre club", "warning");
+        return;
     }
 
-    /* BOUTON INSCRIPTION CLUB */
-    const registerMyTeamBtn = document.getElementById("registerMyTeamBtn");
+    document.querySelector(".sticky-cta-pro")?.style.setProperty("display","none","important"); // ✅ AJOUT ICI
 
-    if (registerMyTeamBtn) {
-        const modal = document.getElementById("clubRegistrationModal");
-        const cancelClubBtn = modal.querySelector("#cancelClubModal");
-        const confirmClubBtn = modal.querySelector("#confirmClubRegistration");
-        const teamsContainer = modal.querySelector("#club-teams-checkboxes");
-        const teamCountSelect = modal.querySelector("#teamCountSelect");
-        const overlay = modal.querySelector(".utf-modal-overlay");
-
-        overlay.addEventListener("click", () => {
-            modal.classList.add("hidden");
-        });
-
-        const maxSelectable =
-            event.maxTeamsPerClub !== null
-                ? event.remainingTeamsForMyClub
-                : Infinity;
-
-        async function loadClubTeams() {
-            const clubId = Auth.currentUser?.clubId;
-            teamsContainer.innerHTML = "";
-            teamCountSelect.innerHTML = "";
-
-            if (!clubId) {
-                teamsContainer.innerHTML = "<p>Aucun club associé</p>";
-                confirmClubBtn.disabled = true;
-                return;
-            }
-
-            try {
-                const res = await Auth.secureFetch(`/api/teams/club/${clubId}`);
-                const result = await res.json();
-
-                if (!res.ok || !result.success) throw new Error(result.message || "Erreur");
-
-                const teams = result.data || [];
-                if (teams.length === 0) {
-                    teamsContainer.innerHTML = "<p>Aucune équipe disponible</p>";
-                    confirmClubBtn.disabled = true;
-                    return;
-                }
-
-                // quota
-                const maxSelectable = event.maxTeamsPerClub !== null
-                    ? event.remainingTeamsForMyClub
-                    : teams.length;
-
-                // remplir le select 1..maxSelectable
-                const maxOptions = Math.max(1, Math.min(maxSelectable, teams.length));
-                for (let i = 1; i <= maxOptions; i++) {
-                    const opt = document.createElement("option");
-                    opt.value = String(i);
-                    opt.textContent = `${i} équipe${i > 1 ? "s" : ""}`;
-                    teamCountSelect.appendChild(opt);
-                }
-
-                // default = max
-                teamCountSelect.value = String(maxOptions);
-
-                const registeredSet = new Set(); // TEMPORAIRE
+    modal.classList.remove("hidden");
+    loadClubTeams();
+});
 
 
-                // render checkboxes
-                teams.forEach(team => {
-                    const alreadyRegistered = registeredSet.has(team.id);
+    // Fermer
+    const closeModal = () => modal.classList.add("hidden");
+    
+    cancelClubBtn.addEventListener("click", closeModal);
+    overlay.addEventListener("click", closeModal);
+    
+    modal.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeModal();
+    });
 
-                    teamsContainer.innerHTML += `
-                        <label class="team-checkbox" style="display:flex;align-items:center;gap:10px;opacity:${alreadyRegistered ? "0.55" : "1"}">
-                            <input
-                                type="checkbox"
-                                class="team-check"
-                                value="${team.id}"
-                                ${alreadyRegistered ? "disabled" : ""}
-                            >
-                            <span>
-                                ${team.name} (${team.category})
-                                ${alreadyRegistered ? `<small style="margin-left:8px;color:#ef4444;">(déjà inscrite)</small>` : ""}
-                            </span>
-                        </label>
-                    `;
-                });
+    // Charger équipes
+    async function loadClubTeams() {
+        const clubId = Auth.currentUser?.clubId;
+        teamsContainer.innerHTML = "";
+        teamCountSelect.innerHTML = "";
 
-                // un seul handler (écrase l'ancien)
-                teamsContainer.onchange = (e) => {
-                    const limit = parseInt(teamCountSelect.value, 10);
-                    const checked = teamsContainer.querySelectorAll(".team-check:checked").length;
-
-                    if (checked > limit) {
-                        e.target.checked = false;
-                        alert(`Tu ne peux sélectionner que ${limit} équipe(s).`);
-                    }
-                };
-
-                // si l'utilisateur change le select, on désélectionne en trop
-                teamCountSelect.onchange = () => {
-                    const limit = parseInt(teamCountSelect.value, 10);
-                    const checkedBoxes = [...teamsContainer.querySelectorAll(".team-check:checked")];
-                    while (checkedBoxes.length > limit) {
-                        const cb = checkedBoxes.pop();
-                        cb.checked = false;
-                    }
-                };
-
-                confirmClubBtn.disabled = false;
-
-            } catch (err) {
-                console.error("Erreur chargement équipes:", err);
-                teamsContainer.innerHTML = "<p>Erreur de chargement</p>";
-                confirmClubBtn.disabled = true;
-            }
+        if (!clubId) {
+            teamsContainer.innerHTML = "<p>Aucun club associé</p>";
+            confirmClubBtn.disabled = true;
+            return;
         }
 
-        registerMyTeamBtn.addEventListener("click", () => {
-            // 🔐 Micro-sécurité UX : quota atteint
-            if (
-                event.maxTeamsPerClub !== null &&
-                event.remainingTeamsForMyClub === 0
-            ) {
-                showToast("Quota d'équipes atteint pour votre club", "warning");
+        try {
+            const res = await Auth.secureFetch(`/api/teams/club/${clubId}`);
+            const result = await res.json();
+
+            if (!res.ok || !result.success) throw new Error(result.message || "Erreur");
+
+            const teams = result.data || [];
+            if (teams.length === 0) {
+                teamsContainer.innerHTML = "<p>Aucune équipe disponible</p>";
+                confirmClubBtn.disabled = true;
                 return;
             }
 
-            modal.classList.remove("hidden");
-            loadClubTeams();
-        });
+            // Calculer max sélectionnable
+          const quota = Number(event.maxTeamsPerClub ?? 0);
+const already = Number(event.teamsRegisteredByMyClub ?? 0);
+const remaining = quota > 0 ? Math.max(0, quota - already) : teams.length;
 
-        cancelClubBtn.addEventListener("click", () => {
-            modal.classList.add("hidden");
-        });
+const maxOptions = Math.max(1, Math.min(remaining, teams.length));
 
-        modal.addEventListener("click", (e) => {
-            if (e.target === modal) modal.classList.add("hidden");
-        });
-
-        confirmClubBtn.addEventListener("click", async () => {
-            const selectedTeams = [
-                ...modal.querySelectorAll(".team-check:checked")
-            ].map(cb => parseInt(cb.value));
-
-            if (selectedTeams.length === 0) {
-                showToast("⚠️ Sélectionnez au moins une équipe", "warning");
-                return;
+            
+            // Remplir select
+            for (let i = 1; i <= maxOptions; i++) {
+                const opt = document.createElement("option");
+                opt.value = String(i);
+                opt.textContent = `${i} équipe${i > 1 ? "s" : ""}`;
+                teamCountSelect.appendChild(opt);
             }
-
-            let registeredSet = new Set(); // backend = source de vérité
-
-
-            const toRegister = selectedTeams;
+          teamCountSelect.value = "1";
 
 
+            // TODO: Charger équipes déjà inscrites
+            const registeredSet = new Set();
+
+            // Render checkboxes
+            teams.forEach(team => {
+                const alreadyRegistered = registeredSet.has(team.id);
+
+                teamsContainer.innerHTML += `
+                    <label class="team-checkbox" style="display:flex;align-items:center;gap:10px;opacity:${alreadyRegistered ? "0.55" : "1"}">
+                        <input
+                            type="checkbox"
+                            class="team-check"
+                            value="${team.id}"
+                            ${alreadyRegistered ? "disabled" : ""}
+                        >
+                        <span>
+                            ${Components.escapeHtml(team.name)} (${Components.escapeHtml(team.category)})
+                            ${alreadyRegistered ? `<small style="margin-left:8px;color:#ef4444;">(déjà inscrite)</small>` : ""}
+                        </span>
+                    </label>
+                `;
+            });
+
+            // Handler changement
+            teamsContainer.onchange = (e) => {
+                const limit = parseInt(teamCountSelect.value, 10);
+                const checked = teamsContainer.querySelectorAll(".team-check:checked").length;
+
+                if (checked > limit) {
+                    e.target.checked = false;
+                    showToast(`Tu ne peux sélectionner que ${limit} équipe(s).`, "warning");
+                }
+            };
+
+            teamCountSelect.onchange = () => {
+                const limit = parseInt(teamCountSelect.value, 10);
+                const checkedBoxes = [...teamsContainer.querySelectorAll(".team-check:checked")];
+                while (checkedBoxes.length > limit) {
+                    const cb = checkedBoxes.pop();
+                    cb.checked = false;
+                }
+            };
+
+            confirmClubBtn.disabled = false;
+
+        } catch (err) {
+            console.error("Erreur chargement équipes:", err);
+            teamsContainer.innerHTML = "<p>Erreur de chargement</p>";
             confirmClubBtn.disabled = true;
-            confirmClubBtn.innerHTML =
-                '<i class="fas fa-spinner fa-spin"></i> Inscription...';
+        }
+    }
 
-            try {
-                let successCount = 0;
-                for (const teamId of toRegister) {
-                    const res = await Auth.secureFetch(
-                        `/api/events/registration/${eventId}/register-team`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ teamId })
-                        }
-                    );
+    // Soumettre
+    confirmClubBtn.addEventListener("click", async () => {
+        const selectedTeams = [
+            ...modal.querySelectorAll(".team-check:checked")
+        ].map(cb => parseInt(cb.value));
 
-                    const result = await res.json();
+        if (selectedTeams.length === 0) {
+            showToast("⚠️ Sélectionnez au moins une équipe", "warning");
+            return;
+        }
 
-                    // ✅ succès
-                    if (res.ok) {
-    successCount++;
-    continue;
-}
+        confirmClubBtn.disabled = true;
+        confirmClubBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inscription...';
 
-
-                    // ⚠️ déjà inscrit (sécurité backend)
-                    if (res.status === 409) {
-                        
-                        showToast(
-                            "⚠️ Une équipe était déjà inscrite",
-                            "warning"
-                        );
-                        continue;
+        try {
+            let successCount = 0;
+            
+            for (const teamId of selectedTeams) {
+                const res = await Auth.secureFetch(
+                    `/api/events/registration/${eventId}/register-team`,
+                    {
+                        method: "POST",
+                        body: JSON.stringify({ teamId })
                     }
+                );
 
-                    // ❌ autre erreur
+                if (res.ok) {
+                    successCount++;
+                } else if (res.status === 409) {
+                    // Déjà inscrit
+                    continue;
+                } else {
+                    const result = await res.json();
                     throw new Error(result.message || "Erreur inscription");
                 }
+            }
 
-               if (successCount > 0) {
-    showToast(
-        `✅ ${successCount} équipe(s) inscrite(s) (en attente de validation)`,
-        "success"
-    );
-    modal.classList.add("hidden");
-    setTimeout(() => Router.go(`/events/${eventId}`), 800);
-} else {
-    showToast(
-        "⛔ Aucune équipe n’a été inscrite (quota atteint ou déjà inscrite)",
-        "error"
-    );
+            if (successCount > 0) {
+                showToast(
+                    `✅ ${successCount} équipe(s) inscrite(s) (en attente de validation)`,
+                    "success"
+                );
+                closeModal();
+                setTimeout(() => Router.go(`/events/${eventId}`), 1000);
+            } else {
+                showToast("⛔ Aucune équipe n'a été inscrite", "warning");
+            }
+
+        } catch (err) {
+            showToast("❌ " + err.message, "error");
+        } finally {
+            confirmClubBtn.disabled = false;
+            confirmClubBtn.innerHTML = "Inscrire les équipes";
+        }
+    });
 }
 
-
-                setTimeout(() => Router.go(`/events/${eventId}`), 800);
-
-            } catch (err) {
-                showToast("❌ " + err.message, "error");
-            } finally {
-                confirmClubBtn.disabled = false;
-                confirmClubBtn.innerHTML = "Inscrire les équipes";
+/* ============================================================================
+   📑 SYSTÈME D'ONGLETS TOURNOI (ADAPTÉ POUR COMPLETED)
+   ============================================================================ */
+function initTournamentTabs(eventStatus) {
+   const tabs = document.querySelectorAll('.tournament-tab, .tab-pill');
+    const contents = document.querySelectorAll('.tournament-tab-content, .tab-content-pro');
+    
+    if (tabs.length === 0) return;
+    
+    const event = window.__EVENT__;
+    const eventId = event?.id;
+    const isCompleted = eventStatus === 'COMPLETED';
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', async () => {
+            const targetTab = tab.dataset.tab;
+            
+            // Désactiver tous les onglets
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            
+            // Activer l'onglet cliqué
+            tab.classList.add('active');
+            const targetContent = document.getElementById(`tab-${targetTab}`);
+            if (targetContent) {
+                targetContent.classList.add('active');
             }
+            
+            // 🔥 CHARGER LES DONNÉES SELON L'ONGLET
+            if (eventId) {
+                switch (targetTab) {
+  case 'live':
+    stopFeedPolling();             // ✅ nouveau
+    if (isCompleted) {
+      stopLivePolling();
+      showTournamentFinishedMessage();
+      return;
+    }
+    startLivePolling(eventId);
+    await loadLiveMatches(eventId);
+    break;
+
+  case 'feed':
+    stopLivePolling();             // ✅ on coupe le live
+    startFeedPolling(eventId);     // ✅ nouveau : on active le polling feed
+    await loadLiveFeed(eventId);
+    break;
+
+  case 'matches':
+    stopLivePolling();
+    stopFeedPolling();             // ✅ nouveau
+    await loadAllMatches(eventId);
+    break;
+
+  case 'rankings':
+    stopLivePolling();
+    stopFeedPolling();             // ✅ nouveau
+    await loadRankings(eventId);
+    break;
+
+  case 'bracket':
+    stopLivePolling();
+    stopFeedPolling();             // ✅ nouveau
+    await loadBracket(eventId);
+    break;
+}
+
+            }
+            
+            // Sauvegarder l'onglet actif
+            localStorage.setItem('tournamentActiveTab', targetTab);
         });
+    });
+    
+    // 🆕 ONGLET PAR DÉFAUT SELON STATUT
+    let defaultTab = 'live';
+    
+    if (isCompleted) {
+        // Pour tournoi terminé : afficher classements ou bracket
+        defaultTab = 'rankings';
     }
-
-    /* ORGANISATEUR : charger stats */
-    const viewRegistrationsBtn = document.getElementById("viewRegistrationsBtn");
-    if (viewRegistrationsBtn) {
-        loadRegistrationsStats(eventId);
-
-        viewRegistrationsBtn.addEventListener("click", () => {
-            loadRegistrationsList(eventId);
-        });
+    
+    const savedTab = localStorage.getItem('tournamentActiveTab');
+    const tabToActivate = savedTab || defaultTab;
+    
+    const tabBtn = document.querySelector(`.tournament-tab[data-tab="${tabToActivate}"]`);
+    if (tabBtn) {
+        tabBtn.click();
     }
+}
 
-    /* Bouton formation équipes */
-    const formTeamsBtn = document.getElementById("formTeamsBtn");
-    if (formTeamsBtn) {
-        formTeamsBtn.addEventListener("click", () => {
-            showTeamFormationModal(eventId);
-        });
-    }
-
-    /* SI ÉQUIPES FORMÉES : CHARGER AUTOMATIQUEMENT */
-    const formedTeamsSection = document.getElementById("formedTeamsSection");
-    if (formedTeamsSection) {
-        loadFormedTeams(eventId);
-    }
-
-    // ========= BOUTON "VOIR LES GROUPES" =========
+/* ============================================================================
+   🏆 BOUTONS TOURNOI
+   ============================================================================ */
+function initTournamentButtons(eventId, currentUser) {
+    // Bouton "Voir les groupes"
     const viewGroupsBtn = document.getElementById("viewGroupsBtn");
     if (viewGroupsBtn) {
         viewGroupsBtn.addEventListener("click", () => {
-            const eventId = viewGroupsBtn.dataset.eventId;
-            const clubId = Auth.currentUser?.clubId || 1;
+            const clubId = currentUser?.clubId || 1;
             Router.go(`/clubs/${clubId}/events/${eventId}/groups`);
         });
     }
 
-    // ========= BOUTON "TOUS LES MATCHS" =========
+    // Bouton "Tous les matchs"
     const viewAllMatchesBtn = document.getElementById("viewAllMatchesBtn");
     if (viewAllMatchesBtn) {
         viewAllMatchesBtn.addEventListener("click", () => {
-            const eventId = viewAllMatchesBtn.dataset.eventId;
             console.log("Tous les matchs pour l'event", eventId);
+            // TODO: Implémenter navigation
         });
-    }
-
-    // ========================================
-    // 🔴 FONCTION PRINCIPALE : CHARGER TOUTES LES DONNÉES LIVE
-    // ========================================
-    async function loadLiveData(eventId) {
-    try {
-        await Promise.allSettled([
-            loadLiveMatches(eventId),
-            loadRankings(eventId),
-            loadBracket(eventId),
-            loadLiveFeed(eventId) // 🆕 AJOUT
-        ]);
-    } catch (err) {
-        console.error("Erreur chargement données live:", err);
     }
 }
 
-    // ========================================
-    // 🔴 CHARGER LES MATCHS EN DIRECT
-    // ========================================
-  async function loadLiveMatches(eventId) {
+/* ============================================================================
+   🔴 LIVE AUTO-REFRESH (OPTIMISÉ)
+   ============================================================================ */
+function initTournamentLive(eventId) {
+    // Charger immédiatement
+    loadLiveData(eventId);
+
+    // 🔥 AUTO-REFRESH TOUTES LES 10 SECONDES (au lieu de 30)
+    const refreshInterval = setInterval(() => {
+        if (document.hidden) return;
+        loadLiveData(eventId);
+    }, 10000); // 10 secondes pour le live
+
+    window.addEventListener("beforeunload", () => {
+        clearInterval(refreshInterval);
+    });
+    
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+            loadLiveData(eventId);
+        }
+    });
+}
+
+
+function startLivePolling(eventId) {
+    // 🛑 sécurité : un seul polling à la fois
+    if (__liveInterval) return;
+
+    console.log("[LIVE] polling démarré pour event", eventId);
+
+    __liveInterval = setInterval(() => {
+        if (document.hidden) return;
+
+        loadLiveMatches(eventId).catch(err => {
+            console.error("[LIVE] erreur polling", err);
+        });
+    }, 10000); // 10 secondes
+}
+
+function stopLivePolling() {
+    if (__liveInterval) {
+        clearInterval(__liveInterval);
+        __liveInterval = null;
+        console.log("[LIVE] polling stoppé");
+    }
+}
+
+
+/* ============================================================================
+   📡 CHARGER DONNÉES LIVE
+   ============================================================================ */
+async function loadLiveData(eventId) {
+    await Promise.allSettled([
+        refreshEventStatus(eventId),  // ✅ NOUVEAU
+        loadLiveMatches(eventId),
+        loadRankings(eventId),
+        loadBracket(eventId),
+        loadLiveFeed(eventId)
+    ]);
+}
+
+
+/* ============================================================================
+   🔄 RAFRAÎCHIR LE STATUT DE L'ÉVÉNEMENT
+   ============================================================================ */
+async function refreshEventStatus(eventId) {
+    try {
+        const res = await Auth.secureFetch(`/api/events/public/${eventId}`);
+        const data = await res.json();
+        
+        if (!res.ok) return;
+        
+        const event = data.data;
+        
+        // Mettre à jour le badge de statut
+        const titleSection = document.querySelector('.event-title-section');
+        if (titleSection) {
+            const oldBadge = titleSection.querySelector('.event-status-badge');
+            const newBadgeHTML = Components.renderEventStatusBadge(event);
+            
+            if (oldBadge && newBadgeHTML) {
+                const temp = document.createElement('div');
+                temp.innerHTML = newBadgeHTML;
+                oldBadge.replaceWith(temp.firstElementChild);
+            } else if (!oldBadge && newBadgeHTML) {
+                // Insérer le badge après le titre
+                const title = titleSection.querySelector('.event-title');
+                if (title) {
+                    const temp = document.createElement('div');
+                    temp.innerHTML = newBadgeHTML;
+                    title.after(temp.firstElementChild);
+                }
+            }
+        }
+        
+    } catch (err) {
+        console.error('Erreur rafraîchissement statut:', err);
+    }
+}
+
+/* ============================================================================
+   🔴 MATCHS EN DIRECT (OPTIMISÉ + AVEC MESSAGE SI VIDE)
+   ============================================================================ */
+async function loadLiveMatches(eventId) {
+
+
+const event = window.__EVENT__;
+if (!event) return;
+
+
     const container = document.getElementById("liveMatchesContainer");
     if (!container) return;
 
     try {
-        const res = await Auth.secureFetch(`/api/events/${eventId}/matches`);
+        const res = await Auth.secureFetch(`/api/events/public/${eventId}/matches`);
         const data = await res.json();
         if (!res.ok) throw new Error();
 
         const allMatches = data.data || [];
-        const liveMatches = allMatches.filter(m =>
-            m.status === "IN_PROGRESS" ||
-            m.status === "LIVE" ||
-            m.status === "ONGOING"
-        );
+        
+        // Matchs EN DIRECT
+       const liveMatches = allMatches.filter(m =>
+    ["IN_PROGRESS", "ONGOING"].includes(m.status)
+);
 
-        const newJSON = JSON.stringify(liveMatches);
+            // ✅ Focus par défaut : le 1er match live
+if (!__liveFocusMatchId && liveMatches.length > 0) {
+  __liveFocusMatchId = liveMatches[0].id;
+}
 
-        // ✅ RIEN N'A CHANGÉ → ON SORT
-        if (newJSON === lastLiveMatchesJSON) return;
+        
+        // PROCHAINS MATCHS (statut SCHEDULED avec date/heure)
+        const upcomingMatches = allMatches
+            .filter(m => m.status === "SCHEDULED" && m.time)
+            .sort((a, b) => {
+                const dateA = new Date(`${a.date}T${a.time}`);
+                const dateB = new Date(`${b.date}T${b.time}`);
+                return dateA - dateB;
+            })
+            .slice(0, 10);
 
-        lastLiveMatchesJSON = newJSON;
 
-        if (liveMatches.length === 0) {
+            // 🟡 MATCHS TERMINÉS (résultats récents)
+const finishedMatches = allMatches
+    .filter(m => m.status === "COMPLETED")
+    .sort((a, b) =>
+        new Date(b.updatedAt || `${b.date}T${b.time || "00:00"}`) -
+        new Date(a.updatedAt || `${a.date}T${a.time || "00:00"}`)
+    )
+    .slice(0, 5);
+
+
+
+                // ✅ Mini-cache : ne pas rerender si rien n'a changé
+const normalize = (m) => ([
+  m.id,
+  m.status,
+  m.scoreTeamA ?? 0,
+  m.scoreTeamB ?? 0,
+  m.elapsedMinutes ?? null,
+  m.updatedAt ?? null,
+  m.date ?? null,
+  m.time ?? null
+]);
+
+const snapshot = {
+  live: [...liveMatches].sort((a,b)=>a.id-b.id).map(normalize),
+  upcoming: [...upcomingMatches].sort((a,b)=>a.id-b.id).map(normalize),
+  finished: [...finishedMatches].sort((a,b)=>a.id-b.id).map(normalize),
+};
+
+const hash = JSON.stringify(snapshot);
+
+if (DataCache.lastLiveMatchesHash === hash) {
+  console.log("[LIVE] aucun changement -> pas de rerender");
+  return;
+}
+DataCache.lastLiveMatchesHash = hash;
+
+
+
+        // ✅ SI AUCUN MATCH
+        if (liveMatches.length === 0 && upcomingMatches.length === 0) {
             container.innerHTML = `
                 <div class="empty-state-live">
                     <i class="fas fa-futbol"></i>
-                    <p>Aucun match en cours actuellement</p>
+                    <p>Aucun match prévu actuellement</p>
+                    <small style="opacity: 0.7; font-size: 0.85rem;">Le planning sera affiché dès sa création</small>
                 </div>
             `;
             return;
         }
 
-       container.innerHTML = liveMatches.map(match => `
-    <div class="live-match-card">
-        <div class="live-match-header">
-            <span class="live-match-round">
-                ${match.round || "Match"}
-            </span>
-            <span class="live-match-time">
-                ${match.elapsedMinutes ?? 45}'
-            </span>
-        </div>
-        <div class="live-match-score">
-            ${match.scoreTeamA ?? 0} - ${match.scoreTeamB ?? 0}
-        </div>
-    </div>
-`).join("");
+        let html = '';
+
+        // ✅ MATCHS EN DIRECT
+        if (liveMatches.length > 0) {
+
+            html += `
+                <div style="margin-bottom: 30px;">
+                    <h3 style="
+                        color: #e74c3c; 
+                        font-size: 1.1em; 
+                        margin: 0 0 15px 0; 
+                        display: flex; 
+                        align-items: center; 
+                        gap: 8px;
+                        font-weight: 700;
+                    ">
+                        <span style="
+                            display: inline-block; 
+                            width: 10px; 
+                            height: 10px; 
+                            background: #e74c3c; 
+                            border-radius: 50%; 
+                            animation: pulse 1.5s infinite;
+                        "></span>
+                        EN DIRECT MAINTENANT
+                    </h3>
+            `;
+            
+                        // ✅ Étape 3 : limiter la timeline à 2 matchs live max (perf)
+// ✅ 2 matchs avec timeline : le focus + 1 autre
+const focusId = __liveFocusMatchId ?? liveMatches[0]?.id;
+
+const focusMatch = liveMatches.find(m => m.id === focusId) || liveMatches[0];
+const secondMatch = liveMatches.find(m => m.id !== focusMatch?.id) || null;
+
+const liveToDecorate = [focusMatch, secondMatch].filter(Boolean);
 
 
-    } catch (err) {
-        console.error(err);
+// ✅ Fetch events en parallèle
+const eventsPairs = await Promise.all(
+  liveToDecorate.map(async (m) => {
+    try {
+      const eventsRes = await fetch(`/api/public/live/match/${m.id}/events`);
+      if (!eventsRes.ok) return [m.id, []];
+      const eventsData = await eventsRes.json();
+      return [m.id, eventsData.data || []];
+    } catch (e) {
+      return [m.id, []];
     }
+  })
+);
+
+const eventsByMatchId = new Map(eventsPairs);
+
+
+
+            for (const match of liveMatches) {
+                // 🔥 CHARGER LES ÉVÉNEMENTS DU MATCH
+              const matchEvents = eventsByMatchId.get(match.id) || [];
+
+                
+                html += `
+                    <div data-live-focus="1" data-match-id="${match.id}" style="
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.2);
+  border-left: 4px solid #e74c3c;
+">
+
+                        <!-- EN-TÊTE MATCH -->
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-bottom: 12px;
+                            font-size: 0.85em;
+                            color: #7f8c8d;
+                        ">
+                            <span style="font-weight: 600;">
+                                ${Components.escapeHtml(match.round || "Match")}
+                            </span>
+                            <span style="color: #e74c3c; font-weight: 700;">
+                                🔴 ${match.elapsedMinutes ?? 0}'
+                            </span>
+                        </div>
+                        
+                        <!-- SCORE -->
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            gap: 12px;
+                            margin-bottom: 15px;
+                            padding-bottom: 15px;
+                            border-bottom: 2px solid #ecf0f1;
+                        ">
+                            <div style="flex: 1; text-align: left; font-weight: 600; color: #2c3e50;">
+                                ${Components.escapeHtml(match.teamA || "?")}
+                            </div>
+                            <div style="
+                                font-size: 1.5em;
+                                font-weight: 700;
+                                color: #2c3e50;
+                                padding: 8px 16px;
+                                background: #f8f9fa;
+                                border-radius: 8px;
+                            ">
+                                ${match.scoreTeamA ?? 0} - ${match.scoreTeamB ?? 0}
+                            </div>
+                            <div style="flex: 1; text-align: right; font-weight: 600; color: #2c3e50;">
+                                ${Components.escapeHtml(match.teamB || "?")}
+                            </div>
+                        </div>
+                        
+                        ${matchEvents.length > 0 ? `
+                            <!-- TIMELINE DES ÉVÉNEMENTS -->
+                            <div style="background: #f8f9fa; padding: 12px; border-radius: 8px;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 0.9em; color: #2c3e50; font-weight: 700;">
+                                    📊 Timeline du match
+                                </h4>
+                                <div style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
+                                    ${matchEvents.slice(0, 10).map(event => {
+                                        const eventIcons = {
+                                            'GOAL': '⚽',
+                                            'YELLOW_CARD': '🟨',
+                                            'RED_CARD': '🟥',
+                                            'SUBSTITUTION': '🔄',
+                                            'HALF_TIME': '⏱️',
+                                            'FULL_TIME': '🏁',
+                                            'PENALTY_SHOOTOUT': '🎯',
+                                            'MATCH_STARTED': '🟢'
+                                        };
+                                        
+                                        const icon = eventIcons[event.type] || '📌';
+                                        const minute = event.minute !== null ? `${event.minute}'` : '';
+                                        const player = event.playerName ? ` - ${Components.escapeHtml(event.playerName)}` : '';
+                                        const team = event.teamName ? ` (${Components.escapeHtml(event.teamName)})` : '';
+                                        
+                                        return `
+                                            <div style="
+                                                background: white;
+                                                padding: 8px 12px;
+                                                border-radius: 6px;
+                                                font-size: 0.85em;
+                                                display: flex;
+                                                align-items: center;
+                                                gap: 8px;
+                                            ">
+                                                <span style="font-weight: 700; color: #3498db; min-width: 35px;">
+                                                    ${minute}
+                                                </span>
+                                                <span style="font-size: 1.2em;">
+                                                    ${icon}
+                                                </span>
+                                                <span style="flex: 1; color: #2c3e50;">
+                                                    <strong>${event.type.replace('_', ' ')}</strong>${player}${team}
+                                                </span>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            html += `</div>`;
+        }
+
+
+        // 🟡 RÉSULTATS RÉCENTS (MATCHS TERMINÉS)
+if (finishedMatches.length > 0) {
+    html += `
+        <div class="finished-matches-section">
+            <h3 class="section-title">
+                ✅ Résultats récents
+            </h3>
+
+            ${finishedMatches.map(match => `
+                <div class="match-card finished">
+                    <div class="match-row match-row-grid">
+
+                       <span class="finished-team-name">
+                            ${Components.escapeHtml(match.teamA)}
+                        </span>
+
+                        <strong class="match-score">
+                            ${match.scoreTeamA ?? 0} - ${match.scoreTeamB ?? 0}
+                        </strong>
+
+                       <span class="finished-team-name">
+                            ${Components.escapeHtml(match.teamB)}
+                        </span>
+                    </div>
+
+                    <div class="match-status">
+                        Match terminé
+                    </div>
+                </div>
+            `).join("")}
+        </div>
+    `;
 }
 
 
-    // ========================================
-    // 📊 CHARGER LES CLASSEMENTS
-    // ========================================
+        // ✅ PROCHAINS MATCHS AVEC HORAIRES
+        if (upcomingMatches.length > 0) {
+            html += `
+                <div>
+                    <h3 style="
+                        color: #3498db; 
+                        font-size: 1.1em; 
+                        margin: 0 0 15px 0; 
+                        font-weight: 700;
+                    ">
+                        📅 Prochains matchs
+                    </h3>
+                    ${upcomingMatches.map(match => {
+                        const time = match.time ? match.time.substring(0, 5) : "-";
+                        const field = match.field || "";
+                        const date = match.date ? new Date(match.date + 'T00:00:00').toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'short'
+                        }) : "";
+                        
+                        return `
+                            <div style="
+                                background: white;
+                                border-radius: 12px;
+                                padding: 16px;
+                                margin-bottom: 12px;
+                                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                                border-left: 4px solid #3498db;
+                            ">
+                                <!-- EN-TÊTE : DATE + HEURE + TERRAIN -->
+                                <div style="
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                    margin-bottom: 12px;
+                                    padding-bottom: 10px;
+                                    border-bottom: 1px solid #ecf0f1;
+                                    font-size: 0.85em;
+                                    color: #7f8c8d;
+                                    font-weight: 600;
+                                ">
+                                    <span>${date}</span>
+                                    <span style="color: #3498db; font-size: 1.1em; font-weight: 700;">
+                                        🕐 ${time}
+                                    </span>
+                                    ${field ? `
+                                        <span style="
+                                            padding: 4px 10px;
+                                            background: #f8f9fa;
+                                            border-radius: 12px;
+                                            font-size: 0.9em;
+                                        ">
+                                            📍 ${Components.escapeHtml(field)}
+                                        </span>
+                                    ` : ''}
+                                </div>
+                                
+                                <!-- MATCH -->
+                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    <div style="font-weight: 600; color: #2c3e50; font-size: 0.95em;">
+                                        ${Components.escapeHtml(match.teamA || "?")}
+                                    </div>
+                                    <div style="text-align: center; color: #95a5a6; font-weight: 700; font-size: 0.85em;">
+                                        VS
+                                    </div>
+                                    <div style="font-weight: 600; color: #2c3e50; font-size: 0.95em;">
+                                        ${Components.escapeHtml(match.teamB || "?")}
+                                    </div>
+                                </div>
+                                
+                                ${match.round ? `
+                                    <div style="
+                                        margin-top: 10px;
+                                        padding-top: 10px;
+                                        border-top: 1px solid #ecf0f1;
+                                        font-size: 0.8em;
+                                        color: #95a5a6;
+                                        text-align: center;
+                                    ">
+                                        ${Components.escapeHtml(match.round)}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join("")}
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+
+    } catch (err) {
+        console.error("Erreur loadLiveMatches:", err);
+        container.innerHTML = `
+            <div class="empty-state-live">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Erreur de chargement des matchs</p>
+            </div>
+        `;
+    }
+}
+
+function renderMatchFilters() {
+  const box = document.getElementById("matchFilters");
+  if (!box) return;
+
+  box.innerHTML = `
+    <button class="chip ${__matchFilter==="all"?"active":""}" data-match-filter="all">Tous</button>
+    <button class="chip ${__matchFilter==="upcoming"?"active":""}" data-match-filter="upcoming">À venir</button>
+    <button class="chip ${__matchFilter==="live"?"active":""}" data-match-filter="live">En cours</button>
+    <button class="chip ${__matchFilter==="finished"?"active":""}" data-match-filter="finished">Terminés</button>
+  `;
+}
+
+function renderAllMatches() {
+  const container = document.getElementById("allMatchesContainer");
+  if (!container || !__matchesCache) return;
+
+  renderMatchFilters();
+
+  const filtered = __matchesCache.filter(m => {
+    if (__matchFilter === "live") return ["IN_PROGRESS","ONGOING"].includes(m.status);
+    if (__matchFilter === "upcoming") return m.status === "SCHEDULED";
+    if (__matchFilter === "finished") return ["COMPLETED","FINISHED"].includes(m.status);
+    return true;
+  });
+
+  container.innerHTML = filtered.map(m => `
+    <div class="match-card ${["COMPLETED","FINISHED"].includes(m.status) ? "finished" : ""}" data-match-id="${m.id}">
+      <div class="match-row match-row-grid">
+        <div class="finished-team-name">${Components.escapeHtml(m.teamA || "?")}</div>
+        <strong class="match-score">${m.scoreTeamA ?? "-"} - ${m.scoreTeamB ?? "-"}</strong>
+        <div class="finished-team-name" style="text-align:right;">${Components.escapeHtml(m.teamB || "?")}</div>
+      </div>
+
+      <div class="match-status">
+        ${formatMatchStatus(m)}
+        ${m.time ? ` • ${m.time.slice(0,5)}` : ""}
+        ${m.round ? ` • ${Components.escapeHtml(m.round)}` : ""}
+        ${m.groupName ? ` • Groupe ${Components.escapeHtml(m.groupName)}` : ""}
+      </div>
+
+      ${(m.competitionLevel || m.fieldType) ? `
+        <div class="match-details">
+          ${m.competitionLevel ? `
+            <span class="match-detail">
+              <i class="fas fa-trophy"></i>
+              ${formatCompetitionLevel(m.competitionLevel)}
+            </span>
+          ` : ""}
+          ${m.fieldType ? `
+            <span class="match-detail">
+              <i class="fas fa-map-marked-alt"></i>
+              ${formatFieldType(m.fieldType)}
+            </span>
+          ` : ""}
+        </div>
+      ` : ""}
+    </div>
+  `).join("") || `<div class="ed-empty">Aucun match</div>`;
+}
+
+/* ============================================================================
+   📊 TOUS LES MATCHS (HISTORIQUE COMPLET)
+   ============================================================================ */
+async function loadAllMatches(eventId) {
+  const container = document.getElementById("allMatchesContainer");
+  if (!container) return;
+
+  try {
+    const res = await fetch(`/api/events/public/${eventId}/matches`);
+
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error("API /matches error", res.status, txt);
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const allMatches = data.data || [];
+
+    if (allMatches.length === 0) {
+      __matchesCache = [];
+      container.innerHTML = `
+        <div class="empty-state-live">
+          <i class="fas fa-futbol"></i>
+          <p>Aucun match</p>
+        </div>
+      `;
+      return;
+    }
+
+    allMatches.sort((a, b) => {
+      const dateA = new Date(`${a.date || "1970-01-01"}T${(a.time || "00:00").slice(0,5)}`);
+      const dateB = new Date(`${b.date || "1970-01-01"}T${(b.time || "00:00").slice(0,5)}`);
+      return dateA - dateB;
+    });
+
+    __matchesCache = allMatches;   // ✅ cache
+    renderAllMatches();            // ✅ render filtré (chips)
+
+  } catch (err) {
+    console.error("Erreur loadAllMatches:", err);
+    container.innerHTML = `
+      <div class="empty-state-live">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p>Erreur de chargement des matchs</p>
+      </div>
+    `;
+  }
+}
+
+
+
+function formatMatchStatus(m) {
+    if (["IN_PROGRESS", "ONGOING"].includes(m.status)) return "🔴 En cours";
+    if (m.status === "COMPLETED") return "✅ Terminé";
+    if (m.status === "SCHEDULED") return "📅 À venir";
+    return m.status || "—";
+}
+
+// 🆕 NOUVELLES FONCTIONS POUR AFFICHER LES DÉTAILS
+function formatCompetitionLevel(level) {
+    const labels = {
+        'NATIONAL_1': 'National 1',
+        'NATIONAL_2': 'National 2',
+        'NATIONAL_3': 'National 3',
+        'REGIONAL_1': 'Régional 1',
+        'REGIONAL_2': 'Régional 2',
+        'REGIONAL_3': 'Régional 3',
+        'DEPARTEMENTAL_1': 'Départemental 1',
+        'DEPARTEMENTAL_2': 'Départemental 2',
+        'DEPARTEMENTAL_3': 'Départemental 3',
+        'DISTRICT_1': 'District 1',
+        'DISTRICT_2': 'District 2',
+        'AMICAL': 'Match amical',
+        'COUPE_DE_FRANCE': 'Coupe de France',
+        'COUPE_REGIONALE': 'Coupe Régionale',
+        'COUPE_DEPARTEMENTALE': 'Coupe Départementale',
+        'FUTSAL': 'Futsal',
+        'VETERANS': 'Vétérans',
+        'LOISIR': 'Loisir'
+    };
+    return labels[level] || level;
+}
+
+function formatFieldType(type) {
+    const labels = {
+        'NATURAL_GRASS': 'Herbe naturelle',
+        'SYNTHETIC_GRASS': 'Synthétique',
+        'HYBRID': 'Hybride',
+        'INDOOR': 'Salle',
+        'DIRT': 'Terre battue',
+        'STABILIZED': 'Stabilisé',
+        'BEACH': 'Beach soccer'
+    };
+    return labels[type] || type;
+}
+
+
+/* ============================================================================
+   📊 CLASSEMENTS (OPTIMISÉ + AVEC MESSAGE SI VIDE)
+   ============================================================================ */
 async function loadRankings(eventId) {
     const container = document.getElementById("rankingsContainer");
     if (!container) return;
@@ -1116,26 +1457,30 @@ async function loadRankings(eventId) {
     try {
         const res = await Auth.secureFetch(`/api/events/tournament/${eventId}/group-rankings`);
         
-        // ✅ Si 500, affiche un message clair
         if (res.status === 500) {
-            console.error("Erreur serveur 500 sur group-rankings");
             container.innerHTML = `
                 <div class="empty-state-live">
-                    <i class="fas fa-exclamation-triangle"></i>
+                    <i class="fas fa-list-ol"></i>
                     <p>Les classements ne sont pas encore disponibles</p>
-                    <small style="opacity: 0.6;">Erreur serveur - contactez l'administrateur</small>
+                    <small style="opacity: 0.7; font-size: 0.85rem;">Ils s'afficheront après les premiers matchs</small>
                 </div>
             `;
             return;
         }
         
         const data = await res.json();
-        
-        if (!res.ok) throw new Error("Erreur chargement classements");
+        if (!res.ok) throw new Error();
 
         const rankingsObj = data.data || {};
+        
+        // ✅ OPTIMISATION : Ne re-render que si changement
+        if (!DataCache.hasChanged('lastRankingsHash', rankingsObj)) {
+            return;
+        }
+
         const groupIds = Object.keys(rankingsObj);
 
+        // ✅ SI AUCUN CLASSEMENT → AFFICHER MESSAGE
         if (groupIds.length === 0) {
             container.innerHTML = `
                 <div class="empty-state-live">
@@ -1146,37 +1491,40 @@ async function loadRankings(eventId) {
             return;
         }
 
+        // ✅ AFFICHER LES CLASSEMENTS
         container.innerHTML = groupIds.map(groupId => {
             const teams = rankingsObj[groupId];
             
             return `
                 <div class="ranking-group">
                     <div class="ranking-group-header">
-                        Groupe ${groupId}
+                        Groupe ${Components.escapeHtml(groupId)}
                     </div>
                     <table class="ranking-table">
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>Équipe</th>
-                                <th>Pts</th>
-                                <th>J</th>
-                                <th>G</th>
-                                <th>N</th>
-                                <th>P</th>
-                                <th>+/-</th>
+                                <th scope="col">#</th>
+                                <th scope="col">Équipe</th>
+                                <th scope="col">Pts</th>
+                                <th scope="col">J</th>
+                                <th scope="col">G</th>
+                                <th scope="col">N</th>
+                                <th scope="col">P</th>
+                                <th scope="col">+/-</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${teams.map((team, index) => `
                                 <tr>
                                     <td class="ranking-position ${index < 2 ? 'qualified' : ''}">${index + 1}</td>
-                                    <td class="ranking-team-name">${team.teamName || team.name}</td>
+                                    <td class="ranking-team-name">${Components.escapeHtml(team.teamName || team.name)}</td>
                                     <td class="ranking-points">${team.points ?? 0}</td>
                                     <td>${team.played ?? 0}</td>
-                                    <td>${team.won ?? 0}</td>
-                                    <td>${team.draw ?? 0}</td>
-                                    <td>${team.lost ?? 0}</td>
+                                <td>${team.wins ?? team.won ?? 0}</td>
+                                <td>${team.draws ?? team.draw ?? team.drawn ?? 0}</td>
+                                <td>${team.losses ?? team.lost ?? 0}</td>
+
+
                                     <td>${team.goalDifference ?? 0}</td>
                                 </tr>
                             `).join("")}
@@ -1197,164 +1545,253 @@ async function loadRankings(eventId) {
     }
 }
 
-    // ========================================
-    // 🏆 CHARGER LE BRACKET
-    // ========================================
-    async function loadBracket(eventId) {
-        const container = document.getElementById("bracketContainer");
-        if (!container) return;
-
-        try {
-            // Charger bracket principal + consolante
-            const [bracketRes, consolanteRes] = await Promise.allSettled([
-                Auth.secureFetch(`/api/events/${eventId}/bracket`),
-                Auth.secureFetch(`/api/events/${eventId}/consolante`)
-            ]);
-
-            let allMatches = [];
-
-            if (bracketRes.status === "fulfilled" && bracketRes.value.ok) {
-                const bracketData = await bracketRes.value.json();
-                const bracket = bracketData.data || bracketData || [];
-                allMatches.push(...bracket.map(m => ({...m, type: 'principal'})));
-            }
-
-            if (consolanteRes.status === "fulfilled" && consolanteRes.value.ok) {
-                const consolanteData = await consolanteRes.value.json();
-                const consolante = consolanteData.data || consolanteData || [];
-                allMatches.push(...consolante.map(m => ({...m, type: 'consolante'})));
-            }
-
-            if (allMatches.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state-live">
-                        <i class="fas fa-trophy"></i>
-                        <p>La phase finale débutera après les poules</p>
-                    </div>
-                `;
-                return;
-            }
-
-            // Regrouper par round
-            const rounds = {};
-            allMatches.forEach(m => {
-                const roundName = m.round || "Phase";
-                if (!rounds[roundName]) rounds[roundName] = [];
-                rounds[roundName].push(m);
-            });
-
-            // Ordre d'affichage
-            const roundOrder = ['QF1', 'QF2', 'QF3', 'QF4', 'SF1', 'SF2', '3RD_PLACE', 'FINAL', 
-                               'CQF1', 'CQF2', 'CQF3', 'CQF4', 'CSF1', 'CSF2', 'C3RD_PLACE', 'CFINAL'];
-// ✅ Dédupliquer les matchs par ID
-const uniqueRounds = {};
-roundOrder.filter(r => rounds[r]).forEach(roundName => {
-    const seen = new Set();
-    uniqueRounds[roundName] = rounds[roundName].filter(match => {
-        if (seen.has(match.id)) return false;
-        seen.add(match.id);
-        return true;
-    });
-});
-
-container.innerHTML = Object.keys(uniqueRounds).map(roundName => {
-    const roundLabel = getRoundLabel(roundName);
-    const isConsolante = roundName.startsWith('C');
-
-    return `
-        <div class="bracket-round">
-            <div class="bracket-round-header">
-                ${isConsolante ? '♻️' : '🏆'} ${roundLabel}
-            </div>
-            ${uniqueRounds[roundName].map(match => `
-                <div class="bracket-match">
-                    <div class="bracket-match-teams">
-                        <div class="bracket-team ${(match.scoreA || 0) > (match.scoreB || 0) ? 'winner' : ''}">
-                            <span class="bracket-team-name">${match.teamA || "?"}</span>
-                            <span class="bracket-team-score">${match.scoreA ?? "-"}</span>
-                        </div>
-                        <div class="bracket-team ${(match.scoreB || 0) > (match.scoreA || 0) ? 'winner' : ''}">
-                            <span class="bracket-team-name">${match.teamB || "?"}</span>
-                            <span class="bracket-team-score">${match.scoreB ?? "-"}</span>
-                        </div>
-                    </div>
-                </div>
-            `).join("")}
-        </div>
-    `;
-}).join("");
-
-        } catch (err) {
-            console.error("Erreur loadBracket:", err);
-            container.innerHTML = `
-                <div class="empty-state-live">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>Erreur de chargement du bracket</p>
-                </div>
-            `;
-        }
-    }
-
-
-
-    // ========================================
-// 📰 CHARGER LE FIL D'ACTUALITÉ
-// ========================================
-async function loadLiveFeed(eventId) {
-    const container = document.getElementById("liveFeedContainer");
+/* ============================================================================
+   🏆 BRACKET (OPTIMISÉ + AVEC MESSAGE SI VIDE)
+   ============================================================================ */
+async function loadBracket(eventId) {
+    const container = document.getElementById("bracketContainer");
     if (!container) return;
 
     try {
-        const res = await Auth.secureFetch(`/api/public/live/feed/event/${eventId}`);
-        const data = await res.json();
+        const [bracketRes, consolanteRes] = await Promise.allSettled([
+            Auth.secureFetch(`/api/events/${eventId}/bracket`),
+            Auth.secureFetch(`/api/events/${eventId}/consolante`)
+        ]);
+
+        let mainBracket = [];
+        let consolante = [];
+
+        if (bracketRes.status === "fulfilled" && bracketRes.value.ok) {
+            const bracketData = await bracketRes.value.json();
+            mainBracket = bracketData.data || bracketData || [];
+        }
+
+        if (consolanteRes.status === "fulfilled" && consolanteRes.value.ok) {
+            const consolanteData = await consolanteRes.value.json();
+            consolante = consolanteData.data || consolanteData || [];
+        }
+
+        const allBracketData = { mainBracket, consolante };
         
-        if (!res.ok) throw new Error("Erreur chargement fil d'actualité");
+        // ✅ OPTIMISATION : Ne re-render que si changement
+        if (!DataCache.hasChanged('lastBracketHash', allBracketData)) {
+            return;
+        }
 
-        const events = data.data || [];
-
-        if (events.length === 0) {
+        // ✅ SI AUCUN BRACKET → AFFICHER MESSAGE
+        if (mainBracket.length === 0 && consolante.length === 0) {
             container.innerHTML = `
                 <div class="empty-state-live">
-                    <i class="fas fa-newspaper"></i>
-                    <p>Aucune actualité pour le moment</p>
+                    <i class="fas fa-trophy"></i>
+                    <p>La phase finale débutera après les poules</p>
+                    <small style="opacity: 0.7; font-size: 0.85rem;">Les matchs à élimination directe apparaîtront ici</small>
                 </div>
             `;
             return;
         }
 
-        container.innerHTML = events.slice(0, 10).map(event => {
-            const timeAgo = getTimeAgo(event.createdAt);
-            const eventIcon = getEventIcon(event.type);
-            const eventText = formatEventForFeed(event);
+        // ✅ AFFICHER LE BRACKET
+        let html = '';
 
-            return `
-                <div class="feed-item feed-${event.type.toLowerCase()}">
-                    <div class="feed-icon">${eventIcon}</div>
-                    <div class="feed-content">
-                        <div class="feed-text">${eventText}</div>
-                        <div class="feed-meta">
-                            <span class="feed-time">${timeAgo}</span>
-                            <span class="feed-match">${event.teamAName} vs ${event.teamBName}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join("");
+        if (mainBracket.length > 0) {
+            html += renderBracketTree(mainBracket, 'principal');
+        }
+
+        if (consolante.length > 0) {
+            html += `<div style="margin-top: 40px;"></div>`;
+            html += renderBracketTree(consolante, 'consolante');
+        }
+
+        container.innerHTML = html;
 
     } catch (err) {
-        console.error("Erreur loadLiveFeed:", err);
+        console.error("Erreur loadBracket:", err);
         container.innerHTML = `
             <div class="empty-state-live">
                 <i class="fas fa-exclamation-triangle"></i>
-                <p>Erreur de chargement du fil d'actualité</p>
+                <p>Erreur de chargement du bracket</p>
             </div>
         `;
     }
 }
 
-// ========================================
-// 🏷️ HELPERS POUR LE FIL D'ACTUALITÉ
-// ========================================
+/* ============================================================================
+   🌳 HELPER : RENDER BRACKET TREE
+   ============================================================================ */
+function renderBracketTree(matches, type) {
+    const isPrincipal = type === 'principal';
+    const titleIcon = isPrincipal ? '🏆' : '♻️';
+    const title = isPrincipal ? 'Bracket principal' : 'Tableau de consolante';
+    
+    const rounds = {};
+    matches.forEach(m => {
+        if (!rounds[m.round]) rounds[m.round] = [];
+        rounds[m.round].push(m);
+    });
+
+    const roundOrder = isPrincipal 
+        ? ['R16', 'QF', 'SF', 'FINAL'].filter(r => rounds[r])
+        : ['CQF', 'CSF', 'CFINAL'].filter(r => rounds[r]);
+
+    if (roundOrder.length === 0) return '';
+
+    return `
+        <div class="bracket-section-header">
+            <h4>${titleIcon} ${title}</h4>
+        </div>
+        <div class="bracket-tree">
+            ${roundOrder.map(roundName => {
+                const roundMatches = rounds[roundName];
+                const roundConfig = getRoundConfig(roundName);
+                
+                return `
+                    <div class="bracket-column">
+                        <h5 class="bracket-round-title" style="color: ${roundConfig.color};">
+                            ${roundConfig.label}
+                        </h5>
+                        <div class="bracket-matches">
+                            ${roundMatches.map(m => renderBracketMatch(m, roundConfig)).join("")}
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
+}
+
+function renderBracketMatch(match, roundConfig) {
+    const teamAWins = (match.scoreTeamA ?? 0) > (match.scoreTeamB ?? 0);
+const teamBWins = (match.scoreTeamB ?? 0) > (match.scoreTeamA ?? 0);
+
+    const isLive = match.status === 'ONGOING' || match.status === 'IN_PROGRESS';
+const isFinished = match.status === 'COMPLETED';
+
+    return `
+        <div class="bracket-match ${isFinished ? 'finished' : ''} ${isLive ? 'live' : ''}" 
+             style="border-left: 4px solid ${roundConfig.color};"
+             data-match-id="${match.id}">
+            
+            ${isLive ? '<div class="live-badge">🔴 EN DIRECT</div>' : ''}
+            
+            <div class="bracket-team ${teamAWins ? 'winner' : ''}">
+                <span class="bracket-team-name">
+                    ${Components.escapeHtml(match.teamA || "?")}
+                </span>
+                <span class="bracket-score">
+                     ${match.scoreTeamA ?? "-"}
+                </span>
+            </div>
+
+            <div class="bracket-divider"></div>
+
+            <div class="bracket-team ${teamBWins ? 'winner' : ''}">
+                <span class="bracket-team-name">
+                    ${Components.escapeHtml(match.teamB || "?")}
+                </span>
+                <span class="bracket-score">
+                       ${match.scoreTeamB ?? "-"}
+
+                </span>
+            </div>
+        </div>
+    `;
+}
+
+function getRoundConfig(round) {
+    const configs = {
+        "R16": { label: "⚽ 1/8 de finale", color: "#3498db" },
+        "QF": { label: "⚽ Quarts", color: "#27ae60" },
+        "SF": { label: "🎯 Demi-finales", color: "#e67e22" },
+        "FINAL": { label: "🏆 Finale", color: "#c0392b" },
+        "CQF": { label: "⚽ Quarts consolante", color: "#16a34a" },
+        "CSF": { label: "🎯 Demi consolante", color: "#f97316" },
+        "CFINAL": { label: "🏆 Finale consolante", color: "#dc2626" }
+    };
+    
+    return configs[round] || { label: round, color: "#95a5a6" };
+}
+
+function feedBucket(type) {
+  const t = String(type || "").toUpperCase();
+  if (t.includes("GOAL") || t.includes("RESULT") || t.includes("MATCH_ENDED") || t.includes("MATCH_FINISHED")) return "result";
+  if (t.includes("MATCH_STARTED") || t.includes("LIVE")) return "live";
+  if (t.includes("RANK") || t.includes("STAND")) return "ranking";
+  if (t.includes("VIDEO") || t.includes("MEDIA") || t.includes("PHOTO")) return "media";
+  return "other";
+}
+
+
+/* ============================================================================
+   📰 FIL D'ACTUALITÉ (AVEC MESSAGE SI VIDE)
+   ============================================================================ */
+async function loadLiveFeed(eventId) {
+  const container = document.getElementById("liveFeedContainer");
+  if (!container) return;
+
+  // ✅ Chips filtres (si le container existe)
+  const filters = document.getElementById("feedFilters");
+  if (filters) {
+    filters.innerHTML = `
+      <button class="chip ${__feedFilter==="all"?"active":""}" data-feed-filter="all">Tout</button>
+      <button class="chip ${__feedFilter==="live"?"active":""}" data-feed-filter="live">Live</button>
+      <button class="chip ${__feedFilter==="result"?"active":""}" data-feed-filter="result">Résultats</button>
+      <button class="chip ${__feedFilter==="ranking"?"active":""}" data-feed-filter="ranking">Classement</button>
+      <button class="chip ${__feedFilter==="media"?"active":""}" data-feed-filter="media">Média</button>
+    `;
+  }
+
+  try {
+    const res = await Auth.secureFetch(`/api/public/live/feed/event/${eventId}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Erreur feed");
+
+    const allEvents = data.data || [];
+    const events = (__feedFilter === "all")
+      ? allEvents
+      : allEvents.filter(ev => feedBucket(ev.type) === __feedFilter);
+
+    if (events.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state-live">
+          <i class="fas fa-newspaper"></i>
+          <p>Aucune actualité pour le moment</p>
+          <small style="opacity: 0.7; font-size: 0.85rem;">Les événements du tournoi apparaîtront ici</small>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = events.slice(0, 10).map(ev => {
+      const timeAgo = getTimeAgo(ev.createdAt);
+      const eventIcon = getEventIcon(ev.type);
+      const eventText = formatEventForFeed(ev);
+
+      return `
+        <div class="feed-item feed-${String(ev.type || "").toLowerCase()}">
+          <div class="feed-icon">${eventIcon}</div>
+          <div class="feed-content">
+            <div class="feed-text">${eventText}</div>
+            <div class="feed-meta">
+              <span class="feed-time">${timeAgo}</span>
+              <span class="feed-match">${Components.escapeHtml(ev.teamAName || "")} vs ${Components.escapeHtml(ev.teamBName || "")}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+  } catch (err) {
+    console.error("Erreur loadLiveFeed:", err);
+    container.innerHTML = `
+      <div class="empty-state-live">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p>Erreur de chargement du fil d'actualité</p>
+      </div>
+    `;
+  }
+}
+
+
 function getEventIcon(type) {
     const icons = {
         'GOAL': '⚽',
@@ -1375,21 +1812,19 @@ function formatEventForFeed(event) {
     
     switch (event.type) {
         case 'GOAL':
-            return `<strong>But de ${playerName}</strong> (${teamName})`;
+            return `<strong>But de ${Components.escapeHtml(playerName)}</strong> (${Components.escapeHtml(teamName)})`;
         case 'YELLOW_CARD':
-            return `Carton jaune pour <strong>${playerName}</strong> (${teamName})`;
+            return `Carton jaune pour <strong>${Components.escapeHtml(playerName)}</strong> (${Components.escapeHtml(teamName)})`;
         case 'RED_CARD':
-            return `Carton rouge pour <strong>${playerName}</strong> (${teamName})`;
+            return `Carton rouge pour <strong>${Components.escapeHtml(playerName)}</strong> (${Components.escapeHtml(teamName)})`;
         case 'HALF_TIME':
-            return `Mi-temps • ${event.teamAName} ${event.scoreA}-${event.scoreB} ${event.teamBName}`;
+            return `Mi-temps • ${Components.escapeHtml(event.teamAName)} ${event.scoreA}-${event.scoreB} ${Components.escapeHtml(event.teamBName)}`;
         case 'FULL_TIME':
-            return `Fin du match • ${event.teamAName} ${event.scoreA}-${event.scoreB} ${event.teamBName}`;
+            return `Fin du match • ${Components.escapeHtml(event.teamAName)} ${event.scoreA}-${event.scoreB} ${Components.escapeHtml(event.teamBName)}`;
         case 'MATCH_STARTED':
-            return `Match commencé • ${event.teamAName} vs ${event.teamBName}`;
-        case 'MATCH_ENDED':
-            return `Match terminé • Score final ${event.scoreA}-${event.scoreB}`;
+            return `Match commencé • ${Components.escapeHtml(event.teamAName)} vs ${Components.escapeHtml(event.teamBName)}`;
         default:
-            return event.details || 'Événement';
+            return Components.escapeHtml(event.details || 'Événement');
     }
 }
 
@@ -1409,577 +1844,83 @@ function getTimeAgo(timestamp) {
     return `Il y a ${diffDays}j`;
 }
 
-    // ========================================
-    // 🏷️ HELPER : NOM DES ROUNDS
-    // ========================================
-    function getRoundLabel(round) {
-        const labels = {
-            'FINAL': 'FINALE',
-            '3RD_PLACE': 'PETITE FINALE',
-            'SF1': 'DEMI-FINALE 1',
-            'SF2': 'DEMI-FINALE 2',
-            'QF1': 'QUART DE FINALE 1',
-            'QF2': 'QUART DE FINALE 2',
-            'QF3': 'QUART DE FINALE 3',
-            'QF4': 'QUART DE FINALE 4',
-            'CFINAL': 'FINALE CONSOLANTE',
-            'C3RD_PLACE': '3ÈME PLACE CONSOLANTE',
-            'CSF1': 'DEMI-FINALE CONSOLANTE 1',
-            'CSF2': 'DEMI-FINALE CONSOLANTE 2',
-            'CQF1': 'QUART CONSOLANTE 1',
-            'CQF2': 'QUART CONSOLANTE 2',
-            'CQF3': 'QUART CONSOLANTE 3',
-            'CQF4': 'QUART CONSOLANTE 4'
-        };
-        return labels[round] || round;
+/* ============================================================================
+   👑 ACTIONS ORGANISATEUR
+   ============================================================================ */
+function initOrganizerActions(eventId) {
+    // Clôture inscriptions
+    const closeBtn = document.getElementById("closeRegistrationsBtn");
+    if (closeBtn) {
+        closeBtn.addEventListener("click", () => toggleRegistrations(eventId, 'close'));
     }
 
-    /* ============================================================================
-       CHARGER LES STATS INSCRIPTIONS
-       ============================================================================ */
-    async function loadRegistrationsStats(eventId) {
-        try {
-            const res = await Auth.secureFetch(
-                `/api/events/manage/${eventId}/registrations?page=0&size=1000`
-            );
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                const registrations = data.data.content;
-
-                const pending = registrations.filter(
-                    (r) => r.status === "EN_ATTENTE" || r.status === "PENDING"
-                ).length;
-                const validated = registrations.filter(
-                    (r) => r.status === "VALIDE" || r.status === "VALIDATED"
-                ).length;
-
-                document.getElementById("pendingCount").textContent = pending;
-                document.getElementById("validatedCount").textContent = validated;
-                document.getElementById("totalCount").textContent =
-                    registrations.length;
-
-                if (validated >= 10) {
-                    const btn = document.getElementById("formTeamsBtn");
-                    if (btn) btn.disabled = false;
-                }
-            }
-        } catch (err) {
-            console.error("Erreur chargement stats:", err);
-        }
+    const reopenBtn = document.getElementById("reopenRegistrationsBtn");
+    if (reopenBtn) {
+        reopenBtn.addEventListener("click", () => toggleRegistrations(eventId, 'reopen'));
     }
-
-    /* ============================================================================
-       CHARGER LA LISTE DES INSCRIPTIONS
-       ============================================================================ */
-    async function loadRegistrationsList(eventId) {
-        const loader = document.getElementById("registrationsLoader");
-        const list = document.getElementById("registrationsList");
-
-        loader.style.display = "block";
-        list.innerHTML = "";
-
-        try {
-            const res = await Auth.secureFetch(
-                `/api/events/manage/${eventId}/registrations?page=0&size=1000`
-            );
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                const registrations = data.data.content;
-
-                if (registrations.length === 0) {
-                    list.innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-user-slash"></i>
-                            <p>Aucune inscription</p>
-                        </div>`;
-                } else {
-                    const pending = registrations.filter(
-                        (r) => r.status === "EN_ATTENTE" || r.status === "PENDING"
-                    );
-                    const validated = registrations.filter(
-                        (r) => r.status === "VALIDE" || r.status === "VALIDATED"
-                    );
-                    const cancelled = registrations.filter(
-                        (r) => r.status === "ANNULE" || r.status === "CANCELLED"
-                    );
-
-                    let html = `<div class="registrations-list">
-                        <h4 class="list-title">
-                            <i class="fas fa-list"></i>
-                            Inscriptions (${registrations.length})
-                        </h4>`;
-
-                    if (pending.length > 0) {
-                        html += `<div class="reg-section">
-                            <h5><i class="fas fa-clock"></i> En attente (${pending.length})</h5>`;
-                        pending.forEach((r) => (html += createRegistrationCard(r, "pending")));
-                        html += `</div>`;
-                    }
-
-                    if (validated.length > 0) {
-                        html += `<div class="reg-section">
-                            <h5><i class="fas fa-check-circle"></i> Validés (${validated.length})</h5>`;
-                        validated.forEach(
-                            (r) => (html += createRegistrationCard(r, "validated"))
-                        );
-                        html += `</div>`;
-                    }
-
-                    if (cancelled.length > 0) {
-                        html += `<div class="reg-section">
-                            <h5><i class="fas fa-times-circle"></i> Refusés (${cancelled.length})</h5>`;
-                        cancelled.forEach(
-                            (r) => (html += createRegistrationCard(r, "cancelled"))
-                        );
-                        html += `</div>`;
-                    }
-
-                    html += `</div>`;
-                    list.innerHTML = html;
-
-                    attachValidationButtons(eventId);
-                }
-            }
-        } catch (err) {
-            console.error("Erreur chargement inscriptions:", err);
-            showToast("❌ Erreur de chargement", "error");
-        } finally {
-            loader.style.display = "none";
-        }
-    }
-
-    /* ============================================================================
-       MODAL FORMATION DES ÉQUIPES
-       ============================================================================ */
-    function showTeamFormationModal(eventId) {
-        const modalHtml = `
-        <div class="modal-overlay" id="teamFormationModal">
-            <div class="modal-container">
-                <div class="modal-header">
-                    <h3><i class="fas fa-users-line"></i> Former les équipes</h3>
-                    <button class="modal-close" id="closeModal">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                
-                <div class="modal-body">
-                    <p class="modal-description">
-                        Choisissez la méthode de formation des équipes
-                    </p>
-                    
-                    <div class="formation-modes">
-                        <div class="mode-card" data-mode="AUTO">
-                            <div class="mode-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
-                            <h4>Formation automatique</h4>
-                            <p>L'algorithme répartit les joueurs automatiquement</p>
-                        </div>
-
-                        <div class="mode-card disabled">
-                            <div class="mode-icon"><i class="fas fa-hand-pointer"></i></div>
-                            <h4>Formation manuelle</h4>
-                            <p>Bientôt disponible</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="modal-footer">
-                    <button class="btn-secondary" id="cancelFormation">Annuler</button>
-                    <button class="btn-primary" id="confirmFormation" disabled>
-                        <i class="fas fa-check"></i> Confirmer
-                    </button>
-                </div>
-            </div>
-        </div>
-        `;
-
-        document.body.insertAdjacentHTML("beforeend", modalHtml);
-
-        const modal = document.getElementById("teamFormationModal");
-        const closeBtn = document.getElementById("closeModal");
-        const cancelBtn = document.getElementById("cancelFormation");
-        const confirmBtn = document.getElementById("confirmFormation");
-
-        let selectedMode = null;
-
-        document.querySelectorAll(".mode-card").forEach((card) => {
-            card.addEventListener("click", () => {
-                if (card.classList.contains("disabled")) return;
-
-                document
-                    .querySelectorAll(".mode-card")
-                    .forEach((c) => c.classList.remove("selected"));
-                card.classList.add("selected");
-                selectedMode = card.dataset.mode;
-                confirmBtn.disabled = false;
-            });
-        });
-
-        const closeModal = () => modal.remove();
-        closeBtn.addEventListener("click", closeModal);
-        cancelBtn.addEventListener("click", closeModal);
-        modal.addEventListener("click", (e) => {
-            if (e.target === modal) closeModal();
-        });
-
-        confirmBtn.addEventListener("click", async () => {
-            confirmBtn.disabled = true;
-            confirmBtn.innerHTML =
-                '<i class="fas fa-spinner fa-spin"></i> Formation...';
-
-            try {
-                await formTeams(eventId, selectedMode);
-                closeModal();
-            } catch {
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML =
-                    '<i class="fas fa-check"></i> Confirmer';
-            }
-        });
-    }
-
-    /* ============================================================================
-       APPEL API : FORMER LES ÉQUIPES
-       ============================================================================ */
-    async function formTeams(eventId, mode) {
-        try {
-            const res = await Auth.secureFetch("/api/team-formation/form-teams", {
-                method: "POST",
-                body: JSON.stringify({
-                    eventId: parseInt(eventId),
-                    mode: mode,
-                }),
-            });
-
-            const result = await res.json();
-
-            if (res.ok && result.success) {
-                showToast(
-                    `✅ ${result.data.totalTeams} équipes formées avec succès !`,
-                    "success"
-                );
-
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                throw new Error(result.message || "Erreur formation");
-            }
-        } catch (err) {
-            console.error("Erreur:", err);
-            showToast("❌ " + err.message, "error");
-            throw err;
-        }
-    }
-
-    /* ============================================================================
-       CHARGER LES ÉQUIPES FORMÉES
-       ============================================================================ */
-    async function loadFormedTeams(eventId) {
-        const loader = document.getElementById("formedTeamsLoader");
-        const container = document.getElementById("formedTeamsContainer");
-
-        if (!loader || !container) return;
-
-        loader.style.display = "flex";
-        container.innerHTML = "";
-
-        try {
-            const res = await Auth.secureFetch(
-                `/api/team-formation/event/${eventId}/teams`
-            );
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                const teams = data.data;
-
-                if (!teams || teams.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-users-slash"></i>
-                            <p>Aucune équipe formée</p>
-                        </div>`;
-                } else {
-                    container.innerHTML = teams
-                        .map((team) => createTeamCard(team))
-                        .join("");
-                }
-            } else {
-                throw new Error(data.message || "Erreur chargement");
-            }
-        } catch (err) {
-            console.error("Erreur chargement équipes:", err);
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>Erreur de chargement des équipes</p>
-                </div>`;
-        } finally {
-            loader.style.display = "none";
-        }
-    }
-
-    /* ============================================================================
-       CRÉER UNE CARTE ÉQUIPE
-       ============================================================================ */
-    function createTeamCard(team) {
-        const currentUser = Auth.currentUser;
-        const isMyTeam =
-            team.players &&
-            team.players.some((p) => p.id === currentUser?.id);
-
-        return `
-        <div class="team-card ${
-            isMyTeam ? "my-team" : ""
-        }" style="border-left:4px solid ${team.color || "#3b82f6"}">
-            
-            <div class="team-card-header">
-                <div class="team-info">
-                    <h4 class="team-name">
-                        <i class="fas fa-shield-alt" style="color:${
-                            team.color || "#3b82f6"
-                        }"></i>
-                        ${team.name}
-                    </h4>
-                    ${
-                        isMyTeam
-                            ? '<span class="my-team-badge"><i class="fas fa-star"></i> Mon équipe</span>'
-                            : ""
-                    }
-                </div>
-
-                <div class="team-stats">
-                    <span class="team-player-count">
-                        <i class="fas fa-users"></i>
-                        ${team.playerCount || 0} joueurs
-                    </span>
-                </div>
-            </div>
-
-            <div class="team-players-list">
-                ${
-                    team.players && team.players.length > 0
-                        ? team.players
-                              .map(
-                                  (player, index) => `
-                    <div class="team-player-item ${
-                        player.id === currentUser?.id ? "is-me" : ""
-                    }">
-                        <div class="player-avatar">
-                            ${
-                                player.avatarUrl
-                                    ? `<img src="${player.avatarUrl}" alt="${player.username}">`
-                                    : player.username.charAt(0).toUpperCase()
-                            }
-                        </div>
-                        <div class="player-info">
-                            <span class="player-name">
-                                ${player.username}
-                                ${
-                                    player.id === currentUser?.id
-                                        ? '<span class="me-badge">Vous</span>'
-                                        : ""
-                                }
-                            </span>
-                            <span class="player-meta">
-                                ${
-                                    player.level
-                                        ? `<span class="level-badge level-${player.level.toLowerCase()}">${player.level}</span>`
-                                        : ""
-                                }
-                                ${
-                                    player.preferredPosition
-                                        ? `<span class="position-badge">${player.preferredPosition}</span>`
-                                        : ""
-                                }
-                            </span>
-                        </div>
-                        <span class="player-number">#${index + 1}</span>
-                    </div>`
-                              )
-                              .join("")
-                        : `<p style="opacity:0.6;text-align:center;">Aucun joueur</p>`
-                }
-            </div>
-        </div>`;
-    }
-
-    /* ============================================================================
-       CARTE INSCRIPTION
-       ============================================================================ */
-    function createRegistrationCard(reg, statusType) {
-        const date = new Date(reg.registrationDate).toLocaleDateString("fr-FR", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-        });
-
-        return `
-        <div class="registration-item" data-reg-id="${reg.id}">
-            <div class="reg-player-info">
-                <div class="player-avatar">
-                    ${reg.playerUsername
-                        ? reg.playerUsername.charAt(0).toUpperCase()
-                        : "?"}
-                </div>
-                <div class="player-details">
-                    <span class="player-name">${
-                        reg.playerUsername || "Joueur inconnu"
-                    }</span>
-                    <span class="player-meta">Inscrit le ${date}</span>
-                </div>
-            </div>
-            
-            <div class="reg-actions">
-                ${
-                    statusType === "pending"
-                        ? `
-                    <button class="reg-action-btn validate" data-action="validate" data-reg-id="${reg.id}">
-                        <i class="fas fa-check"></i>
-                    </button>
-                    <button class="reg-action-btn refuse" data-action="refuse" data-reg-id="${reg.id}">
-                        <i class="fas fa-times"></i>
-                    </button>`
-                        : `
-                    <span class="status-badge ${statusType}">
-                        ${
-                            statusType === "validated"
-                                ? "Validé"
-                                : "Refusé"
-                        }
-                    </span>`
-                }
-            </div>
-        </div>`;
-    }
-
-    /* ============================================================================
-       BOUTONS VALIDER / REFUSER INSCRIPTION
-       ============================================================================ */
-    function attachValidationButtons(eventId) {
-        document.querySelectorAll(".reg-action-btn").forEach((btn) => {
-            btn.addEventListener("click", async (e) => {
-                e.stopPropagation();
-
-                const action = btn.dataset.action;
-                const regId = btn.dataset.regId;
-                const regItem = btn.closest(".registration-item");
-
-                const confirmMsg =
-                    action === "validate"
-                        ? "Valider cette inscription ?"
-                        : "Refuser cette inscription ?";
-                if (!confirm(confirmMsg)) return;
-
-                regItem
-                    .querySelectorAll(".reg-action-btn")
-                    .forEach((b) => (b.disabled = true));
-                btn.innerHTML =
-                    '<i class="fas fa-spinner fa-spin"></i>';
-
-                try {
-                    if (action === "validate") {
-                        const res = await Auth.secureFetch(
-                            `/api/events/manage/${eventId}/registrations/${regId}/validate`,
-                            { method: "POST" }
-                        );
-
-                        const result = await res.json();
-
-                        if (res.ok && result.success) {
-                            showToast("✅ Inscription validée !", "success");
-
-                            await loadRegistrationsList(eventId);
-                            await loadRegistrationsStats(eventId);
-                        } else {
-                            throw new Error(
-                                result.message ||
-                                    "Erreur lors de la validation"
-                            );
-                        }
-                    } else {
-                        showToast(
-                            "⚠️ Fonction 'Refuser' à implémenter côté backend",
-                            "warning"
-                        );
-                    }
-                } catch (err) {
-                    console.error("Erreur:", err);
-                    showToast("❌ " + err.message, "error");
-                }
-            });
-        });
-    }
-
-
-    // ========================================
-// 🔒 BOUTONS CLÔTURE DES INSCRIPTIONS
-// ========================================
-
-const closeBtn = document.getElementById("closeRegistrationsBtn");
-if (closeBtn) {
-    closeBtn.addEventListener("click", async () => {
-        if (!confirm("⚠️ Clôturer les inscriptions ?\n\nLes utilisateurs ne pourront plus s'inscrire à cet événement.")) {
-            return;
-        }
-        
-        closeBtn.disabled = true;
-        closeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fermeture...';
-        
-        try {
-            const res = await Auth.secureFetch(
-                `/api/events/manage/${eventId}/close-registrations`,
-                { method: "POST" }
-            );
-            
-            const result = await res.json();
-            
-            if (res.ok) {
-                showToast("✅ Inscriptions clôturées avec succès", "success");
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                throw new Error(result.message || "Erreur lors de la clôture");
-            }
-        } catch (err) {
-            console.error("Erreur:", err);
-            showToast("❌ " + err.message, "error");
-            closeBtn.disabled = false;
-            closeBtn.innerHTML = '<i class="fas fa-lock"></i> Clôturer les inscriptions';
-        }
-    });
 }
 
-const reopenBtn = document.getElementById("reopenRegistrationsBtn");
-if (reopenBtn) {
-    reopenBtn.addEventListener("click", async () => {
-        if (!confirm("Rouvrir les inscriptions ?\n\nLes utilisateurs pourront à nouveau s'inscrire.")) {
-            return;
-        }
+async function toggleRegistrations(eventId, action) {
+    const isClosing = action === 'close';
+    const confirmMsg = isClosing 
+        ? "⚠️ Clôturer les inscriptions ?\n\nLes utilisateurs ne pourront plus s'inscrire."
+        : "Rouvrir les inscriptions ?\n\nLes utilisateurs pourront à nouveau s'inscrire.";
+    
+    if (!confirm(confirmMsg)) return;
+    
+    const btn = document.getElementById(isClosing ? "closeRegistrationsBtn" : "reopenRegistrationsBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement...';
+    
+    try {
+        const endpoint = isClosing ? 'close-registrations' : 'reopen-registrations';
+        const res = await Auth.secureFetch(
+            `/api/events/manage/${eventId}/${endpoint}`,
+            { method: "POST" }
+        );
         
-        reopenBtn.disabled = true;
-        reopenBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Réouverture...';
+        const result = await res.json();
         
-        try {
-            const res = await Auth.secureFetch(
-                `/api/events/manage/${eventId}/reopen-registrations`,
-                { method: "POST" }
+        if (res.ok) {
+            showToast(
+                isClosing ? "✅ Inscriptions clôturées" : "✅ Inscriptions rouvertes",
+                "success"
             );
-            
-            const result = await res.json();
-            
-            if (res.ok) {
-                showToast("✅ Inscriptions rouvertes avec succès", "success");
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                throw new Error(result.message || "Erreur lors de la réouverture");
-            }
-        } catch (err) {
-            console.error("Erreur:", err);
-            showToast("❌ " + err.message, "error");
-            reopenBtn.disabled = false;
-            reopenBtn.innerHTML = '<i class="fas fa-lock-open"></i> Rouvrir les inscriptions';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            throw new Error(result.message || "Erreur");
         }
-    });
+    } catch (err) {
+        showToast("❌ " + err.message, "error");
+        btn.disabled = false;
+        btn.innerHTML = isClosing 
+            ? '<i class="fas fa-lock"></i> Clôturer'
+            : '<i class="fas fa-lock-open"></i> Rouvrir';
+    }
 }
+function showTournamentFinishedMessage() {
+  const container = document.getElementById("liveMatchesContainer");
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="ed-finish">
+      <div class="ed-finish__icon"><i class="fas fa-flag-checkered"></i></div>
+      <h3 class="ed-finish__title">🏆 Tournoi terminé</h3>
+      <p class="ed-finish__text">Consulte les résultats finaux dans les onglets ci-dessus</p>
+
+      <div class="ed-finish__actions">
+        <button class="btn ghost" data-goto-tab="rankings">📊 Voir le classement</button>
+        <button class="btn ghost" data-goto-tab="bracket">🏆 Voir le bracket</button>
+        <button class="btn ghost" data-goto-tab="matches">⚽ Tous les matchs</button>
+      </div>
+    </div>
+  `;
+}
+
+export function cleanup() {
+  stopLivePolling?.();
+  stopFeedPolling?.();
+  document.body.classList.remove("is-event-detail-page");
 }
 
 

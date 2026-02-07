@@ -42,4 +42,6 @@ public interface MatchEventRepository extends JpaRepository<MatchEvent, Long> {
 
     // 🧹 Supprimer tous les événements d'un match
     void deleteByMatchId(Long matchId);
+
+    
 }

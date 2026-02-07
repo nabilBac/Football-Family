@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
  import org.springframework.security.access.AccessDeniedException;
+ import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
+
 
 import java.util.HashMap;
 import java.util.Map;
@@ -32,19 +35,40 @@ public class GlobalExceptionHandler {
                 .body(new ApiResponse<>(false, ex.getMessage(), null));
     }
 
-    @ExceptionHandler(ForbiddenException.class)
-    public ResponseEntity<ApiResponse<Void>> handleForbidden(ForbiddenException ex) {
-        log.warn("Accès refusé: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiResponse<>(false, ex.getMessage(), null));
+   @ExceptionHandler(ForbiddenException.class)
+public ResponseEntity<?> handleForbidden(ForbiddenException ex, HttpServletRequest req) {
+    String uri = req.getRequestURI();
+
+    if (!uri.startsWith("/api/")) {
+        log.warn("Forbidden hors API (uri={}): {}", uri, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBadRequest(IllegalArgumentException ex) {
-        log.warn("Requête invalide: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse<>(false, ex.getMessage(), null));
+    log.warn("Accès refusé (API): {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new ApiResponse<>(false, ex.getMessage(), null));
+}
+
+
+   @ExceptionHandler(IllegalArgumentException.class)
+public ResponseEntity<?> handleBadRequest(IllegalArgumentException ex, HttpServletRequest req) {
+
+    String uri = req.getRequestURI();
+
+    // ✅ Hors /api/** : on ne renvoie pas ApiResponse (évite de casser mp4/js/ws)
+    if (!uri.startsWith("/api/")) {
+        log.warn("IllegalArgument hors API (uri={}): {}", uri, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
+
+    // ✅ Pour /api/** : réponse JSON standard
+    log.warn("Requête invalide (API): {}", ex.getMessage());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new ApiResponse<>(false, ex.getMessage(), null));
+}
+
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationErrors(
@@ -77,20 +101,42 @@ public class GlobalExceptionHandler {
    
 
 @ExceptionHandler(AccessDeniedException.class)
-public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
-    log.warn("Accès refusé (Spring Security): {}", ex.getMessage());
+public ResponseEntity<?> handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
+
+    String uri = req.getRequestURI();
+
+    if (!uri.startsWith("/api/")) {
+        log.warn("AccessDenied hors API (uri={}): {}", uri, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    log.warn("Accès refusé (API): {}", ex.getMessage());
     return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .contentType(MediaType.APPLICATION_JSON)
             .body(new ApiResponse<>(false, ex.getMessage(), null));
 }
+
 
 
     // ========================================================================
     // ⚠️ A GARDER EN DERNIER — Handler global
     // ========================================================================
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
-        log.error("Erreur serveur inattendue", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse<>(false, "Erreur serveur: " + ex.getMessage(), null));
+public ResponseEntity<?> handleGeneral(Exception ex, HttpServletRequest req) {
+
+    String uri = req.getRequestURI();
+
+    // ✅ Ne jamais renvoyer ApiResponse hors /api/** (sinon mp4/js casse)
+    if (!uri.startsWith("/api/")) {
+        log.warn("Exception hors API ignorée par GlobalExceptionHandler (uri={}): {}", uri, ex.toString());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+
+    log.error("Erreur serveur inattendue (uri={})", uri, ex);
+
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new ApiResponse<>(false, "Erreur serveur: " + ex.getMessage(), null));
+}
+
 }

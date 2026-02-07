@@ -40,10 +40,14 @@ routes: {
     "/account/club/create": "/app/js/pages/account/account-club-create.page.js",
 
     /* --- ADMIN --- */
+    "/club-admin": "/app/js/pages/admin/dashboard.page.js",
     "/admin": "/app/js/pages/admin/dashboard.page.js",
     "/admin/teams": "/app/js/pages/admin/teams.page.js",
     "/admin/events": "/app/js/pages/admin/events.page.js",
-    "/admin/events/create": "/app/js/pages/admin/events-create.page.js",
+    "/admin/events/deleted": "/app/js/pages/admin/events-deleted.page.js", 
+    "/admin/matches/deleted": "/app/js/pages/admin/matches-deleted.page.js", 
+"/admin/events/create": "/app/js/pages/admin/events-create-unified-wizard.page.js",
+   "/admin/events/create-match": "/app/js/pages/admin/match-create-wizard.page.js",
     "/admin/teams/create": "/app/js/pages/admin/team-create.page.js",
 },
 
@@ -110,16 +114,38 @@ routes: {
         });
     },
 
-    async go(url) {
-        history.pushState(null, "", url);
-        await this.navigate(url);
-    },
+async go(url) {
+  // ✅ Empêche l'admin de "flasher" vers l'accueil/feed
+  const fromAdmin =
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/club-admin");
+
+  const toHomeLike = (url === "/feed" || url === "/" || url === "/index.html");
+
+  if (fromAdmin && toHomeLike) {
+    console.error("🚫 REDIRECT BLOQUÉ depuis admin ->", url);
+    console.trace("STACK REDIRECT");
+    // Stocke la stack même si la console se nettoie
+    localStorage.setItem("FF_LAST_REDIRECT_URL", url);
+    localStorage.setItem("FF_LAST_REDIRECT_STACK", new Error("redirect").stack);
+    return; // <-- on bloque la redirection
+  }
+
+  console.trace("[Router.go] ->", url);
+  history.pushState(null, "", url);
+  await this.navigate(url);
+},
+
+
+
 
     resolveRoute(url) {
         // ⭐ Redirection racine vers feed
-        if (url === "/" || url === "/index.html") {
-            url = "/feed";
-        }
+     if (url === "/" || url === "/index.html") {
+    history.replaceState(null, "", "/feed"); // ✅ met l'URL à jour
+    url = "/feed";
+}
+
 
         // Routes simples
         if (this.routes[url]) {
@@ -160,11 +186,13 @@ routes: {
                 "is-hub-page",
                 "is-live-page",
                 "is-tournament-page",
-                "is-admin-page"
+                "is-admin-page",
+                  "is-event-detail-page"   
             );
 
             // 🛠️ Mode ADMIN
-            if (url.startsWith("/admin")) {
+           if (url.startsWith("/club-admin")) {
+
                 document.body.classList.add("is-admin-page");
             }
 
@@ -181,20 +209,32 @@ routes: {
             // Resolve route
             const resolved = this.resolveRoute(url);
 
-            // 🚨 PROTECTION ADMIN
-            if (url.startsWith("/admin")) {
-                const user = await Auth.getCurrentUser();
+         
+// 🚨 PROTECTION ADMIN
+if (url.startsWith("/club-admin") || url.startsWith("/admin")) {
+    console.log("🔥 ADMIN GUARD : Vérification accès...");
 
-                if (!user) {
-                    return this.go("/login");
-                }
+    await Auth.loadUser();
+    const user = Auth.currentUser;
 
-                // Autorise SUPER_ADMIN ET CLUB_ADMIN
-                if (user.highestRole !== "SUPER_ADMIN" && user.highestRole !== "CLUB_ADMIN") {
-                    console.warn("Accès refusé : rôle insuffisant");
-                    return this.go("/feed");
-                }
-            }
+    if (!user) {
+        console.log("🔥 ADMIN GUARD : Pas d'user, redirect login");
+        return this.go("/login");
+    }
+
+    const userRole = user.highestRole || "";
+    const allowed = userRole === "CLUB_ADMIN" || userRole === "SUPER_ADMIN";
+
+    console.log("🔥 ADMIN GUARD : Role =", userRole, "Allowed =", allowed);
+
+    if (!allowed) {
+        console.log("❌ ADMIN GUARD : Accès refusé !");
+        alert("⛔ Accès refusé. Vous devez être administrateur.");
+        return this.go("/feed");
+    }
+
+    console.log("✅ ADMIN GUARD : Accès autorisé !");
+}
 
             if (!resolved) {
                 this.root.innerHTML = "<h2>Erreur : page introuvable</h2>";
@@ -226,7 +266,8 @@ routes: {
                     : await Page.render();
 
             const hidePostButton = (url === "/hub");
-            const isAdminPage = url.startsWith("/admin");
+         const isAdminPage = url.startsWith("/club-admin") || url.startsWith("/admin");
+
 
             this.root.innerHTML = (hideNavbar || isAdminPage)
                 ? pageHtml

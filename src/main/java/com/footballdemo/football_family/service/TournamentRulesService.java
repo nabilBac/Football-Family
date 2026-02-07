@@ -8,8 +8,8 @@ import com.footballdemo.football_family.model.MatchStatus;
 import com.footballdemo.football_family.repository.MatchRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import com.footballdemo.football_family.model.Match;
 import com.footballdemo.football_family.model.TournamentPhase;
+import com.footballdemo.football_family.model.EventFormat;
 
 
 @Service
@@ -34,8 +34,17 @@ public class TournamentRulesService {
     // ========= SCORE =========
 public void assertCanScore(Match match) {
 
-    // 🔒 Match déjà terminé
-    if (match.getStatus() == MatchStatus.FINISHED) {
+    // 🆕 EXCEPTION : MATCH UNIQUE (pas de règles de tournoi)
+  if (match.getEvent().getFormat() == EventFormat.SINGLE_MATCH) {
+        // Pour un match unique, on vérifie juste qu'il n'est pas terminé
+        if (match.getStatus() == MatchStatus.COMPLETED) {
+            throw new IllegalStateException("Impossible de modifier un match déjà terminé.");
+        }
+        return; // ✅ Autoriser le scoring direct
+    }
+
+    // 🔒 Match déjà terminé (pour les tournois)
+    if (match.getStatus() == MatchStatus.COMPLETED) {
         throw new IllegalStateException(
             "Impossible de modifier un match déjà terminé."
         );
@@ -62,7 +71,7 @@ public void assertCanScore(Match match) {
     // ========= BRACKET =========
     public void assertAllGroupMatchesFinished(Long eventId) {
         boolean hasUnfinished =
-                matchRepository.existsByEventIdAndGroupIsNotNullAndStatusNot(eventId, MatchStatus.FINISHED);
+                matchRepository.existsByEventIdAndGroupIsNotNullAndStatusNot(eventId, MatchStatus.COMPLETED);
 
         if (hasUnfinished) {
             throw new IllegalStateException("Impossible : tous les matchs de poule ne sont pas terminés.");

@@ -1,27 +1,26 @@
-
-
-/* UTF Modal : caché */
+/* UTF Modal */
 .utf-modal.hidden {
     display: none !important;
 }
 
-/* UTF Modal : visible */
 .utf-modal:not(.hidden) {
     display: flex !important;
 }
-
 
 /* ==================== VARIABLES ==================== */
 :root {
     --navbar-height: 70px;
     --comments-visible-height: 50vh;
-    --accent-blue: #00BFFF;
-    --accent-green: #39FF14;
+    --primary-green: #00e676;
     --like-color: #FF3366;
 }
 
 /* ==================== RESET ==================== */
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
 
 html, body {
     background: #000;
@@ -31,65 +30,43 @@ html, body {
     overflow: auto;
 }
 
-
-/* ==================== APP ==================== */
-
-/* 🔥 FEED IMMERSIF : le scroll doit être ici */
+/* ==================== FEED IMMERSIF ==================== */
 .main-content-scrollable {
     position: relative;
     height: calc(100vh - var(--navbar-height));
     overflow-y: scroll;
     scroll-snap-type: y mandatory;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
 
 .main-content-scrollable::-webkit-scrollbar {
     display: none;
 }
 
-/* ==================== VIDEO LIST ==================== */
-
+/* ==================== VIDEO ==================== */
 #video-container {
     width: 100%;
     height: auto;  
     display: block;
 }
 
-/* Chaque carte = 1 écran */
 .video-card {
     width: 100%;
-    height: calc(100vh - var(--navbar-height));
+    height: calc(100vh - var(--navbar-height)) !important;
     position: relative;
     scroll-snap-align: start;
     overflow: hidden;
-    background: #111;
+    background: #000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .video-card video {
     width: 100%;
-    height: 100%;
+    height: calc(100vh - var(--navbar-height)) !important;
     object-fit: cover;
 }
-
-/* ==================== OVERLAY ==================== */
-
-.video-title {
-    margin-bottom: 10px;
-    font-size: 1.1em;
-    font-weight: bold;
-}
-
-
-
-#loader {
-    color: #aaa;
-    padding: 12px;
-    text-align: center;
-}
-
-
-
-/* ==================== HIDE OVERLAY WHEN COMMENTS OPEN ==================== */
 
 .video-card.comments-open .overlay {
     opacity: 0;
@@ -100,68 +77,31 @@ html, body {
     height: calc(100vh - var(--comments-visible-height));
 }
 
-/* ==================== DESKTOP ==================== */
-
-@media (min-width: 1024px) {
-    html, body {
-        overflow-y: auto;
-        height: auto;
-    }
-
-    .mobile-navbar {
-        display: none !important;
-    }
-
-    .main-content-scrollable {
-        height: auto;
-        overflow: visible;
-        scroll-snap-type: none;
-    }
-
-    #video-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-        gap: 20px;
-        padding: 80px 20px;
-    }
-
-    .video-card {
-        height: auto;
-        aspect-ratio: 16/9;
-        border-radius: 10px;
-    }
-
-    .overlay { display: none; }
-}
-/* ==================== OVERLAY & ACTIONS (STYLE TIKTOK) ==================== */
-
-/* Empêche le voile d'envahir la navbar */
-/* Overlay propre qui ne dépasse pas et sans ombre */
+/* ==================== OVERLAY ==================== */
 .overlay {
     position: absolute;
     inset: 0;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-
     padding: 12px 12px 20px 12px !important;
+    padding-bottom: calc(var(--navbar-height) + 10px) !important;
     background: none !important;
-
     z-index: 50;
-    pointer-events: none; /* ← ENLEVEZ le !important */
+    pointer-events: none;
 }
 
-/* AJOUTEZ CES 2 RÈGLES JUSTE APRÈS */
 .video-info,
-.video-info * {
+.video-info *,
+.video-actions,
+.video-actions * {
     pointer-events: auto !important;
 }
 
-/* Infos vidéo (en bas à gauche) */
 .video-info {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 8px;
     max-width: 65%;
 }
 
@@ -175,6 +115,7 @@ html, body {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    margin-bottom: 10px;
 }
 
 .video-author-link {
@@ -189,14 +130,14 @@ html, body {
     text-decoration: underline;
 }
 
-/* 🔥 Actions vidéo (à droite en vertical) */
+/* ==================== ACTIONS VIDEO ==================== */
 .video-actions {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
     align-items: center;
     padding-right: 4px;
-    padding-bottom: 20px;
+    padding-bottom: 120px !important;
 }
 
 .video-actions button {
@@ -217,18 +158,18 @@ html, body {
     transform: scale(0.85);
 }
 
-/* Compteurs (likes, comments) */
 .like-count,
 .comment-count {
     font-size: 0.75rem;
     font-weight: 700;
     color: white;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    opacity: 1 !important;
+    display: block !important;
 }
 
-/* Like actif */
 .like-btn.active i {
-    color: #FF3366;
+    color: var(--like-color);
 }
 
 .like-btn.active {
@@ -241,24 +182,24 @@ html, body {
     50% { transform: scale(1.1); }
 }
 
-/* Bouton partage */
 .share-btn {
     font-size: 1.8rem;
 }
 
-/* Bouton mute */
 .mute-btn {
     font-size: 1.6rem;
 }
 
-/* ===== 💬 MODALE GLOBALE ===== */
-
-#comments-modal {
-    position: fixed;
-    inset: 0;
-    display: none;
-    z-index: 9990;
+/* ==================== LOADER ==================== */
+#loader {
+    color: #aaa;
+    padding: 12px;
+    text-align: center;
 }
+
+/* ==================== MODAL COMMENTAIRES ==================== */
+
+
 
 #comments-modal.open {
     display: flex;
@@ -266,7 +207,6 @@ html, body {
     align-items: flex-end;
 }
 
-/* Fond flouté derrière la modal */
 .comments-backdrop {
     position: absolute;
     inset: 0;
@@ -274,8 +214,6 @@ html, body {
     backdrop-filter: blur(8px);
     z-index: 1;
 }
-
-/* ===== 💬 PANEL COMMENTAIRES (Style Instagram/TikTok) ===== */
 
 .comments-panel {
     position: relative;
@@ -293,29 +231,18 @@ html, body {
 
 @keyframes slideUp {
     from { transform: translateY(100%); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(0); opacity: 1; }
 }
-
-/* ===== ANIMATION DE FERMETURE DU PANEL COMMENTAIRES (FEED) ===== */
-
-
 
 .comments-panel.close-animation {
     animation: slideDown 0.25s ease-out forwards;
 }
 
 @keyframes slideDown {
-    from {
-        transform: translateY(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateY(100%);
-        opacity: 0;
-    }
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(100%); opacity: 0; }
 }
 
-/* ===== HEADER ===== */
 .comments-header {
     display: flex;
     justify-content: space-between;
@@ -333,11 +260,12 @@ html, body {
     cursor: pointer;
 }
 
-/* ===== LISTE COMMENTAIRES ===== */
 .comments-list {
     flex: 1;
     overflow-y: auto;
     padding: 15px 20px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
 }
 
 .comments-list::-webkit-scrollbar {
@@ -349,12 +277,16 @@ html, body {
     border-radius: 10px;
 }
 
-/* Item */
 .comment {
     display: flex;
     gap: 12px;
     margin-bottom: 18px;
     animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .comment-header {
@@ -381,7 +313,6 @@ html, body {
     line-height: 1.4;
 }
 
-/* ===== INPUT ===== */
 .comments-input {
     display: flex;
     gap: 10px;
@@ -419,182 +350,7 @@ html, body {
     align-items: center;
 }
 
-/* ================================================= */
-/* 🎨 STYLES POUR LES PAGES D'AUTHENTIFICATION       */
-/* ================================================= */
-
-.auth-page {
-    background-color: #f4f7f6;
-    color: #333;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    font-family: 'Poppins', 'Roboto', sans-serif;
-}
-
-.container {
-    width: 100%;
-    max-width: 400px;
-    padding: 0;
-}
-
-/* Hero section */
-.hero {
-    text-align: center;
-    color: #333;
-    margin-bottom: 2rem;
-}
-
-.hero h1 {
-    font-size: 2em;
-    color: #4b0082;
-    margin-bottom: 5px;
-}
-
-.hero p {
-    color: #666;
-    margin-top: 0;
-}
-
-/* Formulaire */
-.form-card {
-    background-color: #ffffff;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    color: #555;
-}
-
-.form-group input[type="text"],
-.form-group input[type="password"] {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    box-sizing: border-box;
-    transition: border-color 0.3s;
-    color: #333;
-    background-color: #fff;
-    font-size: 1rem;
-}
-
-.form-group input:focus {
-    border-color: #4b0082;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(75, 0, 130, 0.1);
-}
-
-/* Boutons */
-.btn-primary {
-    width: 100%;
-    padding: 12px;
-    background-color: #4b0082;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 1.1em;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.3s, transform 0.1s;
-}
-
-.btn-primary:hover {
-    background-color: #380064;
-}
-
-.btn-primary:active {
-    transform: translateY(1px);
-}
-
-/* Séparateur "OU" */
-.separator {
-    text-align: center;
-    margin: 20px 0;
-    position: relative;
-}
-
-.separator::before,
-.separator::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    width: 40%;
-    height: 1px;
-    background: #ddd;
-}
-
-.separator::before {
-    left: 0;
-}
-
-.separator::after {
-    right: 0;
-}
-
-.separator span {
-    background: white;
-    padding: 0 10px;
-    color: #999;
-    font-size: 0.9rem;
-}
-
-/* Bouton OAuth (GitHub) */
-.btn-oauth {
-    display: block;
-    width: 100%;
-    padding: 12px;
-    background: #24292e;
-    color: white;
-    text-align: center;
-    text-decoration: none;
-    border-radius: 6px;
-    font-weight: bold;
-    transition: background 0.2s;
-}
-
-.btn-oauth:hover {
-    background: #1a1e22;
-}
-
-/* Lien d'inscription */
-.auth-page a[data-link] {
-    color: #4b0082;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.auth-page a[data-link]:hover {
-    text-decoration: underline;
-}
-
-/* Message d'erreur */
-#errorMsg {
-    color: #ef4444;
-    background: #fee2e2;
-    padding: 10px;
-    border-radius: 6px;
-    margin-top: 10px;
-    text-align: center;
-    font-size: 0.9rem;
-}
-
-/* ================================
-   🔥 Login Page - PWA Modern Style
-   ================================ */
-
+/* ==================== LOGIN PAGE ==================== */
 .login-page {
     height: 100vh;
     display: flex;
@@ -613,12 +369,12 @@ html, body {
     backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-    animation: fadeIn 0.5s ease;
+    animation: fadeInLogin 0.5s ease;
 }
 
-@keyframes fadeIn {
+@keyframes fadeInLogin {
     from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .login-title {
@@ -630,7 +386,6 @@ html, body {
     letter-spacing: -1px;
 }
 
-/* Inputs */
 .login-input {
     width: 100%;
     padding: 14px 15px;
@@ -647,15 +402,14 @@ html, body {
 }
 
 .login-input:focus {
-    outline: 2px solid #00e676;
+    outline: 2px solid var(--primary-green);
 }
 
-/* Bouton */
 .login-btn {
     width: 100%;
     padding: 14px;
     border-radius: 12px;
-    background: #00e676;
+    background: var(--primary-green);
     border: none;
     color: #000;
     font-weight: 700;
@@ -669,14 +423,13 @@ html, body {
     transform: translateY(-2px);
 }
 
-/* Lien register */
 .login-register {
     margin-top: 18px;
     text-align: center;
 }
 
 .login-register a {
-    color: #00e676;
+    color: var(--primary-green);
     text-decoration: none;
     font-size: 0.95rem;
 }
@@ -685,7 +438,6 @@ html, body {
     text-decoration: underline;
 }
 
-/* Error message */
 #errorMsg {
     background: rgba(255, 0, 0, 0.18);
     color: #ff6b6b;
@@ -695,41 +447,106 @@ html, body {
     margin-bottom: 15px;
     display: none;
 }
-.video-actions * {
-    pointer-events: auto !important;
-}
-/* Force l’affichage des compteurs likes / commentaires */
-.like-count,
-.comment-count {
-    opacity: 1 !important;
-    display: block !important;
-}
-/* Zone sécurisée pour la navbar (évite l'ombre grise) */
 
-/* Empêche le voile de recouvrir la navbar + rend les clics possibles */
-
-
-/* Navbar au-dessus de tout */
+/* ==================== NAVBAR ==================== */
 .mobile-navbar {
     z-index: 9999 !important;
 }
-.video-card video {
-    height: calc(100vh - var(--navbar-height)) !important;
+
+/* ==================== DESKTOP ==================== */
+@media (min-width: 1024px) {
+    html, body {
+        overflow-y: auto;
+        height: auto;
+    }
+
+    .mobile-navbar {
+        display: none !important;
+    }
+
+    .main-content-scrollable {
+        height: auto;
+        overflow: visible;
+        scroll-snap-type: none;
+    }
+
+    #video-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 20px;
+        padding: 80px 20px;
+    }
+
+    .video-card {
+        height: auto;
+        aspect-ratio: 16/9;
+        border-radius: 10px;
+    }
+
+    .overlay { 
+        display: none; 
+    }
 }
 
-.video-card {
-    height: calc(100vh - var(--navbar-height)) !important;
-    background: #000 !important; /* pas de bord gris */
-    margin: 0 !important;
-    padding: 0 !important;
+/* ✅ FIX CLICK MODAL COMMENTAIRES (colle en bas) */
+#comments-modal{
+  position: fixed !important;
+  inset: 0 !important;
+  display: none !important;
+  z-index: 20000 !important;
 }
-/* Empêche le voile de descendre trop bas (supprime la ligne sombre) */
+#comments-modal.open{
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: flex-end !important;
+}
 
- /* Remonte la zone d'infos et les actions pour ne pas toucher la navbar */
-.overlay {
-    padding-bottom: calc(var(--navbar-height) + 10px) !important;
+/* backdrop en dessous */
+#comments-modal .comments-backdrop{
+  z-index: 0 !important;
 }
-/* FIX : Remonter les icônes pour éviter le badge Admin */
-.video-actions {
-    padding-bottom: 120px !important;
+
+/* panel au-dessus */
+#comments-modal .comments-panel{
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* boutons toujours cliquables */
+#comments-close-btn,
+#comments-send-btn{
+  position: relative !important;
+  z-index: 2 !important;
+  pointer-events: auto !important;
+}
+/* ✅ BASE STABLE MODAL COMMENTAIRES */
+#comments-modal{
+  position: fixed !important;
+  inset: 0 !important;
+  display: none !important;
+  z-index: 20000 !important; /* au-dessus de la bottom-nav */
+}
+#comments-modal.open{
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: flex-end !important;
+}
+
+/* ✅ Backdrop en dessous du panel */
+#comments-modal .comments-backdrop{
+  z-index: 0 !important;
+}
+
+/* ✅ Panel au-dessus + cliquable */
+#comments-modal .comments-panel{
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* ✅ Boutons toujours cliquables */
+#comments-close-btn,
+#comments-send-btn{
+  position: relative !important;
+  z-index: 2 !important;
+  pointer-events: auto !important;
 }

@@ -1,0 +1,782 @@
+/* ═══════════════════════════════════════════════════════════
+   📱 EVENT DASHBOARD - CSS FINAL CONSOLIDÉ
+   Version mobile-first avec tous les fixes
+   ═══════════════════════════════════════════════════════════ */
+:root {
+    --primary: #3498db;
+    --primary-dark: #2980b9;
+    --success: #27ae60;
+    --danger: #e74c3c;
+    --warning: #f39c12;
+    --bg-main: #f5f7fa;
+    --bg-card: #ffffff;
+    --text-primary: #2c3e50;
+    --text-secondary: #7f8c8d;
+    --border: #e0e0e0;
+}
+/* ================================
+   🎨 BRACKET - MOBILE FIRST
+   ================================ */
+
+.bracket-tree {
+    display: flex;
+    gap: 40px;
+    overflow-x: auto;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.bracket-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 280px;
+    gap: 20px;
+}
+
+.bracket-round-title {
+    text-align: center;
+    font-size: 1.2em;
+    font-weight: 700;
+    padding: 10px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+}
+
+.bracket-matches {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1;
+    justify-content: space-around;
+}
+
+.bracket-match {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border-left: 4px solid #3498db;
+}
+
+.bracket-match:hover {
+    transform: translateX(5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+}
+
+.bracket-match.finished {
+    opacity: 0.85;
+}
+
+.bracket-match.bye {
+    background: #fff3cd;
+    border: 2px dashed #f39c12;
+    padding: 20px;
+    text-align: center;
+}
+
+.bracket-bye-label {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #e67e22;
+}
+
+.bracket-team {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    gap: 8px;
+    min-width: 0;
+}
+
+.bracket-team:hover {
+    background: #f8f9fa;
+}
+
+.bracket-team.winner {
+    background: linear-gradient(90deg, #d4edda 0%, #c3e6cb 100%);
+    font-weight: 700;
+}
+
+.bracket-team.winner .bracket-score {
+    color: #27ae60;
+    font-size: 1.3em;
+    font-weight: 900;
+}
+
+/* 🔥 FIX CRITIQUE : NOM D'ÉQUIPE AVEC ELLIPSIS */
+.bracket-team-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.95em;
+    color: #2c3e50;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Supprime .bracket-team-name * complètement */
+
+.bracket-team.winner .bracket-team-name {
+    color: #155724 !important;
+}
+
+.bracket-score {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: #7f8c8d;
+    min-width: 30px;
+    text-align: center;
+}
+
+.bracket-team.winner .bracket-score {
+    color: #27ae60 !important;
+}
+
+.bracket-divider {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 5px 0;
+}
+
+/* ================================
+   📱 RESPONSIVE MOBILE BRACKET
+   ================================ */
+
+@media (max-width: 768px) {
+    .bracket-tree {
+        flex-direction: column !important;
+        gap: 30px;
+        padding: 15px 10px;
+        overflow-x: hidden;
+        align-items: center;
+    }
+    
+    .bracket-column {
+        width: 100% !important;
+        min-width: unset !important;
+        max-width: 360px;
+    }
+    
+    .bracket-round-title {
+        font-size: 1em;
+        padding: 8px;
+    }
+    
+    .bracket-match {
+        padding: 12px;
+        font-size: 0.9em;
+    }
+    
+    .bracket-team {
+        padding: 8px 10px;
+    }
+    
+    .bracket-team-name {
+        font-size: 0.85em !important;
+        max-width: 180px !important;
+    }
+    
+    .bracket-score {
+        font-size: 1.1em !important;
+        min-width: 25px !important;
+    }
+    
+    .bracket-match:hover {
+        transform: translateY(-3px);
+    }
+}
+
+@media (max-width: 480px) {
+    .bracket-tree {
+        padding: 10px 5px;
+        gap: 25px;
+    }
+    
+    .bracket-match {
+        padding: 10px;
+        font-size: 0.85em;
+    }
+    
+    .bracket-round-title {
+        font-size: 0.9em;
+        padding: 6px;
+    }
+    
+    .bracket-team {
+        padding: 6px 8px;
+        gap: 6px !important;
+    }
+    
+    /* 🔥 FIX MOBILE : Permettre au texte de s'afficher */
+.bracket-team-name {
+        font-size: 0.75em;
+        /* Enlève max-width, flex, min-width car déjà définis plus haut */
+    }
+    
+    .bracket-score {
+        font-size: 1em !important;
+        min-width: 30px !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .bracket-divider {
+        margin: 3px 0;
+    }
+}
+
+/* ================================
+   🏅 MATCHS - LISTE
+   ================================ */
+
+.match-groups-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.match-container {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.match-group-title {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+    font-size: 1.2em;
+    font-weight: 700;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+}
+
+.match-card {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #3498db;
+    transition: all 0.3s ease;
+}
+
+.match-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateX(5px);
+}
+
+.match-card.finished {
+    opacity: 0.7;
+    border-left-color: #95a5a6;
+}
+
+.match-teams {
+    margin-bottom: 12px;
+}
+
+.match-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+
+/* 🔥 FIX : NOM D'ÉQUIPE MATCHS */
+.match-team-name {
+    flex: 1 !important;
+    font-weight: 600 !important;
+    color: #2c3e50 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    min-width: 0 !important;
+}
+
+.match-score {
+    font-weight: 700;
+    font-size: 1.2em;
+    color: #7f8c8d;
+    min-width: 30px;
+    text-align: right;
+}
+
+.match-button {
+    width: 100%;
+    padding: 10px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.match-button:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.match-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* ================================
+   📱 RESPONSIVE MOBILE MATCHS
+   ================================ */
+
+@media (max-width: 768px) {
+    .match-groups-wrapper {
+        gap: 20px;
+    }
+    
+    .match-container {
+        padding: 15px;
+    }
+    
+    .match-group-title {
+        font-size: 1em;
+        margin-bottom: 15px;
+    }
+    
+    .match-card {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+    
+    .match-row {
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+    
+    .match-team-name {
+        font-size: 0.85em !important;
+        max-width: 200px !important;
+    }
+    
+    .match-score {
+        font-size: 1em;
+        min-width: 25px;
+    }
+    
+    .match-button {
+        padding: 8px;
+        font-size: 0.85em;
+    }
+}
+
+@media (max-width: 480px) {
+    .match-card {
+        padding: 10px;
+    }
+    
+    .match-team-name {
+        font-size: 0.75em !important;
+        max-width: 140px !important;
+    }
+    
+    .match-score {
+        font-size: 0.9em;
+        min-width: 20px;
+    }
+    
+    .match-button {
+        padding: 6px;
+        font-size: 0.8em;
+    }
+}
+
+/* ================================
+   🎴 ADMIN CARDS
+   ================================ */
+
+.admin-card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.admin-card h2 {
+    margin: 0 0 20px 0;
+    color: var(--text-primary);
+    font-size: 1.3em;
+    font-weight: 700;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+    .admin-card {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .admin-card h2 {
+        font-size: 1.1em;
+        margin-bottom: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-card {
+        padding: 12px;
+    }
+    
+    .admin-card h2 {
+        font-size: 1em;
+    }
+}
+
+/* ================================
+   🏢 EVENT HEADER
+   ================================ */
+
+.event-header-pro {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.event-header-top {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.event-header-logo {
+    width: 100px;
+    height: 100px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.event-header-logo.placeholder {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3em;
+}
+
+.event-header-info {
+    flex: 1;
+}
+
+.event-header-info h2 {
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+    font-size: 1.8em;
+}
+
+.event-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.event-tags .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f8f9fa;
+    border-radius: 20px;
+    font-size: 0.85em;
+    color: #2c3e50;
+}
+
+.event-tags .tag i {
+    color: #3498db;
+}
+
+.event-tags .tag.status {
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.event-tags .tag.status.open {
+    background: #d4edda;
+    color: #27ae60;
+}
+
+.event-tags .tag.status.ongoing {
+    background: #fff3cd;
+    color: #f39c12;
+}
+
+.event-tags .tag.status.finished {
+    background: #d6d8db;
+    color: #7f8c8d;
+}
+
+.event-header-description {
+    margin: 15px 0 0 0;
+    padding-top: 15px;
+    border-top: 1px solid #e0e0e0;
+    color: #7f8c8d;
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .event-header-pro {
+        padding: 15px;
+    }
+    
+    .event-header-top {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .event-header-logo {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .event-header-info h2 {
+        font-size: 1.4em;
+    }
+    
+    .event-tags {
+        justify-content: center;
+    }
+    
+    .event-tags .tag {
+        font-size: 0.75em;
+        padding: 4px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .event-header-logo {
+        width: 60px;
+        height: 60px;
+        font-size: 2em;
+    }
+    
+    .event-header-info h2 {
+        font-size: 1.2em;
+    }
+}
+
+/* ================================
+   🎯 GRILLE DE BOUTONS
+   ================================ */
+
+.admin-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+@media (max-width: 768px) {
+    .admin-dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+/* ================================
+   🔘 BOUTONS ADMIN
+   ================================ */
+
+.admin-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: #95a5a6;
+    color: white;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.admin-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.admin-btn:active {
+    transform: translateY(0);
+}
+
+.admin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.admin-btn-primary {
+    background: #3498db;
+    border-color: #2980b9;
+}
+
+.admin-btn-primary:hover {
+    background: #2980b9;
+}
+
+@media (max-width: 768px) {
+    .admin-btn {
+        padding: 10px 15px;
+        font-size: 0.9em;
+    }
+}
+
+/* ================================
+   ⏳ LOADER
+   ================================ */
+
+.admin-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100px;
+}
+
+.loader {
+    color: #3498db;
+    font-size: 1.1em;
+    font-weight: 600;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ================================
+   💬 MESSAGE GLOBAL
+   ================================ */
+
+.admin-message {
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+/* Skeleton Loader */
+.dashboard-skeleton {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-header {
+    width: 100%;
+    height: 120px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.skeleton-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+}
+
+.skeleton-card {
+    height: 150px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 12px;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* Style pour card "alert" */
+.dashboard-card-pro.alert {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    animation: pulse-alert 2s ease-in-out infinite;
+}
+
+@keyframes pulse-alert {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+/* Style pour card "ongoing" */
+.dashboard-card-pro.ongoing {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+}
+
+/* Style pour CTA secondary */
+.dashboard-card-pro.cta-secondary {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+/* Error container */
+.error-container {
+    background: #fadbd8;
+    border: 2px solid #e74c3c;
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+}
+
+.error-title {
+    color: #e74c3c;
+    font-weight: 600;
+    font-size: 1.2rem;
+    margin: 0 0 10px 0;
+}
+
+.error-message {
+    color: #7f8c8d;
+    margin: 0 0 20px 0;
+}
+
+.retry-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.retry-btn:hover {
+    background: #2980b9;
+}
+.bracket-match.placeholder{
+  opacity: .7;
+  border-left: 4px solid #95a5a6;
+}
+.admin-btn:disabled{
+  opacity: .6;
+  cursor: not-allowed;
+}

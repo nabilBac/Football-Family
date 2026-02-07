@@ -1,16 +1,35 @@
 // /static/app/js/pages/events/events.page.js
-
 import { Auth } from "../../auth.js";
 import { Router } from "../../router.js";
 
+let __eventsScroller = null;
+let __eventsOnScroll = null;
+
+// Optionnel mais recommandé pour éviter spam loadEvents()
+let __eventsLoadingMore = false;
+let __eventsLastTrigger = 0;
+
+let __beforeUnloadFn = null;
+let __stopLiveRefreshFn = null;
+
+
 export async function render(params) {
-    // Charger CSS si nécessaire
-    if (!document.querySelector('link[href="/css/events.css"]')) {
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = "/css/events.css";
-        document.head.appendChild(link);
-    }
+
+  // Charger CSS si nécessaire (ordre important)
+  if (!document.querySelector('link[href="/css/events.css"]')) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "/css/events.css";
+    document.head.appendChild(link);
+  }
+
+  // ✅ Overlay UX (doit être chargé APRÈS events.css)
+  if (!document.querySelector('link[href="/css/events-ux.css"]')) {
+    const linkUx = document.createElement("link");
+    linkUx.rel = "stylesheet";
+    linkUx.href = "/css/events-ux.css";
+    document.head.appendChild(linkUx);
+  }
 
     const isAuthenticated = Auth.accessToken !== null;
     const currentUser = Auth.currentUser;
@@ -50,31 +69,36 @@ export async function render(params) {
                 <i class="fas fa-plus-circle"></i> Créer
             </button>
             ` : ''}
+
+            <button class="tab" data-tab="history">
+                <i class="fas fa-history"></i> Historique
+            </button>
         </div>
 
         <!-- CONTENT SECTIONS -->
         <div class="content-sections">
             
             <!-- TAB 1: DÉCOUVRIR -->
-            <div class="tab-content active" id="discover-content">
-              <div class="filters-section">
-    <div class="filter-chip active" data-filter="all">
-        <i class="fas fa-globe"></i> Tous
+     <!-- TAB 1: DÉCOUVRIR -->
+<div class="tab-content active" id="discover-content">
+    <div class="filters-section">
+        <div class="filter-chip active" data-filter="all">
+            <i class="fas fa-globe"></i> Tous
+        </div>
+        <div class="filter-chip" data-filter="OPEN_EVENT">
+            <i class="fas fa-futbol"></i> Publics
+        </div>
+        <div class="filter-chip" data-filter="CLUB_EVENT">
+            <i class="fas fa-shield-alt"></i> Clubs
+        </div>
     </div>
-    <div class="filter-chip" data-filter="OPEN_EVENT">
-        <i class="fas fa-futbol"></i> Publics
-    </div>
-    <div class="filter-chip" data-filter="CLUB_EVENT">
-        <i class="fas fa-shield-alt"></i> Clubs
+    
+    <div id="events-container"></div>
+    <div id="loader" style="display: none;">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Chargement des événements...</p>
     </div>
 </div>
-                
-                <div id="events-container"></div>
-                <div id="loader" style="display: none;">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p>Chargement des événements...</p>
-                </div>
-            </div>
 
             <!-- TAB 2: MES EVENTS -->
             ${isAuthenticated ? `
@@ -86,6 +110,97 @@ export async function render(params) {
                 </div>
             </div>
             ` : ''}
+
+
+                        <!-- TAB: HISTORIQUE -->
+<!-- TAB: HISTORIQUE -->
+<div class="tab-content" id="history-content">
+    
+    <!-- 🆕 BARRE DE RECHERCHE -->
+    <div class="search-bar" style="margin-bottom: 1rem;">
+        <div style="position: relative;">
+            <i class="fas fa-search" style="
+                position: absolute;
+                left: 1rem;
+                top: 50%;
+                transform: translateY(-50%);
+                color: var(--text-secondary);
+            "></i>
+            <input 
+                type="text" 
+                id="history-search"
+                placeholder="Rechercher un tournoi..."
+                style="
+                    width: 100%;
+                    background: var(--bg-input);
+                    border: 1px solid var(--border);
+                    color: var(--text-primary);
+                    padding: 0.85rem 1rem 0.85rem 3rem;
+                    border-radius: 12px;
+                    font-size: 0.9rem;
+                    transition: border-color 0.2s ease;
+                ">
+            <button 
+                id="clear-search" 
+                style="
+                    position: absolute;
+                    right: 1rem;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    color: var(--text-secondary);
+                    cursor: pointer;
+                    display: none;
+                    font-size: 1.2em;
+                ">
+                <i class="fas fa-times-circle"></i>
+            </button>
+        </div>
+    </div>
+    
+<div class="filters-section" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="filter-chip active" data-history-filter="all">
+            <i class="fas fa-trophy"></i> Tous
+        </div>
+        <div class="filter-chip" data-history-filter="OPEN_EVENT">
+            <i class="fas fa-futbol"></i> Publics
+        </div>
+        <div class="filter-chip" data-history-filter="CLUB_EVENT">
+            <i class="fas fa-shield-alt"></i> Clubs
+        </div>
+    </div>
+    
+    <!-- 🆕 BOUTON EXPORT CSV ICI ✅ -->
+    <button 
+        id="export-csv-btn" 
+        class="export-btn"
+        style="
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        ">
+        <i class="fas fa-download"></i> Export CSV
+    </button>
+</div>
+    
+    <div id="history-container"></div>
+    <div id="history-loader" style="display: none;">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Chargement de l'historique...</p>
+    </div>
+</div>
 
             <!-- TAB 3: CRÉER -->
             ${canCreate ? `
@@ -214,6 +329,9 @@ export async function render(params) {
 }
 
 export function init(params) {
+
+  
+    document.body.classList.add("is-events-page");
     let currentPage = 0;
     let currentFilter = 'all';
     let currentCategory = 'all';
@@ -224,6 +342,37 @@ export function init(params) {
     const loader = document.getElementById('loader');
     const toast = document.getElementById('toast');
 
+
+    // ═══════════════════════════════════════════════════════════
+// ✅ UFT-like scroll : le scroll est dans .content-sections
+// ═══════════════════════════════════════════════════════════
+__eventsScroller = document.querySelector(".content-sections");
+console.log("SCROLLER FOUND ?", __eventsScroller); // test temporaire
+
+__eventsOnScroll = async () => {
+  if (!__eventsScroller) return;
+
+  // only discover tab
+  const activeTab = document.querySelector(".tab.active")?.dataset.tab;
+  if (activeTab !== "discover") return;
+
+  const nearBottom =
+    __eventsScroller.scrollTop + __eventsScroller.clientHeight >=
+    __eventsScroller.scrollHeight - 200;
+
+  if (!nearBottom) return;
+
+  // ✅ utilise TES variables (loading / hasMore) déjà existantes
+  if (loading || !hasMore) return;
+
+  await loadEvents(currentFilter, currentCategory);
+};
+
+if (__eventsScroller) {
+  __eventsScroller.addEventListener("scroll", __eventsOnScroll, { passive: true });
+}
+
+
     // ═══════════════════════════════════════════════════════════
     // BACK BUTTON
     // ═══════════════════════════════════════════════════════════
@@ -231,27 +380,35 @@ export function init(params) {
     if (backBtn) {
         backBtn.addEventListener('click', () => Router.go('/feed'));
     }
-
-    // ═══════════════════════════════════════════════════════════
-    // TABS NAVIGATION
-    // ═══════════════════════════════════════════════════════════
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            const targetTab = this.dataset.tab;
-            
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(targetTab + '-content').classList.add('active');
-            
-            if (targetTab === 'my-events') {
-                loadMyEvents();
-            }
+  // TABS NAVIGATION
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        const targetTab = this.dataset.tab;
+        
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
         });
+        document.getElementById(targetTab + '-content').classList.add('active');
+        
+        if (targetTab === 'my-events') {
+            loadMyEvents();
+        } else if (targetTab === 'history') {
+            loadHistoryEvents();
+        }
+            else if (targetTab === 'discover') {
+    currentPage = 0;
+    hasMore = true;
+    loading = false;
+    eventsContainer.innerHTML = '';
+    loadEvents(currentFilter, currentCategory);
+}
+
+
     });
+});
 
     // ═══════════════════════════════════════════════════════════
     // FILTRES
@@ -273,6 +430,163 @@ document.querySelectorAll('.filter-chip').forEach(chip => {
         loadEvents(currentFilter, currentCategory);
     });
 });
+// Filtres historique
+document.querySelectorAll('[data-history-filter]').forEach(chip => {
+    chip.addEventListener('click', function() {
+        document.querySelectorAll('[data-history-filter]').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        
+        const filter = this.dataset.historyFilter;
+        loadHistoryEvents(filter);
+    });
+});
+
+// ═══════════════════════════════════════════════════════════
+// 🆕 RECHERCHE DANS L'HISTORIQUE
+// ═══════════════════════════════════════════════════════════
+const historySearch = document.getElementById('history-search');
+const clearSearchBtn = document.getElementById('clear-search');
+
+if (historySearch) {
+    historySearch.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase().trim();
+        
+        // Afficher/masquer le bouton clear
+        if (clearSearchBtn) {
+            clearSearchBtn.style.display = term ? 'block' : 'none';
+        }
+        
+        // Filtrer les events
+        const historyContainer = document.getElementById('history-container');
+        const allCards = historyContainer.querySelectorAll('.event-card');
+        let visibleCount = 0;
+        
+        allCards.forEach(card => {
+            const title = card.querySelector('h3')?.textContent.toLowerCase() || '';
+            const location = card.textContent.toLowerCase();
+            
+            if (title.includes(term) || location.includes(term)) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Afficher message si aucun résultat
+        const existingMsg = historyContainer.querySelector('.no-results-message');
+        if (existingMsg) existingMsg.remove();
+        
+        if (term && visibleCount === 0) {
+            historyContainer.insertAdjacentHTML('beforeend', `
+                <div class="no-results-message empty-state">
+                    <i class="fas fa-search"></i>
+                    <h3>Aucun résultat</h3>
+                    <p>Aucun événement ne correspond à "${term}"</p>
+                </div>
+            `);
+        }
+        
+        // Gérer l'affichage des sections de mois
+        historyContainer.querySelectorAll('.month-section').forEach(section => {
+            const visibleCardsInMonth = section.querySelectorAll('.event-card[style*="display: block"]').length;
+            section.style.display = visibleCardsInMonth > 0 ? 'block' : 'none';
+        });
+    });
+    
+    // Focus style
+    historySearch.addEventListener('focus', function() {
+        this.style.borderColor = 'var(--primary)';
+    });
+    
+    historySearch.addEventListener('blur', function() {
+        this.style.borderColor = 'var(--border)';
+    });
+}
+
+// Bouton clear
+if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', () => {
+        historySearch.value = '';
+        historySearch.dispatchEvent(new Event('input'));
+        clearSearchBtn.style.display = 'none';
+        historySearch.focus();
+    });
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🆕 EXPORT CSV DE L'HISTORIQUE
+// ═══════════════════════════════════════════════════════════
+const exportBtn = document.getElementById('export-csv-btn');
+
+if (exportBtn) {
+    exportBtn.addEventListener('click', async () => {
+        const originalHTML = exportBtn.innerHTML;
+        exportBtn.disabled = true;
+        exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Export...';
+        
+        try {
+            // Récupérer tous les events terminés (max 1000)
+            const res = await Auth.secureFetch('/api/events/public/completed?page=0&size=1000');
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.message || 'Erreur');
+            
+            const events = data.data.content || data.data || [];
+            
+            if (events.length === 0) {
+                showToast('⚠️ Aucun événement à exporter', 'warning');
+                return;
+            }
+            
+            // Créer le CSV
+            let csv = '\uFEFF'; // BOM UTF-8 pour Excel
+            csv += 'Nom;Type;Date;Lieu;Participants;Statut\n';
+            
+            events.forEach(event => {
+                const name = (event.name || '').replace(/"/g, '""');
+                const type = event.type || '';
+                const date = new Date(event.date).toLocaleDateString('fr-FR');
+                const location = (event.location || '').replace(/"/g, '""');
+                const participants = event.acceptedParticipants || 0;
+                const status = 'TERMINÉ';
+                
+                csv += `"${name}";"${type}";"${date}";"${location}";"${participants}";"${status}"\n`;
+            });
+            
+            // Créer le fichier et télécharger
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const filename = `historique_tournois_${new Date().toISOString().split('T')[0]}.csv`;
+            
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast(`✅ ${events.length} événements exportés !`, 'success');
+            
+        } catch (err) {
+            console.error('Erreur export:', err);
+            showToast('❌ Erreur lors de l\'export', 'error');
+        } finally {
+            exportBtn.disabled = false;
+            exportBtn.innerHTML = originalHTML;
+        }
+    });
+    
+    // Hover effect
+    exportBtn.addEventListener('mouseenter', function() {
+        this.style.transform = 'scale(1.05)';
+        this.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
+    });
+    
+    exportBtn.addEventListener('mouseleave', function() {
+        this.style.transform = 'scale(1)';
+        this.style.boxShadow = 'none';
+    });
+}
     // ═══════════════════════════════════════════════════════════
     // CHAMPS CONDITIONNELS (UTF vs SPOND)
     // ═══════════════════════════════════════════════════════════
@@ -353,81 +667,201 @@ document.querySelectorAll('.filter-chip').forEach(chip => {
             }
         });
     }
-    // ═══════════════════════════════════════════════════════════
-    // CRÉATION CARTE ÉVÉNEMENT
-    // ═══════════════════════════════════════════════════════════
+  function formatCityDept(location) {
+  if (!location) return "";
+
+  // ville = texte avant la première virgule
+  let city = location.split(",")[0].trim();
+
+  // essaie de récupérer un code postal 5 chiffres (ex: 83000)
+  const m = location.match(/\b(\d{5})\b/);
+  const dept = m ? m[1].slice(0, 2) : null;
+
+  city = city.replace(/\s+/g, " ").trim();
+
+  // si on a un CP -> dept
+  if (city && dept) return `${city} (${dept})`;
+
+  // sinon juste la ville (ex: "Toulon")
+  return city || location;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CRÉATION CARTE ÉVÉNEMENT (VERSION AMÉLIORÉE - GÈRE COMPLETED)
+// ═══════════════════════════════════════════════════════════
 function createEventCard(event) {
     const user = Auth.currentUser;
     const isOrganizer = user && event.organizerId === user.id;
+   const statusNorm = (event.status || "").trim().toUpperCase();
+const isCompleted = statusNorm === "COMPLETED";
+const isCanceled = statusNorm === "CANCELED" || statusNorm === "CANCELLED";
+
+const isOngoing = false; // chez toi, event.status ne porte pas le live
 
     const isClub = user && [
-  "COACH",
-  "CLUB_ADMIN",
-  "ORGANIZER",
-  "SUPER_ADMIN"
-].includes(user.highestRole);
+        "COACH",
+        "CLUB_ADMIN",
+        "ORGANIZER",
+        "SUPER_ADMIN"
+    ].includes(user.highestRole);
 
+  const dateObj = new Date(event.date);
 
-    const date = new Date(event.date).toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-    });
+const dateShort = dateObj.toLocaleDateString('fr-FR', {
+  day: '2-digit',
+  month: 'short'
+});
+
+const timeShort = dateObj.toLocaleTimeString('fr-FR', {
+  hour: '2-digit',
+  minute: '2-digit'
+});
+
+const date = `${dateShort} • ${timeShort}`;
+
+const where = formatCityDept(event.location);
 
     const icons = {
         'OPEN_EVENT': 'fa-calendar-star',
         'CLUB_EVENT': 'fa-users'
     };
 
-    let buttonHtml = "";
+    const typeLabel = (event.type === "OPEN_EVENT") ? "Public"
+               : (event.type === "CLUB_EVENT") ? "Club"
+               : event.type;
 
-    if (isOrganizer) {
+
+    // 🆕 BADGE LIVE SCORE
+   let liveScoreBadgeHtml = '';
+
+if (event.format === "SINGLE_MATCH" && isOngoing) {
+  liveScoreBadgeHtml = `
+    <div class="live-score-banner" data-event-id="${event.id}">
+      <div class="live-score-left">
+        <span class="live-dot"></span>
+        <strong class="live-label">🔴 EN DIRECT</strong>
+      </div>
+      <div class="live-score-display">
+        <span class="loading-score">...</span>
+      </div>
+    </div>
+  `;
+}else if (isOngoing && event.format !== "SINGLE_MATCH") {
+  liveScoreBadgeHtml = `
+    <div class="live-tournament-banner" data-event-id="${event.id}">
+      <i class="fas fa-trophy"></i> TOURNOI EN COURS
+      <span class="live-matches-count">...</span>
+    </div>
+  `;
+}
+
+   let statusBadgeHtml = '';
+
+if (isCanceled) {
+    statusBadgeHtml = `
+        <div class="event-registration-status">
+            <span class="registration-badge canceled" style="background: #ef4444; color: white;">
+                <i class="fas fa-ban"></i>
+                ÉVÉNEMENT ANNULÉ
+            </span>
+        </div>
+    `;
+} else if (isCompleted) {
+    statusBadgeHtml = `
+        <div class="event-registration-status">
+            <span class="registration-badge completed">
+                <i class="fas fa-flag-checkered"></i>
+                TOURNOI TERMINÉ
+            </span>
+        </div>
+    `;
+} else {
+    statusBadgeHtml = `
+        <div class="event-registration-status">
+            ${event.pendingTeamsByMyClub > 0 ? `
+                <span class="registration-badge pending">
+                    <i class="fas fa-clock"></i>
+                    ${event.pendingTeamsByMyClub} équipe(s) en attente
+                </span>
+            ` : (event.registrationClosed || event.isFull || event.groupCount > 0) ? `
+                <span class="registration-badge closed">
+                    <i class="fas fa-lock"></i>
+                    Inscriptions fermées
+                </span>
+            ` : `
+                <span class="registration-badge open">
+                    <i class="fas fa-check-circle"></i>
+                    Inscriptions ouvertes
+                </span>
+            `}
+
+            ${event.registrationDeadline ? `
+                <span class="registration-deadline">
+                    <i class="fas fa-clock"></i>
+                    Limite: ${new Date(event.registrationDeadline).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short'
+                    })}
+                </span>
+            ` : ''}
+        </div>
+    `;
+}
+
+  let buttonHtml = "";
+
+if (isCanceled) {
+    buttonHtml = ``; // ✅ aucun bouton si annulé
+}
+
+ else if (isCompleted) {
+        buttonHtml = `
+            <button class="event-action-btn results-btn" data-event-id="${event.id}">
+                <i class="fas fa-trophy"></i> Voir les résultats
+            </button>
+        `;
+    } else if (isOrganizer) {
         buttonHtml = `
             <button class="event-action-btn" disabled>
                 <i class="fas fa-crown"></i> Organisateur
             </button>
         `;
     } else if (event.registrationType === "CLUB_ONLY") {
-      if (isClub) {
-    // ✅ Vérifier si le club a des équipes PENDING ou ACCEPTED
-    if (event.pendingTeamsByMyClub > 0) {
-        buttonHtml = `
-            <button class="event-action-btn" disabled style="background: #f59e0b; cursor: not-allowed;">
-                <i class="fas fa-clock"></i> 
-                ${event.pendingTeamsByMyClub} équipe(s) en attente
-            </button>
-        `;
-    } else if (event.teamsRegisteredByMyClub > 0) {
-        buttonHtml = `
-            <button class="event-action-btn" disabled style="background: #10b981; cursor: not-allowed;">
-                <i class="fas fa-check-circle"></i> 
-                ${event.teamsRegisteredByMyClub} équipe(s) inscrites
-            </button>
-        `;
-  }else if (
-    event.registrationClosed ||
-    event.isFull ||
-    event.groupCount > 0 ||
-    event.remainingTeamsForMyClub === 0
-) {
+        if (isClub) {
+            if (event.pendingTeamsByMyClub > 0) {
+                buttonHtml = `
+                    <button class="event-action-btn" disabled style="background: #f59e0b; cursor: not-allowed;">
+                        <i class="fas fa-clock"></i>
+                        ${event.pendingTeamsByMyClub} équipe(s) en attente
+                    </button>
+                `;
+            } else if (event.teamsRegisteredByMyClub > 0) {
+                buttonHtml = `
+                    <button class="event-action-btn" disabled style="background: #10b981; cursor: not-allowed;">
+                        <i class="fas fa-check-circle"></i>
+                        ${event.teamsRegisteredByMyClub} équipe(s) inscrites
+                    </button>
+                `;
+            } else if (
+                event.registrationClosed ||
+                event.isFull ||
+                event.groupCount > 0 ||
+                event.remainingTeamsForMyClub === 0
+            ) {
+                buttonHtml = `
+                    <button class="event-action-btn" disabled>
+                        <i class="fas fa-lock"></i> Inscriptions fermées
+                    </button>
+                `;
+            } else {
+                buttonHtml = `
+                  <button class="event-action-btn" data-action="register" data-event-id="${event.id}">
+  <i class="fas fa-shield"></i> Inscrire mon club
+</button>
 
-
-    buttonHtml = `
-        <button class="event-action-btn" disabled>
-            <i class="fas fa-lock"></i> Inscriptions fermées
-        </button>
-    `;
-}
-
-
-     else {
-        buttonHtml = `
-            <button class="event-action-btn" data-event-id="${event.id}">
-                <i class="fas fa-shield"></i> Inscrire mon club
-            </button>
-        `;
-    }
-}else {
+                `;
+            }
+        } else {
             buttonHtml = `
                 <button class="event-action-btn" disabled>
                     <i class="fas fa-lock"></i> Réservé aux clubs
@@ -435,144 +869,221 @@ function createEventCard(event) {
             `;
         }
     } else {
-    if (event.registrationClosed || event.isFull) {
-        buttonHtml = `
-            <button class="event-action-btn" disabled>
-                <i class="fas fa-lock"></i> Inscriptions fermées
-            </button>
-        `;
-    } else {
-        buttonHtml = `
-            <button class="event-action-btn" data-event-id="${event.id}">
-                <i class="fas fa-user-plus"></i> Voir / S'inscrire
-            </button>
-        `;
+        if (event.registrationClosed || event.isFull) {
+            buttonHtml = `
+                <button class="event-action-btn" disabled>
+                    <i class="fas fa-lock"></i> Inscriptions fermées
+                </button>
+            `;
+        } else {
+            buttonHtml = `
+                <button class="event-action-btn" data-action="register" data-event-id="${event.id}">
+  <i class="fas fa-user-plus"></i> Voir / S'inscrire
+</button>
+
+            `;
+        }
     }
-}
+
+    let participantsText = '';
+
+    if (isCompleted) {
+        if (event.registrationType === "CLUB_ONLY") {
+            participantsText = `${event.acceptedParticipants ?? 0} équipes ont participé`;
+        } else {
+            participantsText = `${event.acceptedParticipants ?? 0} participants`;
+        }
+    } else {
+        if (event.registrationType === "CLUB_ONLY") {
+            participantsText = `${event.acceptedParticipants ?? 0} / ${event.maxParticipants ?? "∞"} équipes`;
+        } else {
+            participantsText = `${event.acceptedParticipants ?? 0} / ${event.maxParticipants ?? "∞"} participants`;
+        }
+    }
+
+    const regText = (event.registrationClosed || event.isFull || event.groupCount > 0)
+  ? "Fermées"
+  : "Ouvertes";
+
+const isClubsOnly = event.registrationType === "CLUB_ONLY";
+const feeCents = Number(event.registrationFeeCents ?? 0);
+
+const feeLabel = feeCents <= 0
+  ? "Gratuit"
+  : (() => {
+      const euros = (feeCents / 100).toFixed(2).replace(".00", "");
+     const unit = (event.registrationType === "INDIVIDUAL") ? "joueur" : "équipe";
+
+      return `${euros}€ / ${unit}`;
+    })();
+
+const statusLine = `${participantsText} • ${regText}${isClubsOnly ? " • CLUBS" : ""} • ${feeLabel}`;
+
+
 
     return `
-        <div class="event-card" data-event-id="${event.id}">
-            
+        <div class="event-card ${isCompleted ? 'history-card' : ''}" data-event-id="${event.id}">
+
+   ${event.imageUrl ? `<div class="event-cover" style="background-image:url('${event.imageUrl}')"></div>` : ``}
+
+
             <div class="event-card-header">
-                <div class="event-card-title">
-                    <h3>${event.name}</h3>
-                    <span class="event-type-badge badge-${event.type}">
-                        <i class="fas ${icons[event.type]}"></i>
-                        ${event.type}
-                    </span>
-                </div>
-                <div class="event-card-icon">
-                    ${event.imageUrl 
-                        ? `<img src="${event.imageUrl}" class="event-logo-small" alt="Logo">`
-                        : `<i class="fas ${icons[event.type]}"></i>`
-                    }
-                </div>
+              <div class="event-card-title">
+  <div class="event-title-row">
+    <h3>${event.name}</h3>
+    <span class="event-type-badge badge-${event.type}">
+      <i class="fas ${icons[event.type]}"></i>
+     ${typeLabel}
+
+    </span>
+  </div>
+</div>
+
+              <div class="event-card-icon">
+  <i class="fas ${icons[event.type]}"></i>
+</div>
+
             </div>
 
             ${event.description ? `<p class="event-description">${event.description}</p>` : ''}
 
+            ${liveScoreBadgeHtml}
+                ${statusBadgeHtml}
             <div class="event-card-info">
                 <div class="event-info-item">
                     <i class="fas fa-calendar-alt"></i>
                     <span>${date}</span>
                 </div>
 
-              <div class="event-info-item">
-    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}"
-       target="_blank"
-       rel="noopener"
-       class="map-link"
-       data-map-link
-       title="Voir le lieu sur Google Maps">
-        <i class="fas fa-map-marker-alt"></i>
-    </a>
-    <span>${event.location}</span>
-</div>
+                <div class="event-info-item">
+                    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}"
+                        target="_blank"
+                        rel="noopener"
+                        class="map-link"
+                        data-map-link
+                        title="Voir le lieu sur Google Maps">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </a>
+                   <span>${where}</span>
 
-                ${event.registrationType === 'INDIVIDUAL' ? `
-                    <div class="event-info-item">
-                        <i class="fas fa-users"></i>
-                        <span>Mode UTF - ${event.numberOfTeams || 0} équipes de ${event.teamSize || 0}</span>
-                    </div>
-                ` : event.registrationType === 'CLUB_ONLY' ? `
-                    <div class="event-info-item">
-                        <i class="fas fa-shield"></i>
-                        <span>Réservé aux clubs</span>
-                    </div>
-                ` : ''}
-            </div>
-<!-- 🆕 BADGE STATUT INSCRIPTIONS -->
-<div class="event-registration-status">
-    ${event.pendingTeamsByMyClub > 0 ? `
-        <span class="registration-badge pending">
-            <i class="fas fa-clock"></i>
-            ${event.pendingTeamsByMyClub} équipe(s) en attente
-        </span>
-    ` : (event.registrationClosed || event.isFull || event.groupCount > 0)
- ? `
-        <span class="registration-badge closed">
-            <i class="fas fa-lock"></i>
-            Inscriptions fermées
-        </span>
-    ` : `
-        <span class="registration-badge open">
-            <i class="fas fa-check-circle"></i>
-            Inscriptions ouvertes
-        </span>
-    `}
-
-    ${event.registrationDeadline ? `
-        <span class="registration-deadline">
-            <i class="fas fa-clock"></i>
-            Limite: ${new Date(event.registrationDeadline).toLocaleDateString('fr-FR', {
-                day: 'numeric',
-                month: 'short'
-            })}
-        </span>
-    ` : ''}
-</div>
-
-
-            <div class="event-card-footer">
-                <div class="event-participants badge">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>
-                        ${event.registrationType === "CLUB_ONLY"
-                            ? `${event.acceptedParticipants ?? 0} / ${event.maxParticipants ?? "∞"} équipes`
-                            : `${event.acceptedParticipants ?? 0} / ${event.maxParticipants ?? "∞"} participants`
-                        }
-                    </span>
                 </div>
 
-                ${buttonHtml}
+              ${event.registrationType === 'INDIVIDUAL' && (event.numberOfTeams > 0 && event.teamSize > 0) ? `
+    <div class="event-info-item">
+        <i class="fas fa-users"></i>
+        <span>Mode UTF • ${event.numberOfTeams}×${event.teamSize}</span>
+    </div>
+` : ''}
+
             </div>
+
+       <div class="event-statusline">${statusLine}</div>
+
+${buttonHtml ? `
+  <div class="event-card-footer">
+    ${buttonHtml}
+  </div>
+` : ``}
+
         </div>
     `;
 }
 
+// 🔴 SYSTÈME DE LIVE REFRESH DES SCORES
+let liveRefreshInterval = null;
 
+async function refreshLiveScores() {
+    const liveScoreBanners = document.querySelectorAll('.live-score-banner');
+    const liveTournamentBanners = document.querySelectorAll('.live-tournament-banner');
+    
+    for (const banner of liveScoreBanners) {
+        const eventId = banner.dataset.eventId;
+        try {
+            const res = await Auth.secureFetch(`/api/events/${eventId}/matches`);
+            const data = await res.json();
+            const matches = data.data || [];
+            
+            if (matches.length > 0) {
+                const match = matches[0];
+                const scoreDisplay = banner.querySelector('.live-score-display');
+                if (scoreDisplay) {
+                    scoreDisplay.innerHTML = `${match.scoreTeamA ?? 0} - ${match.scoreTeamB ?? 0}`;
+                }
+            }
+        } catch (err) {
+            console.error(`Erreur refresh score event ${eventId}:`, err);
+        }
+    }
+    
+    for (const banner of liveTournamentBanners) {
+        const eventId = banner.dataset.eventId;
+        try {
+            const res = await Auth.secureFetch(`/api/events/${eventId}/matches`);
+            const data = await res.json();
+            const matches = data.data || [];
+            
+            const liveMatches = matches.filter(m => 
+                m.status === 'IN_PROGRESS' || m.status === 'ONGOING'
+            );
+            
+            const countDisplay = banner.querySelector('.live-matches-count');
+            if (countDisplay) {
+                if (liveMatches.length > 0) {
+                    countDisplay.innerHTML = `${liveMatches.length} match${liveMatches.length > 1 ? 's' : ''}`;
+                } else {
+                    countDisplay.innerHTML = 'En pause';
+                }
+            }
+        } catch (err) {
+            console.error(`Erreur refresh tournoi ${eventId}:`, err);
+        }
+    }
+}
 
+function startLiveRefresh() {
+    refreshLiveScores();
+    if (liveRefreshInterval) clearInterval(liveRefreshInterval);
+    liveRefreshInterval = setInterval(refreshLiveScores, 15000);
+}
+
+function stopLiveRefresh() {
+    if (liveRefreshInterval) {
+        clearInterval(liveRefreshInterval);
+        liveRefreshInterval = null;
+    }
+}
     // ═══════════════════════════════════════════════════════════
     // MES ÉVÉNEMENTS
     // ═══════════════════════════════════════════════════════════
 async function loadEvents(filter = currentFilter, category = currentCategory) {
-
     if (loading || !hasMore) return;
 
     loading = true;
-    loader.style.display = 'block';
+
+    // ✅ Important : si on recharge la page 0 (ou après changement filtre),
+// on vide le container pour éviter l’empilement de vieilles cards
+if (currentPage === 0) {
+  eventsContainer.innerHTML = "";
+}
+
+    // Afficher 3 skeletons pendant le chargement
+for (let i = 0; i < 3; i++) {
+    eventsContainer.insertAdjacentHTML('beforeend', `
+        <div class="event-card skeleton"></div>
+    `);
+}
 
     // 👉 1) Base : tous les événements visibles
-   let url = `/api/events/public/visible?page=${currentPage}&size=20`;
+    let url = `/api/events/public/visible?page=${currentPage}&size=20`;
 
     // 👉 2) Si filtre actif → on passe par /filter
     if (filter !== "all" || (category && category !== "all")) {
-       url = `/api/events/public/filter?page=${currentPage}&size=20`;
-
+        url = `/api/events/public/filter?page=${currentPage}&size=100`;
+        
         if (filter !== "all") {
             url += `&type=${filter}`;
         }
-
+        
         if (category && category !== "all") {
             url += `&category=${category}`;
         }
@@ -586,7 +1097,14 @@ async function loadEvents(filter = currentFilter, category = currentCategory) {
 
         const events = data.data.content;
 
-        if (events.length === 0) {
+        // 🆕 FILTRER : Exclure les events COMPLETED
+        const activeEvents = events.filter(event => {
+  const s = (event.status || "").trim().toUpperCase();
+  return s !== "COMPLETED";
+});
+
+
+        if (activeEvents.length === 0) {
             if (currentPage === 0) {
                 eventsContainer.innerHTML = `
                     <div class="empty-state">
@@ -598,20 +1116,31 @@ async function loadEvents(filter = currentFilter, category = currentCategory) {
             }
             hasMore = false;
         } else {
-            events.forEach(event => {
-                const card = createEventCard(event);
-                eventsContainer.insertAdjacentHTML('beforeend', card);
-            });
-            currentPage++;
+            const html = activeEvents.map(createEventCard).join("");
+
+if (currentPage === 0) {
+  // ✅ on reconstruit complètement (plus de cards fantômes)
+  eventsContainer.innerHTML = html;
+} else {
+  // ✅ infinite scroll : on ajoute
+  eventsContainer.insertAdjacentHTML("beforeend", html);
+}
+
+currentPage++;
+
         }
 
     } catch (err) {
         console.error('Erreur:', err);
         showToast('❌ Erreur de chargement', 'error');
-    } finally {
-        loading = false;
-        loader.style.display = 'none';
-    }
+   } finally {
+    loading = false;
+    // Supprimer les skeletons
+    document.querySelectorAll('.event-card.skeleton').forEach(s => s.remove());
+    const loaderEl = document.getElementById('loader');
+if (loaderEl) loaderEl.style.display = 'none';
+
+}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -667,8 +1196,6 @@ async function loadMyEvents() {
         loader.style.display = "none";
     }
 }
-
-
     // ═══════════════════════════════════════════════════════════
     // TOAST NOTIFICATIONS
     // ═══════════════════════════════════════════════════════════
@@ -686,37 +1213,48 @@ async function loadMyEvents() {
     // ═══════════════════════════════════════════════════════════
     // SCROLL INFINI
     // ═══════════════════════════════════════════════════════════
-window.addEventListener('scroll', () => {
-    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
-        const activeTab = document.querySelector('.tab.active')?.dataset.tab;
-        if (activeTab === 'discover') {
-            loadEvents();
-        }
-    }
-});
+// window.addEventListener('scroll', () => {
+//   if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+//     const activeTab = document.querySelector('.tab.active')?.dataset.tab;
+//     if (activeTab === 'discover') {
+//       loadEvents();
+//     }
+//   }
+// });
+
 
     // ═══════════════════════════════════════════════════════════
     // INIT - CHARGER LES ÉVÉNEMENTS
     // ═══════════════════════════════════════════════════════════
-    loadEvents();
-// === CLICK SUR CARTE (ouvrir détail événement) ===
-  eventsContainer.addEventListener("click", (e) => {
+loadEvents();
 
-    // 👉 SI on clique sur l’icône Google Maps → on laisse faire
+// 🔴 DÉMARRER LE LIVE REFRESH
+startLiveRefresh();
+__stopLiveRefreshFn = stopLiveRefresh;
+__beforeUnloadFn = stopLiveRefresh;
+window.addEventListener('beforeunload', __beforeUnloadFn);
+
+// === CLICK SUR CARTE (ouvrir détail événement) ===
+eventsContainer.addEventListener("click", (e) => {
+    // 👉 SI on clique sur l'icône Google Maps → on laisse faire
     if (e.target.closest("[data-map-link]")) {
         return;
     }
 
     const btn = e.target.closest(".event-action-btn");
 
- if (btn && btn.disabled) {
-    showToast("⛔ Action non disponible", "warning");
-    return;
-}
-
+    if (btn && btn.disabled) {
+        showToast("⛔ Action non disponible", "warning");
+        return;
+    }
 
     if (btn) {
-        Router.go(`/events/${btn.dataset.eventId}`);
+        const eventId = btn.dataset.eventId;
+        
+        // 🆕 TOUS LES BOUTONS VONT SUR LA MÊME PAGE
+        // La page s'adaptera automatiquement selon le statut
+        console.log('🔥 Redirection vers event:', eventId);
+        Router.go(`/events/${eventId}`);  // ✅ Route normale, pas /public
         return;
     }
 
@@ -726,13 +1264,7 @@ window.addEventListener('scroll', () => {
     Router.go(`/events/${card.dataset.eventId}`);
 });
 
-
-
-
-
-
     // 👇 AJOUTEZ CES LIGNES ICI
-    // Masquer le bouton POST YOUR GOAL sur cette page
    // Masquer le bouton POST YOUR GOAL sur cette page
 setTimeout(() => {
     const postBtn = document.querySelector('.gc-post-btn');
@@ -740,5 +1272,194 @@ setTimeout(() => {
         postBtn.style.display = 'none';
     }
 }, 100);
-}
+// ═══════════════════════════════════════════════════════════
+// HISTORIQUE DES ÉVÉNEMENTS TERMINÉS
+// ═══════════════════════════════════════════════════════════
+async function loadHistoryEvents(filter = 'all') {
+    const container = document.getElementById('history-container');
+    const loader = document.getElementById('history-loader');
+    
+    container.innerHTML = '';
+    loader.style.display = 'block';
+    
+    try {
+        let url = `/api/events/public/completed?page=0&size=50`;
+        
+        if (filter !== 'all') {
+            url += `&type=${filter}`;
+        }
+        
+        const res = await Auth.secureFetch(url);
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.message || 'Erreur de chargement');
+        
+        const events = data.data.content || data.data || [];
+        
+        if (events.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-trophy"></i>
+                    <h3>Aucun tournoi terminé</h3>
+                    <p>L'historique des tournois apparaîtra ici</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Grouper par mois
+        const byMonth = {};
+        events.forEach(event => {
+            const date = new Date(event.date);
+            const monthKey = date.toLocaleDateString('fr-FR', {
+                year: 'numeric',
+                month: 'long'
+            });
+            
+            if (!byMonth[monthKey]) byMonth[monthKey] = [];
+            byMonth[monthKey].push(event);
+        });
+        
+        // 🆕 HTML AVEC ACCORDÉON
+        Object.keys(byMonth).forEach((month, index) => {
+            const eventsInMonth = byMonth[month];
+            const monthId = `month-${index}`;
+            const isFirst = index === 0;
+            
+            // 🔥 STRUCTURE ACCORDÉON COMPLÈTE
+            const monthSection = `
+                <div class="month-section">
+                    <!-- 👇 TITRE CLIQUABLE (toggle accordéon) -->
+                    <h3 class="month-title accordion-toggle ${isFirst ? 'active' : ''}" 
+                        data-target="${monthId}"
+                        style="cursor: pointer; user-select: none;">
+                        
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <i class="fas fa-calendar"></i>
+                            <span>${month}</span>
+                            <span style="
+                                background: var(--primary);
+                                color: #000;
+                                padding: 4px 12px;
+                                border-radius: 20px;
+                                font-size: 0.85em;
+                                font-weight: 700;">
+                                ${eventsInMonth.length}
+                            </span>
+                        </div>
+                        
+                        <!-- 👇 ICÔNE CHEVRON (🔽/🔼) -->
+                        <i class="fas fa-chevron-down" 
+                           style="
+                               transition: transform 0.3s ease;
+                               color: var(--primary);
+                               font-size: 1.2em;
+                               ${isFirst ? 'transform: rotate(180deg);' : ''}
+                           "></i>
+                    </h3>
+                    
+                    <!-- 👇 CONTENU (les events) -->
+                    <div class="month-events accordion-content ${isFirst ? 'active' : ''}" 
+                         id="${monthId}"
+                         style="
+                             max-height: ${isFirst ? '10000px' : '0'};
+                             overflow: hidden;
+                             transition: max-height 0.5s ease;
+                             opacity: ${isFirst ? '1' : '0'};
+                         ">
+                        ${eventsInMonth.map(event => createEventCard(event)).join('')}
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', monthSection);
+        });
+        
+        // 🆕 ÉVÉNEMENT CLIC SUR LES TITRES
+        container.querySelectorAll('.accordion-toggle').forEach(toggle => {
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation(); // Ne pas déclencher le clic sur la card
+                
+                const targetId = this.dataset.target;
+                const content = document.getElementById(targetId);
+                const icon = this.querySelector('.fa-chevron-down');
+                
+                // Toggle classes
+                const isActive = content.style.maxHeight !== '0px' && content.style.maxHeight !== '';
+                
+                if (isActive) {
+                    // FERMER
+                    content.style.maxHeight = '0';
+                    content.style.opacity = '0';
+                    icon.style.transform = 'rotate(0deg)';
+                    this.classList.remove('active');
+                } else {
+                    // OUVRIR
+                    content.style.maxHeight = '10000px';
+                    content.style.opacity = '1';
+                    icon.style.transform = 'rotate(180deg)';
+                    this.classList.add('active');
+                }
+            });
+        });
+        
+        // 🆕 CLICS SUR LES CARDS
+        container.addEventListener('click', (e) => {
+            if (e.target.closest("[data-map-link]")) return;
+            if (e.target.closest('.accordion-toggle')) return;
 
+            const btn = e.target.closest(".event-action-btn");
+            if (btn && btn.disabled) {
+                showToast("⛔ Action non disponible", "warning");
+                return;
+            }
+
+            if (btn) {
+                Router.go(`/events/${btn.dataset.eventId}`);
+                return;
+            }
+
+            const card = e.target.closest(".event-card");
+            if (card) Router.go(`/events/${card.dataset.eventId}`);
+        });
+        
+    } catch (err) {
+        console.error('Erreur:', err);
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Erreur</h3>
+                <p>${err.message}</p>
+            </div>
+        `;
+    } finally {
+        loader.style.display = 'none';
+    }
+}
+}
+export function cleanup() {
+  document.body.classList.remove("is-events-page");
+
+  // ✅ enlever le listener scroll sur .content-sections
+  if (__eventsScroller && __eventsOnScroll) {
+    __eventsScroller.removeEventListener("scroll", __eventsOnScroll);
+  }
+  __eventsScroller = null;
+  __eventsOnScroll = null;
+
+  // stop live refresh
+  if (__stopLiveRefreshFn) {
+    try { __stopLiveRefreshFn(); } catch(e) {}
+  }
+  __stopLiveRefreshFn = null;
+
+  // remove beforeunload
+  if (__beforeUnloadFn) {
+    window.removeEventListener("beforeunload", __beforeUnloadFn);
+  }
+  __beforeUnloadFn = null;
+
+  // (optionnel) reset anti-spam
+  __eventsLoadingMore = false;
+  __eventsLastTrigger = 0;
+}

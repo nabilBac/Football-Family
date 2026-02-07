@@ -2,8 +2,9 @@ package com.footballdemo.football_family.controller.api.events;
 
 import com.footballdemo.football_family.dto.ApiResponse;
 import com.footballdemo.football_family.model.Event;
-import com.footballdemo.football_family.repository.EventRepository;
 import com.footballdemo.football_family.model.User;
+import com.footballdemo.football_family.service.EventService;
+import com.footballdemo.football_family.service.EventAccessService;
 import com.footballdemo.football_family.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,8 +18,9 @@ import java.security.Principal;
 @RequiredArgsConstructor
 public class EventRegistrationManagementController {
 
-    private final EventRepository eventRepository;
+    private final EventService eventService;
     private final UserService userService;
+    private final EventAccessService eventAccessService;
 
     /**
      * 🔒 Clôturer les inscriptions d'un événement
@@ -29,20 +31,16 @@ public class EventRegistrationManagementController {
             @PathVariable Long eventId,
             Principal principal
     ) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Événement introuvable"));
-
         User currentUser = userService.getUserByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-        // Vérifier que l'utilisateur est l'organisateur
-        if (!event.getOrganizer().getId().equals(currentUser.getId())) {
-            return ResponseEntity.status(403)
-                    .body(new ApiResponse<>(false, "Non autorisé", null));
-        }
+        Event event = eventService.getEventById(eventId);
+
+        // 🔒 Vérification des droits (centralisée)
+        eventAccessService.assertCanManage(event, currentUser);
 
         event.setRegistrationClosed(true);
-        eventRepository.save(event);
+        eventService.save(event);
 
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Inscriptions clôturées avec succès", null)
@@ -58,20 +56,16 @@ public class EventRegistrationManagementController {
             @PathVariable Long eventId,
             Principal principal
     ) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Événement introuvable"));
-
         User currentUser = userService.getUserByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-        // Vérifier que l'utilisateur est l'organisateur
-        if (!event.getOrganizer().getId().equals(currentUser.getId())) {
-            return ResponseEntity.status(403)
-                    .body(new ApiResponse<>(false, "Non autorisé", null));
-        }
+        Event event = eventService.getEventById(eventId);
+
+        // 🔒 Vérification des droits (centralisée)
+        eventAccessService.assertCanManage(event, currentUser);
 
         event.setRegistrationClosed(false);
-        eventRepository.save(event);
+        eventService.save(event);
 
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Inscriptions rouvertes avec succès", null)

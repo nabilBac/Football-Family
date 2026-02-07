@@ -14,7 +14,12 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         // Cache simple en mémoire
-        return new ConcurrentMapCacheManager("videoFeed", "users","profileVideos");
+        return new ConcurrentMapCacheManager(
+    "videoFeed",
+    "users",
+    "profileVideos",
+    "userProfile"
+);
     }
 }
 

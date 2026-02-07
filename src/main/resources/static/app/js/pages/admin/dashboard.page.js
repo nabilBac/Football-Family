@@ -1,14 +1,13 @@
 // /app/js/pages/admin/dashboard.page.js
+// ✅ VERSION AMÉLIORÉE - Dashboard professionnel avec personnalisation
 
 export const AdminDashboardPage = {
 
     async render() {
         return `
             <div class="admin-main" style="padding: 20px; margin-top: 40px;">
-                <h1 class="admin-title">Tableau de bord du club</h1>
-
                 <div id="admin-dashboard-content" class="admin-dashboard-loading">
-                    <p>Chargement du tableau de bord...</p>
+                    <div class="loader">⏳ Chargement du tableau de bord...</div>
                 </div>
             </div>
         `;
@@ -25,81 +24,245 @@ export const AdminDashboardPage = {
             return;
         }
 
-        if (!currentUser.clubId) {
-            container.innerHTML = `<p>❌ Aucun club n'est associé à ce compte.</p>`;
-            return;
-        }
+     const userRole = currentUser.highestRole || "";
+   const isAllowed = userRole === "CLUB_ADMIN" || userRole === "SUPER_ADMIN";
+
+   if (!isAllowed) {
+       container.innerHTML = `<p>❌ Accès refusé. Vous devez être CLUB_ADMIN ou SUPER_ADMIN.</p>`;
+       return;
+   }
+    // ⬆️ FIN DU GUARD
+
+    if (!currentUser.clubId) {
+        container.innerHTML = `<p>❌ Aucun club n'est associé à ce compte.</p>`;
+        return;
+    }
+
 
         const clubId = currentUser.clubId;
 
         try {
+            // =============================
+            // 📊 CHARGER LES DONNÉES
+            // =============================
+            
+           // ⚡ FETCHES PARALLÈLES (3x plus rapide)
+const [clubInfo, events, teams] = await Promise.all([
+    this.safeFetchSingle(`/api/clubs/${clubId}`, token).catch(() => null),
+    this.safeFetch("/api/tournament/admin/events", token).catch(() => []),
+    this.safeFetch(`/api/teams/club/${clubId}`, token).catch(() => [])
+]);
 
             // =============================
-            // 1️⃣ Charger les événements (club admin)
+            // 📈 CALCULS
             // =============================
-            const events = await this.safeFetch("/api/tournament/admin/events", token);
+          const today = new Date().setHours(0, 0, 0, 0);
+const upcomingEvents = events.filter(e => {
+    const eventDate = new Date(e.date).setHours(0, 0, 0, 0);
+    return eventDate >= today;
+});
+const pastEvents = events.filter(e => {
+    const eventDate = new Date(e.date).setHours(0, 0, 0, 0);
+    return eventDate < today;
+});
 
-            // =============================
-            // 2️⃣ Charger les équipes du club
-            // =============================
-            const teams = await this.safeFetch(`/api/teams/club/${clubId}`, token);
-
-            // =============================
-            // 3️⃣ Charger les INSCRIPTIONS en attente
-            // =============================
-     
-
-            // =============================
-            // ▶️ Calculs
-            // =============================
-            const today = new Date().toISOString().split("T")[0];
-
-            const upcomingEvents = events.filter(e => e.date >= today);
-            const pastEvents = events.filter(e => e.date < today);
+            // Prochain événement
+            const nextEvent = upcomingEvents.length > 0 
+                ? upcomingEvents.sort((a, b) => new Date(a.date) - new Date(b.date))[0]
+                : null;
 
             // =============================
-            // ▶️ RENDU HTML
+            // 🎨 RENDU HTML
             // =============================
-container.innerHTML = `
-    <div class="admin-dashboard-grid">
+            container.innerHTML = `
+                <!-- ✅ HEADER PERSONNALISÉ -->
+                <div class="welcome-header">
+                    <div class="welcome-content">
+                        <h1 class="welcome-title">
+                            👋 Bienvenue, ${this.escapeHtml(currentUser.firstName || currentUser.username || 'Admin')} !
+                        </h1>
+                        <p class="welcome-subtitle">
+                            🏆 ${clubInfo?.name ? this.escapeHtml(clubInfo.name) : 'Votre club'}
+                        </p>
+                    </div>
+                    ${clubInfo?.logoUrl ? `
+                        <img src="${this.escapeHtml(clubInfo.logoUrl)}" 
+                             alt="Logo" 
+                             class="welcome-logo">
+                    ` : `
+                        <div class="welcome-logo-placeholder">⚽</div>
+                    `}
+                </div>
 
-        <a href="/admin/events" data-link class="dashboard-card-pro">
-            <div class="dashboard-card-icon">📅</div>
-            <div class="dashboard-card-title">Événements à venir</div>
-            <div class="dashboard-card-value">${upcomingEvents.length}</div>
-        </a>
+                <!-- ✅ METRICS CARDS -->
+                <div class="admin-dashboard-grid">
 
-        <a href="/admin/events" data-link class="dashboard-card-pro">
-            <div class="dashboard-card-icon">🕓</div>
-            <div class="dashboard-card-title">Événements passés</div>
-            <div class="dashboard-card-value">${pastEvents.length}</div>
-        </a>
+                    <a href="/admin/events" data-link class="dashboard-card-pro">
+                        <div class="dashboard-card-icon">📅</div>
+                        <div class="dashboard-card-title">Événements à venir</div>
+                        <div class="dashboard-card-value">${upcomingEvents.length}</div>
+                        ${nextEvent ? `
+                            <div class="dashboard-card-meta">
+                                🔥 Prochain : ${this.escapeHtml(nextEvent.name)}
+                            </div>
+                        ` : upcomingEvents.length === 0 ? `
+                            <div class="dashboard-card-meta">
+                                💡 Aucun événement prévu
+                            </div>
+                        ` : ''}
+                    </a>
 
-        <a href="/admin/teams" data-link class="dashboard-card-pro">
-            <div class="dashboard-card-icon">👥</div>
-            <div class="dashboard-card-title">Mes équipes</div>
-            <div class="dashboard-card-value">${teams.length}</div>
-        </a>
+                    <a href="/admin/events" data-link class="dashboard-card-pro">
+                        <div class="dashboard-card-icon">🕓</div>
+                        <div class="dashboard-card-title">Événements passés</div>
+                        <div class="dashboard-card-value">${pastEvents.length}</div>
+                        ${pastEvents.length > 0 ? `
+                            <div class="dashboard-card-meta">
+                                📊 Historique complet
+                            </div>
+                        ` : `
+                            <div class="dashboard-card-meta">
+                                ➡️ Commencez par créer un tournoi
+                            </div>
+                        `}
+                    </a>
 
-        <a href="/admin/events/create" data-link class="dashboard-card-pro">
-            <div class="dashboard-card-icon">➕</div>
-            <div class="dashboard-card-title">Créer un événement</div>
-            <div class="dashboard-card-value">Nouveau tournoi</div>
-        </a>
+                    <a href="/admin/teams" data-link class="dashboard-card-pro">
+                        <div class="dashboard-card-icon">👥</div>
+                        <div class="dashboard-card-title">Mes équipes</div>
+                        <div class="dashboard-card-value">${teams.length}</div>
+                        <div class="dashboard-card-meta">
+                            ${teams.length >= 10 
+                                ? '💪 Excellent effectif !' 
+                                : teams.length >= 5 
+                                    ? '📈 Bonne progression' 
+                                    : '🚀 Continuez à recruter'}
+                        </div>
+                    </a>
 
+                   <a href="/admin/events/create" data-link class="dashboard-card-pro cta">
+    <div class="dashboard-card-icon">🏆</div>
+    <div class="dashboard-card-title">Créer un tournoi</div>
+    <div class="dashboard-card-value">Événement complet</div>
+    <div class="dashboard-card-meta">
+        ⚡ Poules + Phase finale
     </div>
-`;
+</a>
 
-        }
+<!-- 🆕 NOUVELLE CARTE MATCH UNIQUE -->
+<a href="/admin/events/create-match" data-link class="dashboard-card-pro cta" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
+    <div class="dashboard-card-icon">⚽</div>
+    <div class="dashboard-card-title">Créer un match</div>
+    <div class="dashboard-card-value">Match unique</div>
+    <div class="dashboard-card-meta">
+        ⚡ Rapide et simple
+    </div>
+</a>
 
-        catch (err) {
+                </div>
+
+                <!-- ✅ QUICK ACTIONS -->
+                <div class="quick-actions-section">
+                    <h2 class="section-title">⚡ Actions rapides</h2>
+                 <div class="quick-actions-grid">
+    <a href="/admin/events/create" data-link class="quick-action-btn">
+    <i class="fas fa-trophy"></i>
+    <span>Nouveau tournoi</span>
+</a>
+
+<a href="/admin/events/create-match" data-link class="quick-action-btn" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);">
+    <i class="fas fa-futbol"></i>
+    <span>Créer un match</span>
+</a>
+
+<a href="/admin/teams" data-link class="quick-action-btn">
+    <i class="fas fa-users"></i>
+    <span>Gérer mes équipes</span>
+</a>
+
+<a href="/admin/events" data-link class="quick-action-btn">
+    <i class="fas fa-calendar-check"></i>
+    <span>Voir tous les événements</span>
+</a>
+</div>
+                </div>
+
+                <!-- ✅ ACTIVITÉ RÉCENTE -->
+                ${upcomingEvents.length > 0 || pastEvents.length > 0 ? `
+                    <div class="recent-activity-section">
+                        <h2 class="section-title">📊 Activité récente</h2>
+                        <div class="activity-list">
+                            ${this.renderRecentActivity(upcomingEvents, pastEvents)}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+
+        } catch (err) {
             console.error("Dashboard Admin Error:", err);
-            container.innerHTML = `<p>❌ Erreur lors du chargement du tableau de bord.</p>`;
+            container.innerHTML = `
+                <div style="
+                    background: #fadbd8;
+                    border: 2px solid #e74c3c;
+                    border-radius: 12px;
+                    padding: 20px;
+                    text-align: center;
+                ">
+                    <p style="color: #e74c3c; font-weight: 600; margin: 0;">
+                        ❌ Erreur lors du chargement du tableau de bord
+                    </p>
+                    <p style="color: #7f8c8d; margin: 10px 0 0 0; font-size: 0.9rem;">
+                        ${this.escapeHtml(err.message || 'Erreur inconnue')}
+                    </p>
+                </div>
+            `;
         }
     },
 
     // =====================================================
-    // 🔐 Utilitaire fetch sécurisé (gestion erreurs + JSON)
+    // 🎨 RENDU ACTIVITÉ RÉCENTE
+    // =====================================================
+    renderRecentActivity(upcomingEvents, pastEvents) {
+        const allEvents = [...upcomingEvents, ...pastEvents]
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 5);
+
+        if (allEvents.length === 0) {
+            return `
+                <div class="activity-empty">
+                    <p>Aucune activité récente</p>
+                </div>
+            `;
+        }
+
+        return allEvents.map(event => {
+            const eventDate = new Date(event.date);
+            const isPast = eventDate < new Date();
+            const formattedDate = eventDate.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+
+            return `
+                <a href="/admin/events/${event.id}" data-link class="activity-item">
+                    <div class="activity-icon ${isPast ? 'past' : 'upcoming'}">
+                        ${isPast ? '✅' : '📅'}
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-title">${this.escapeHtml(event.name)}</div>
+                        <div class="activity-meta">
+                            ${formattedDate} • ${event.city || 'Lieu NC'}
+                        </div>
+                    </div>
+                    <div class="activity-arrow">→</div>
+                </a>
+            `;
+        }).join('');
+    },
+
+    // =====================================================
+    // 🔐 UTILITAIRES
     // =====================================================
     async safeFetch(url, token) {
         const res = await fetch(url, {
@@ -113,13 +276,31 @@ container.innerHTML = `
 
         const json = await res.json();
 
-        // Certaines routes renvoient directement un tableau
         if (Array.isArray(json)) return json;
-
-        // D'autres renvoient { data: [...] }
         if (Array.isArray(json.data)) return json.data;
+        if (json.content && Array.isArray(json.content)) return json.content;
 
         return [];
+    },
+
+    async safeFetchSingle(url, token) {
+        const res = await fetch(url, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+
+        const json = await res.json();
+        return json.data || json;
+    },
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 };
 

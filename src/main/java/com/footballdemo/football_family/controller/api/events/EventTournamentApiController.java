@@ -19,7 +19,9 @@ import com.footballdemo.football_family.service.EventService;
 import com.footballdemo.football_family.service.UserService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/events/tournament")
 @RequiredArgsConstructor
@@ -28,7 +30,6 @@ public class EventTournamentApiController {
     private final EventService eventService;
     private final UserService userService;
     private final EventAccessService eventAccessService;
-
 
     private User getUser(Principal p) {
         return userService.getUserByUsername(p.getName()).orElseThrow();
@@ -55,8 +56,6 @@ public ResponseEntity<ApiResponse<List<TournamentGroupDTO>>> getGroups(
     return ResponseEntity.ok(new ApiResponse<>(true, "Groupes récupérés", groups));
 }
 
-
-
     // ==========================================================
     // 2️⃣ Lecture : Classements des poules
     // ==========================================================
@@ -66,44 +65,35 @@ public ResponseEntity<ApiResponse<Map<Long, List<GroupRankingDTO>>>> getRankings
         Principal principal) {
 
     try {
-        System.out.println("🔍 GET /group-rankings for event " + eventId);
-        
         Event event = eventService.getEventById(eventId);
-        System.out.println("📊 Event visibility: " + event.getVisibility());
         
         // ✅ SI L'ÉVÉNEMENT EST PUBLIC, ON PERMET L'ACCÈS SANS VÉRIFICATION
         if (event.getVisibility() == EventVisibility.PUBLIC) {
-            System.out.println("✅ Event is PUBLIC - allowing access without user check");
             
             try {
                 // ⚠️ On passe null comme user pour les événements publics
                 Map<Long, List<GroupRankingDTO>> data = 
                     eventService.computeGroupRankings(eventId, null);
                 
-                System.out.println("✅ Rankings computed: " + data.size() + " groups");
+                log.debug("Rankings computed for public event {}: {} groups", eventId, data.size());
                 return ResponseEntity.ok(new ApiResponse<>(true, "Classements récupérés", data));
                 
             } catch (Exception e) {
-                System.err.println("❌ Error computing rankings for public event: " + e.getMessage());
-                e.printStackTrace();
+                log.error("Error computing rankings for public event {}", eventId, e);
                 
                 // Retourner un message vide plutôt qu'une erreur
                 return ResponseEntity.ok(new ApiResponse<>(true, "Aucun classement disponible", Map.of()));
             }
         }
         
-        System.out.println("🔒 Event is PRIVATE - checking access rights");
-        
         // ❌ ÉVÉNEMENT PRIVÉ : vérifier les droits
         if (principal == null) {
-            System.out.println("❌ No principal - access denied");
+            log.warn("Access denied to private event {} - no principal", eventId);
             return ResponseEntity.status(403)
                 .body(new ApiResponse<>(false, "Accès refusé", null));
         }
         
         User user = getUser(principal);
-        System.out.println("👤 User: " + user.getUsername());
-        
         eventAccessService.assertCanView(event, user);
         
         Map<Long, List<GroupRankingDTO>> data = 
@@ -112,17 +102,15 @@ public ResponseEntity<ApiResponse<Map<Long, List<GroupRankingDTO>>>> getRankings
         return ResponseEntity.ok(new ApiResponse<>(true, "Classements récupérés", data));
         
     } catch (ForbiddenException e) {
-        System.err.println("❌ ForbiddenException: " + e.getMessage());
+        log.warn("Forbidden access to event {} rankings: {}", eventId, e.getMessage());
         return ResponseEntity.status(403)
             .body(new ApiResponse<>(false, e.getMessage(), null));
             
     } catch (Exception e) {
-        System.err.println("❌ Unexpected error in getRankings: " + e.getMessage());
-        e.printStackTrace();
+        log.error("Unexpected error in getRankings for event {}", eventId, e);
         return ResponseEntity.status(500)
-            .body(new ApiResponse<>(false, "Erreur serveur: " + e.getMessage(), null));
+            .body(new ApiResponse<>(false, "Erreur serveur", null));
     }
 }
-
 
 }

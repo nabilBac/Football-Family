@@ -249,7 +249,7 @@ if (Auth.accessToken && location.pathname !== "/login") {
         // Désactiver bouton + animation
         submitBtn.classList.add("loading");
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span class="loader"></span> Connexion...`;
+      submitBtn.textContent = "Connexion...";
 
         // Haptics (mobile)
         if (navigator.vibrate) navigator.vibrate(20);
@@ -290,7 +290,7 @@ if (Auth.accessToken && location.pathname !== "/login") {
             // Réactiver bouton
             submitBtn.classList.remove("loading");
             submitBtn.disabled = false;
-            submitBtn.innerHTML = "Connexion";
+            submitBtn.textContent = "Connexion";
         }
 
         // Nettoyage sécurité

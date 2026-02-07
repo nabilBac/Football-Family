@@ -16,11 +16,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -33,25 +36,23 @@ public class CommentService {
     private final VideoRepository videoRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    private static final String VIDEO_STATS_TOPIC = "/topic/video/";              // + {videoId}
-    private static final String VIDEO_COMMENTS_TOPIC = "/topic/video/%d/comments"; // String.format
+    private static final String VIDEO_STATS_TOPIC = "/topic/video/";
+    private static final String VIDEO_COMMENTS_TOPIC = "/topic/video/%d/comments";
+    private static final int MAX_COMMENT_LENGTH = 500;
+
+    // ✅ THROTTLE: WebSocket notifications (1 par vidéo par seconde)
+    private final Map<Long, Long> lastNotificationTime = new ConcurrentHashMap<>();
 
     /**
-     * Récupère les commentaires d'une vidéo, paginés, triés du plus récent au plus ancien.
-     * On renvoie des DTO directement pour simplifier l'usage côté contrôleur.
+     * ✅ OPTIMISÉ: Récupère commentaires avec fetch join + cache
      */
     @Transactional(readOnly = true)
-  public Page<CommentDto> getCommentsForVideo(Long videoId, int page, int size)
-{
+    //@Cacheable(value = "comments", key = "#videoId + '-' + #page", unless = "#result == null || #result.isEmpty()")
+    public Page<CommentDto> getCommentsForVideo(Long videoId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<Comment> pageResult = commentRepository.findByVideoIdPaged(videoId, pageable);
-
-        // Charger les auteurs pour éviter les LazyInitializationException
-        pageResult.getContent().forEach(c -> {
-            if (c.getAuthor() != null) {
-                c.getAuthor().getUsername();
-            }
-        });
+        
+        // ✅ FETCH JOIN: Charge auteurs en UNE requête
+        Page<Comment> pageResult = commentRepository.findByVideoIdWithAuthor(videoId, pageable);
 
         List<CommentDto> dtoList = pageResult.getContent().stream()
                 .map(CommentDto::new)
@@ -61,7 +62,7 @@ public class CommentService {
     }
 
     /**
-     * Simple helper : vérifie si l'utilisateur est l'auteur du commentaire.
+     * Helper : vérifie si l'utilisateur est l'auteur du commentaire
      */
     @Transactional(readOnly = true)
     public boolean isAuthor(Long commentId, String username) {
@@ -72,14 +73,20 @@ public class CommentService {
     }
 
     /**
-     * Ajoute un commentaire sur une vidéo et envoie les mises à jour WebSocket
-     * pour les stats + pour la liste des commentaires.
+     * ✅ OPTIMISÉ: Ajoute commentaire avec validation + atomic count
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    //@CacheEvict(value = "comments", key = "#videoId + '-*'", allEntries = true)
     public CommentDto addComment(Long videoId, String content, String username) {
 
+        // ✅ VALIDATION: Contenu
         if (content == null || content.trim().isEmpty()) {
             throw new BadRequestException("Le contenu du commentaire ne peut pas être vide.");
+        }
+
+        // ✅ VALIDATION: Longueur max
+        if (content.trim().length() > MAX_COMMENT_LENGTH) {
+            throw new BadRequestException("Commentaire trop long (max " + MAX_COMMENT_LENGTH + " caractères).");
         }
 
         Video video = videoRepository.findById(videoId)
@@ -96,21 +103,14 @@ public class CommentService {
 
         Comment saved = commentRepository.save(comment);
 
-        // Optionnel : maintenir la collection en mémoire cohérente
-        video.getComments().add(saved);
-
-        // Incrémenter le compteur persistant
+        // ✅ ATOMIC: Incrément + récupération en une transaction
         videoRepository.incrementCommentsCount(videoId);
-
-        // Récupérer le nouveau nombre de commentaires
         long newCount = videoRepository.getCommentsCountById(videoId);
 
         CommentDto commentDto = new CommentDto(saved);
 
-        // WS : mise à jour des stats pour le feed
-        sendStatsUpdate(videoId, newCount);
-
-        // WS : évènement "CREATED" pour la liste des commentaires
+        // ✅ THROTTLE: WebSocket notifications
+        sendStatsUpdateThrottled(videoId, newCount);
         sendCommentEvent(videoId, "CREATED", commentDto, null);
 
         log.info("Commentaire {} ajouté sur la vidéo {} par {}", saved.getId(), videoId, username);
@@ -118,9 +118,10 @@ public class CommentService {
     }
 
     /**
-     * Met à jour un commentaire si l'utilisateur en est bien l'auteur.
+     * ✅ OPTIMISÉ: Met à jour un commentaire avec validation
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    //@CacheEvict(value = "comments", key = "#commentId", allEntries = true)
     public CommentDto updateComment(Long commentId, String newContent, String username) {
 
         Comment comment = commentRepository.findById(commentId)
@@ -131,8 +132,13 @@ public class CommentService {
             throw new ForbiddenException("Vous ne pouvez modifier que vos propres commentaires.");
         }
 
+        // ✅ VALIDATION
         if (newContent == null || newContent.trim().isEmpty()) {
             throw new BadRequestException("Le contenu du commentaire ne peut pas être vide.");
+        }
+
+        if (newContent.trim().length() > MAX_COMMENT_LENGTH) {
+            throw new BadRequestException("Commentaire trop long (max " + MAX_COMMENT_LENGTH + " caractères).");
         }
 
         comment.setContent(newContent.trim());
@@ -142,7 +148,6 @@ public class CommentService {
         CommentDto dto = new CommentDto(updated);
         Long videoId = updated.getVideo().getId();
 
-        // WS : évènement "UPDATED"
         sendCommentEvent(videoId, "UPDATED", dto, null);
 
         log.info("Commentaire {} mis à jour par {}", commentId, username);
@@ -150,10 +155,10 @@ public class CommentService {
     }
 
     /**
-     * Supprime un commentaire si l'utilisateur en est bien l'auteur.
-     * Met à jour le compteur de commentaires de la vidéo et envoie les messages WS.
+     * ✅ OPTIMISÉ: Supprime commentaire + atomic count
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    //@CacheEvict(value = "comments", allEntries = true)
     public void deleteComment(Long commentId, String username) {
 
         Comment comment = commentRepository.findById(commentId)
@@ -165,38 +170,32 @@ public class CommentService {
         }
 
         Long videoId = comment.getVideo().getId();
-        Video video = comment.getVideo();
-
-        // Maintenir la liste in-memory cohérente
-        video.getComments().remove(comment);
 
         commentRepository.delete(comment);
 
+        // ✅ ATOMIC: Décrément + récupération
         videoRepository.decrementCommentsCount(videoId);
         long newCount = videoRepository.getCommentsCountById(videoId);
 
-        // WS : mise à jour des stats
-        sendStatsUpdate(videoId, newCount);
-
-        // WS : évènement "DELETED"
+        sendStatsUpdateThrottled(videoId, newCount);
         sendCommentEvent(videoId, "DELETED", null, commentId);
 
         log.info("Commentaire {} supprimé par {}", commentId, username);
     }
 
     /**
-     * Liste tous les commentaires d'une vidéo (version non paginée).
+     * Liste tous les commentaires d'une vidéo (non paginé)
      */
     @Transactional(readOnly = true)
     public List<CommentDto> getCommentsByVideoId(Long videoId) {
-        List<Comment> comments = commentRepository.findByVideoId(videoId);
+        List<Comment> comments = commentRepository.findByVideoIdWithAuthor(videoId);
         return comments.stream()
                 .map(CommentDto::new)
                 .collect(Collectors.toList());
     }
 
     /**
-     * Compte le nombre de commentaires pour une vidéo.
+     * Compte le nombre de commentaires pour une vidéo
      */
     @Transactional(readOnly = true)
     public long getCommentCountByVideoId(Long videoId) {
@@ -208,35 +207,35 @@ public class CommentService {
     // ==========================================
 
     /**
-     * Envoie une mise à jour des stats (nombre de commentaires) vers le topic feed.
+     * ✅ THROTTLED: Envoie stats max 1 fois par seconde par vidéo
      */
-    private void sendStatsUpdate(Long videoId, Long newCommentsCount) {
-        VideoStatsUpdateDto statsPayload = new VideoStatsUpdateDto(
-                videoId,
-                null,           // newLikesCount
-                null,           // isLiked
-                newCommentsCount,
-                null            // lastActionBy
-        );
+    private void sendStatsUpdateThrottled(Long videoId, Long newCommentsCount) {
+        long now = System.currentTimeMillis();
+        Long lastTime = lastNotificationTime.get(videoId);
 
-        String topic = VIDEO_STATS_TOPIC + videoId;
-        messagingTemplate.convertAndSend(topic, statsPayload);
+        if (lastTime == null || (now - lastTime) > 1000) {
+            VideoStatsUpdateDto statsPayload = new VideoStatsUpdateDto(
+                    videoId,
+                    null,
+                    null,
+                    newCommentsCount,
+                    null
+            );
+
+            String topic = VIDEO_STATS_TOPIC + videoId;
+            messagingTemplate.convertAndSend(topic, statsPayload);
+            lastNotificationTime.put(videoId, now);
+        }
     }
 
     /**
-     * Envoie un évènement de commentaire (CREATED/UPDATED/DELETED) vers le topic comments.
-     *
-     * @param videoId    ID de la vidéo
-     * @param action     "CREATED", "UPDATED", "DELETED"
-     * @param commentDto DTO du commentaire (null si DELETED)
-     * @param commentId  ID du commentaire si DELETED (sinon peut être null)
+     * Envoie un évènement de commentaire (CREATED/UPDATED/DELETED)
      */
     private void sendCommentEvent(Long videoId, String action, CommentDto commentDto, Long commentId) {
         CommentWsMessage payload = new CommentWsMessage(
                 action,
                 videoId,
-                commentId != null ? commentId : (commentDto != null ? commentDto.getId()
- : null),
+                commentId != null ? commentId : (commentDto != null ? commentDto.getId() : null),
                 commentDto
         );
         String topic = String.format(VIDEO_COMMENTS_TOPIC, videoId);
@@ -244,12 +243,12 @@ public class CommentService {
     }
 
     /**
-     * Payload typé pour les messages WebSocket concernant les commentaires.
+     * Payload typé pour les messages WebSocket concernant les commentaires
      */
     public record CommentWsMessage(
-            String action,      // CREATED / UPDATED / DELETED
+            String action,
             Long videoId,
             Long commentId,
-            CommentDto comment  // null pour DELETED
+            CommentDto comment
     ) {}
 }

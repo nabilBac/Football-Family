@@ -39,33 +39,26 @@ public class EventOrganizerApiController {
     // ============================================================
     // 🟦 AJOUT D'ÉQUIPE À L'ÉVÉNEMENT
     // ============================================================
-   @Operation(summary = "Ajouter une équipe à un événement")
+@Operation(summary = "Ajouter une équipe à un événement")
 @PostMapping("/{eventId}/add-team")
+public ResponseEntity<ApiResponse<EventDTO>> addTeam(
+        @PathVariable Long eventId,
+        @RequestParam Long teamId,
+        Principal principal) {
 
-    public ResponseEntity<ApiResponse<EventDTO>> addTeam(
-            @PathVariable Long eventId,
-            @RequestParam Long teamId,
-            Principal principal) {
+    User currentUser = getCurrentUser(principal);
+    Event event = eventService.getEventById(eventId);
 
-        User currentUser = getCurrentUser(principal);
-
-        Event event = eventService.getEventById(eventId);
-
-        if (!eventService.canManageEvent(event, currentUser)) {
-            throw new ForbiddenException("Vous ne pouvez pas modifier cet événement");
-        }
-
-
-
-     
-
-EventDTO dto = EventDTO.from(event, currentUser.getId());
-
-return ResponseEntity.ok(
-    new ApiResponse<>(true, "Équipe inscrite", dto)
-);
-
+    if (!eventService.canManageEvent(event, currentUser)) {
+        throw new ForbiddenException("Vous ne pouvez pas modifier cet événement");
     }
+
+    eventService.addTeamToEvent(eventId, teamId);
+    event = eventService.getEventById(eventId);
+    
+    EventDTO dto = EventDTO.from(event, currentUser.getId());
+    return ResponseEntity.ok(new ApiResponse<>(true, "Équipe inscrite", dto));
+}
 
     // ============================================================
     // 🟦 LISTE DES INSCRIPTIONS

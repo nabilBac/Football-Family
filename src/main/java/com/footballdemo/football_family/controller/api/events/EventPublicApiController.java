@@ -2,21 +2,33 @@ package com.footballdemo.football_family.controller.api.events;
 
 import com.footballdemo.football_family.dto.ApiResponse;
 import com.footballdemo.football_family.dto.EventDTO;
+import com.footballdemo.football_family.dto.MatchDTO;
+import com.footballdemo.football_family.dto.TeamResponseDTO;
+import com.footballdemo.football_family.mapper.TeamMapper;
 import com.footballdemo.football_family.model.Event;
+import com.footballdemo.football_family.model.EventStatus;
 import com.footballdemo.football_family.model.EventVisibility;
 import com.footballdemo.football_family.model.RegistrationType;
+import com.footballdemo.football_family.model.Team;
 import com.footballdemo.football_family.service.EventService;
+import com.footballdemo.football_family.service.MatchService;
 import com.footballdemo.football_family.service.UserService;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
 import java.security.Principal;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import com.footballdemo.football_family.repository.EventRepository;
+import com.footballdemo.football_family.model.EventType;
+
 
 @Tag(name = "Events - Public", description = "Endpoints publics pour explorer les événements")
 @RestController
@@ -24,8 +36,11 @@ import java.security.Principal;
 @RequiredArgsConstructor
 public class EventPublicApiController {
 
-    private final EventService eventService;
-    private final UserService userService;
+private final EventService eventService;
+private final UserService userService;
+private final MatchService matchService;
+private final EventRepository eventRepository;  // 🔥 AJOUTE CETTE LIGNE
+
 
     // 🆕 CLASSE INTERNE POUR LES STATS CLUB
     @lombok.Data
@@ -103,6 +118,43 @@ public class EventPublicApiController {
                 )
         );
     }
+
+
+    // ============================================================
+// 🟦 MATCHS D'UN ÉVÉNEMENT (PUBLIC)
+// ============================================================
+@Operation(summary = "Obtenir tous les matchs d'un événement public")
+@GetMapping("/{eventId}/matches")
+public ApiResponse<List<MatchDTO>> getPublicEventMatches(
+        @PathVariable Long eventId
+) {
+    List<MatchDTO> matches = matchService.getPublicMatchesForEvent(eventId);
+
+
+    return new ApiResponse<>(true, "Matchs de l'événement", matches);
+}
+
+
+// ============================================================
+// 🟦 ÉQUIPES D'UN ÉVÉNEMENT (PUBLIC)
+// ============================================================
+@Operation(summary = "Obtenir les équipes inscrites à un événement public")
+@GetMapping("/{eventId}/teams")
+public ApiResponse<List<TeamResponseDTO>> getPublicEventTeams(@PathVariable Long eventId) {
+    Event event = eventService.getEventById(eventId);
+    
+    if (event.getVisibility() != EventVisibility.PUBLIC) {
+        return new ApiResponse<>(false, "Événement privé", null);
+    }
+    
+    List<Team> teams = eventService.getTeamsByEventId(eventId);
+    List<TeamResponseDTO> dtos = teams.stream()
+            .map(TeamMapper::toDTO)
+            .collect(Collectors.toList());
+    
+    return new ApiResponse<>(true, "Équipes récupérées", dtos);
+}
+
 
     // ============================================================
     // 🟦 EVENTS VISIBLES (OPEN + CLUB si membre club)
@@ -195,4 +247,53 @@ public class EventPublicApiController {
 
         return new ClubStats(accepted, pending);
     }
+
+
+
+                    /**
+ * Récupérer les events COMPLETED (historique public)
+ */
+@GetMapping("/completed")
+public ResponseEntity<ApiResponse<Page<Event>>> getCompletedEvents(
+        @RequestParam(required = false) String type,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size) {
+    
+    Pageable pageable = PageRequest.of(page, size, Sort.by("date").descending());
+    
+    Page<Event> events;
+    
+    if (type != null && !type.equals("all")) {
+        events = eventRepository.findByStatusAndTypeAndDeletedFalse(
+            EventStatus.COMPLETED,
+            EventType.valueOf(type),
+            pageable
+        );
+    } else {
+        events = eventRepository.findByStatusAndDeletedFalse(
+            EventStatus.COMPLETED,
+            pageable
+        );
+    }
+    
+    return ResponseEntity.ok(
+        new ApiResponse<>(true, "Events terminés récupérés", events)
+    );
+}
+
+@GetMapping("/active")
+public ResponseEntity<ApiResponse<Page<Event>>> getActiveEvents(
+        @RequestParam(required = false) String type,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size) {
+    
+    Pageable pageable = PageRequest.of(page, size);
+    
+    Page<Event> events = eventRepository.findByStatusInAndDeletedFalse(
+        List.of(EventStatus.PUBLISHED, EventStatus.ONGOING),
+        pageable
+    );
+    
+    return ResponseEntity.ok(new ApiResponse<>(true, "Events actifs récupérés", events));
+}
 }

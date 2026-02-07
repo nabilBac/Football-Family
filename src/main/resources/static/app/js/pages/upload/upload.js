@@ -1,4 +1,5 @@
 import { Auth } from "../../auth.js";
+import { FeedService } from "../../services/feed.service.js";
 
 export const UploadPage = {
     render() {
@@ -58,7 +59,7 @@ export const UploadPage = {
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
 
-            loader.style.display = "block";   // 🔥 Afficher loader
+            loader.style.display = "block";
 
             const formData = new FormData(form);
             const res = await Auth.secureFetch("/api/videos/upload", {
@@ -66,7 +67,7 @@ export const UploadPage = {
                 body: formData
             });
 
-            loader.style.display = "none";   // ❌ Cacher loader
+            loader.style.display = "none";
 
             if (!res.ok) {
                 toast.textContent = "❌ Erreur upload";
@@ -75,14 +76,43 @@ export const UploadPage = {
                 return;
             }
 
-            form.reset(); // 🔄 Reset des champs
-            toast.textContent = "Vidéo uploadée 🎉";
+            // ✅ 1. INVALIDER LE CACHE FEEDSERVICE
+            console.log("🧹 Invalidation FeedService...");
+            FeedService.invalidateCache();
+
+            // ✅ 2. INVALIDER TOUS LES CACHES SERVICE WORKER
+            console.log("🧹 Invalidation Service Worker...");
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    cacheNames.forEach(cacheName => {
+                        caches.delete(cacheName);
+                        console.log(`🗑️ Cache supprimé: ${cacheName}`);
+                    });
+                });
+            }
+
+            // ✅ 3. FORCER LE SERVICE WORKER À SE RÉACTIVER
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    action: 'cleanOldCaches'
+                });
+            }
+
+            form.reset();
+            
+            toast.textContent = "✅ Vidéo uploadée ! Redirection vers ton profil...";
+            toast.style.background = "#10B981";
             showToast();
+
+            // ✅ 4. REDIRECTION VERS PROFIL AVEC TIMESTAMP (force refresh)
+            setTimeout(() => {
+                window.location.href = '/profile?refresh=' + Date.now();
+            }, 1500);
         });
 
         function showToast() {
             toast.classList.add("show");
-            setTimeout(() => toast.classList.remove("show"), 2000);
+            setTimeout(() => toast.classList.remove("show"), 3000);
         }
     }
 };

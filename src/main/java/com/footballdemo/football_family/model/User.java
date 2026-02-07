@@ -70,13 +70,15 @@ public class User {
         return roles.contains(role);
     }
 
-    public String getHighestRole() {
-        if (roles.contains(UserRole.SUPER_ADMIN)) return "SUPER_ADMIN";
-        if (roles.contains(UserRole.CLUB_ADMIN)) return "CLUB_ADMIN";
-        if (roles.contains(UserRole.COACH)) return "COACH";
-        if (roles.contains(UserRole.PLAYER)) return "PLAYER";
-        return "USER";
-    }
+  public String getHighestRole() {
+    if (roles.contains(UserRole.SUPER_ADMIN)) return "SUPER_ADMIN";
+    if (roles.contains(UserRole.CLUB_ADMIN)) return "CLUB_ADMIN";
+    if (roles.contains(UserRole.ORGANIZER)) return "ORGANIZER";
+    if (roles.contains(UserRole.COACH)) return "COACH";
+    if (roles.contains(UserRole.PLAYER)) return "PLAYER";
+    return "USER";
+}
+
 
     // ==========================================================
     // VERIFICATION UTF
@@ -129,16 +131,21 @@ public class User {
                 .map(r -> new SimpleGrantedAuthority("ROLE_" + r.name()))
                 .toList();
     }
-    public boolean isSuperAdmin() { 
-    return roles.contains(UserRole.SUPER_ADMIN); 
+  public boolean isSuperAdmin() {
+    return roles.contains(UserRole.SUPER_ADMIN);
 }
 
-public boolean isClubAdmin() { 
-    return roles.contains(UserRole.CLUB_ADMIN); 
+public boolean isClubAdmin() {
+    return roles.contains(UserRole.CLUB_ADMIN);
 }
 
-public boolean isCoach() { 
-    return roles.contains(UserRole.COACH); 
+public boolean isOrganizer() {
+    return roles.contains(UserRole.ORGANIZER);
 }
+
+public boolean isCoach() {
+    return roles.contains(UserRole.COACH);
+}
+
 
 }

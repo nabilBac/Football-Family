@@ -1,6 +1,7 @@
 package com.footballdemo.football_family.service;
 
 import com.footballdemo.football_family.dto.RegisterRequest;
+import com.footballdemo.football_family.dto.UserDTO;
 import com.footballdemo.football_family.exception.BadRequestException;
 import com.footballdemo.football_family.exception.UserNotFoundException;
 import com.footballdemo.football_family.model.Club;
@@ -23,8 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 
-
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -34,28 +36,27 @@ public class UserService {
     private final FollowRepository followRepository;
     private final PasswordEncoder passwordEncoder;
     private final ClubRepository clubRepository;
-private final ClubUserRepository clubUserRepository;
+    private final ClubUserRepository clubUserRepository;
+    private final UserMapper userMapper; // ✅ AJOUTÉ
 
+    @Value("${app.mode-dev:true}")
+    private boolean modeDev;
 
-@Value("${app.mode-dev:true}")
-private boolean modeDev;
-
-
-
-  public UserService(
-        UserRepository userRepository,
-        FollowRepository followRepository,
-        PasswordEncoder passwordEncoder,
-        ClubRepository clubRepository,
-        ClubUserRepository clubUserRepository
-) {
-    this.userRepository = userRepository;
-    this.followRepository = followRepository;
-    this.passwordEncoder = passwordEncoder;
-    this.clubRepository = clubRepository;
-    this.clubUserRepository = clubUserRepository;
-}
-
+    // ✅ CONSTRUCTEUR CORRIGÉ - Ajoute userMapper
+    public UserService(
+            UserRepository userRepository,
+            FollowRepository followRepository,
+            PasswordEncoder passwordEncoder,
+            ClubRepository clubRepository,
+            ClubUserRepository clubUserRepository,
+            UserMapper userMapper) { // ✅ AJOUTÉ
+        this.userRepository = userRepository;
+        this.followRepository = followRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.clubRepository = clubRepository;
+        this.clubUserRepository = clubUserRepository;
+        this.userMapper = userMapper; // ✅ AJOUTÉ
+    }
 
     // =======================================================
     // 🔐 1. UTILISATEUR COURANT
@@ -78,20 +79,17 @@ private boolean modeDev;
     // 🔍 2. RÉCUPÉRATION / CACHE
     // =======================================================
 
-    // ❗ CORRECTION IMPORTANTE :
-    // On NE cache PAS un Optional -> on stocke un User ou null
-  public User findUserByUsernameCached(String username) {
-    return userRepository.findByUsername(username).orElse(null);
-}
+    public User findUserByUsernameCached(String username) {
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     public Optional<User> getUserByUsername(String username) {
         return Optional.ofNullable(findUserByUsernameCached(username));
     }
 
     public User getUserByIdCached(Long id) {
-    return userRepository.findById(id).orElse(null);
-}
-
+        return userRepository.findById(id).orElse(null);
+    }
 
     public Optional<User> getUserById(Long id) {
         return Optional.ofNullable(getUserByIdCached(id));
@@ -165,102 +163,98 @@ private boolean modeDev;
     // 🆕 5. INSCRIPTION
     // =======================================================
 
-@Transactional
-public User registerUser(RegisterRequest req) {
+    @Transactional
+    public User registerUser(RegisterRequest req) {
 
-    // --- VALIDATIONS ---
-    if (req.getUsername() == null || req.getUsername().isBlank()) {
-        throw new BadRequestException("Le nom d'utilisateur est obligatoire.");
-    }
-    if (req.getEmail() == null || req.getEmail().isBlank()) {
-        throw new BadRequestException("L'email est obligatoire.");
-    }
-    if (req.getPassword() == null || req.getPassword().isBlank()) {
-        throw new BadRequestException("Le mot de passe est obligatoire.");
-    }
-    if (userRepository.existsByUsername(req.getUsername())) {
-        throw new BadRequestException("Ce nom d'utilisateur est déjà pris.");
-    }
-    if (userRepository.existsByEmail(req.getEmail())) {
-        throw new BadRequestException("Cet email est déjà utilisé.");
-    }
+        // --- VALIDATIONS ---
+        if (req.getUsername() == null || req.getUsername().isBlank()) {
+            throw new BadRequestException("Le nom d'utilisateur est obligatoire.");
+        }
+        if (req.getEmail() == null || req.getEmail().isBlank()) {
+            throw new BadRequestException("L'email est obligatoire.");
+        }
+        if (req.getPassword() == null || req.getPassword().isBlank()) {
+            throw new BadRequestException("Le mot de passe est obligatoire.");
+        }
+        if (userRepository.existsByUsername(req.getUsername())) {
+            throw new BadRequestException("Ce nom d'utilisateur est déjà pris.");
+        }
+        if (userRepository.existsByEmail(req.getEmail())) {
+            throw new BadRequestException("Cet email est déjà utilisé.");
+        }
 
-    // --- CRÉATION USER ---
-    User user = new User();
-    user.setUsername(req.getUsername().trim());
-    user.setEmail(req.getEmail().trim().toLowerCase());
-    user.setPassword(passwordEncoder.encode(req.getPassword()));
-    user.setSiret(req.getSiret());
-    user.setOrganizationName(req.getOrganizationName());
-    user.setVerified(false);
-    user.setVerifiedAt(null);
+        // --- CRÉATION USER ---
+        User user = new User();
+        user.setUsername(req.getUsername().trim());
+        user.setEmail(req.getEmail().trim().toLowerCase());
+        user.setPassword(passwordEncoder.encode(req.getPassword()));
+        user.setSiret(req.getSiret());
+        user.setOrganizationName(req.getOrganizationName());
+        user.setVerified(false);
+        user.setVerifiedAt(null);
 
-    user.getRoles().clear();
+        user.getRoles().clear();
 
-    // ==========================================================
-    // 🔥 LOGIQUE SELON typeInscription
-    // ==========================================================
-switch (req.getTypeInscription()) {
+        // ==========================================================
+        // 🔥 LOGIQUE SELON typeInscription
+        // ==========================================================
+        switch (req.getTypeInscription()) {
 
-    // 🏆 CLUB ADMIN
-    case CLUB_ADMIN -> {
+            // 🏆 CLUB ADMIN
+            case CLUB_ADMIN -> {
 
-        if (!modeDev) {
-            if (req.getSiret() == null || req.getSiret().isBlank()) {
-                throw new BadRequestException("Le SIRET est obligatoire pour un club en mode production.");
+                if (!modeDev) {
+                    if (req.getSiret() == null || req.getSiret().isBlank()) {
+                        throw new BadRequestException("Le SIRET est obligatoire pour un club en mode production.");
+                    }
+                }
+
+                user.addRole(UserRole.CLUB_ADMIN);
+
+                if (req.getOrganizationName() == null || req.getOrganizationName().isBlank()) {
+                    throw new BadRequestException("Le nom du club est obligatoire pour un compte club.");
+                }
+
+                user = userRepository.save(user);
+
+                Club club = new Club();
+                club.setName(req.getOrganizationName().trim());
+                club.setSiret(req.getSiret());
+                club.setType(ClubType.FOOTBALL);
+                club.setAdmin(user);
+                club = clubRepository.save(club);
+
+                ClubUser cu = new ClubUser();
+                cu.setUser(user);
+                cu.setClub(club);
+                cu.setRole(ClubRole.ADMIN);
+                clubUserRepository.save(cu);
+
+                user.getClubUsers().add(cu);
             }
+
+            // 🎮 PLAYER
+            case PLAYER -> user.addRole(UserRole.PLAYER);
+
+            // 🎓 COACH
+            case COACH -> user.addRole(UserRole.COACH);
+
+            // 🛠️ ORGANIZER
+          case ORGANIZER -> user.addRole(UserRole.USER); // demande organizer plus tard
+
+
+            // 🧑 STAFF
+            case STAFF -> user.addRole(UserRole.USER);
+
+            // 👤 USER normal
+            case USER -> user.addRole(UserRole.USER);
+
+            default -> throw new BadRequestException("Type d'inscription non supporté.");
         }
 
-        user.addRole(UserRole.CLUB_ADMIN);
-
-        if (req.getOrganizationName() == null || req.getOrganizationName().isBlank()) {
-            throw new BadRequestException("Le nom du club est obligatoire pour un compte club.");
-        }
-
-        user = userRepository.save(user);
-
-        Club club = new Club();
-        club.setName(req.getOrganizationName().trim());
-        club.setSiret(req.getSiret());
-        club.setType(ClubType.FOOTBALL);
-        club.setAdmin(user);
-        club = clubRepository.save(club);
-
-        ClubUser cu = new ClubUser();
-        cu.setUser(user);
-        cu.setClub(club);
-        cu.setRole(ClubRole.ADMIN);
-        clubUserRepository.save(cu);
-
-        user.getClubUsers().add(cu);
+        // Sauvegarde finale
+        return userRepository.save(user);
     }
-
-    // 🎮 PLAYER
-    case PLAYER -> user.addRole(UserRole.PLAYER);
-
-    // 🎓 COACH
-    case COACH -> user.addRole(UserRole.COACH);
-
-    // 🛠️ ORGANIZER
-    case ORGANIZER -> user.addRole(UserRole.SUPER_ADMIN);
-
-    // 🧑 STAFF
-    case STAFF -> user.addRole(UserRole.USER);
-
-    // 👤 USER normal
-    case USER -> user.addRole(UserRole.USER);
-
-    default -> throw new BadRequestException("Type d'inscription non supporté.");
-}
-
-
-
-
-    // Sauvegarde finale
-    return userRepository.save(user);
-}
-
-
 
     // =======================================================
     // 🔎 6. VÉRIFICATION & UTILITAIRES
@@ -272,22 +266,59 @@ switch (req.getTypeInscription()) {
         userRepository.save(user);
     }
 
-   @Transactional(readOnly = true)
-public User findByUsername(String username) {
-    return userRepository.findByUsernameWithClubs(username)
-            .orElseThrow(() -> new UserNotFoundException("username", username));
-}
+    @Transactional(readOnly = true)
+    public User findByUsername(String username) {
+        return userRepository.findByUsernameWithClubs(username)
+                .orElseThrow(() -> new UserNotFoundException("username", username));
+    }
 
-@Transactional(readOnly = true)
-public User findUserForAuth(String username) {
-    return userRepository.findByUsernameWithClubs(username)
-            .orElseThrow(() -> new UserNotFoundException("username", username));
-}
-
-
+    @Transactional(readOnly = true)
+    public User findUserForAuth(String username) {
+        return userRepository.findByUsernameWithClubs(username)
+                .orElseThrow(() -> new UserNotFoundException("username", username));
+    }
 
     public User getByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("email", email));
+    }
+
+    // =======================================================
+    // ✅ 7. NOUVELLES MÉTHODES OPTIMISÉES
+    // =======================================================
+
+    /**
+     * ✅ BATCH: Récupère stats en UNE requête
+     */
+    public Map<String, Long> getUserStats(Long userId) {
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("followersCount", followRepository.countFollowers(userId));
+        stats.put("followingCount", followRepository.countFollowing(userId));
+        return stats;
+    }
+
+    /**
+     * ✅ Check si user suit target (par ID)
+     */
+    public boolean isFollowing(Long followerId, Long followingId) {
+        return followRepository.existsByFollowerIdAndFollowingId(followerId, followingId);
+    }
+
+    /**
+     * ✅ Followers paginés
+     */
+   // @Cacheable(value = "followers", key = "#userId + '-' + #pageable.pageNumber")
+    public Page<UserDTO> getFollowersPaginated(Long userId, Pageable pageable) {
+        Page<User> followers = followRepository.findFollowersByUserId(userId, pageable);
+        return followers.map(userMapper::toDTO);
+    }
+
+    /**
+     * ✅ Following paginés
+     */
+   // @Cacheable(value = "following", key = "#userId + '-' + #pageable.pageNumber")
+    public Page<UserDTO> getFollowingPaginated(Long userId, Pageable pageable) {
+        Page<User> following = followRepository.findFollowingByUserId(userId, pageable);
+        return following.map(userMapper::toDTO);
     }
 }

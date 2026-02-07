@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -22,24 +23,31 @@ public class VideoReactionController {
 
     // ✅ POST /api/videos/{videoId}/reactions
     // Body: { "emoji": "❤️" }
-    @PostMapping("/{videoId}/reactions")
-    public ResponseEntity<ApiResponse<VideoReactionsResponse>> addReaction(
-            @PathVariable Long videoId,
-            @RequestBody Map<String, String> payload,
-            @RequestHeader("Authorization") String authHeader
-    ) {
-        Long userId = jwtService.extractUserId(authHeader.replace("Bearer ", ""));
-        String emoji = payload.get("emoji");
+   @PostMapping("/{videoId}/reactions")
+public ResponseEntity<ApiResponse<VideoReactionsResponse>> addReaction(
+        @PathVariable Long videoId,
+        @RequestBody Map<String, String> payload,
+        @RequestHeader("Authorization") String authHeader
+) {
+    Long userId = jwtService.extractUserId(authHeader.replace("Bearer ", ""));
+    String emoji = payload.get("emoji");
 
-        if (emoji == null || emoji.trim().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(new ApiResponse<>(false, "Emoji manquant", null));
-        }
-
-        VideoReactionsResponse response = reactionService.addOrUpdateReaction(videoId, userId, emoji);
-
-        return ResponseEntity.ok(new ApiResponse<>(true, "Réaction enregistrée", response));
+    // ✅ AMÉLIORER LA VALIDATION
+    if (emoji == null || emoji.trim().isEmpty()) {
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(false, "Emoji manquant", null));
     }
+    
+    // ✅ AJOUTER: Limiter à certains emojis
+    List<String> allowedEmojis = List.of("❤️", "⚽", "🔥", "👏", "😂", "😍");
+    if (!allowedEmojis.contains(emoji)) {
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(false, "Emoji non supporté", null));
+    }
+
+    VideoReactionsResponse response = reactionService.addOrUpdateReaction(videoId, userId, emoji);
+    return ResponseEntity.ok(new ApiResponse<>(true, "Réaction enregistrée", response));
+}
 
     // ✅ GET /api/videos/{videoId}/reactions
     @GetMapping("/{videoId}/reactions")

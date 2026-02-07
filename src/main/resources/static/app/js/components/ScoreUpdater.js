@@ -14,7 +14,7 @@ export class ScoreUpdater {
         const homeScore = match.homeScore ?? 0;
         const awayScore = match.awayScore ?? 0;
         const status = match.status || "PENDING";
-        const isFinished = status === "FINISHED" || status === "COMPLETED";
+        const isFinished = status === "COMPLETED";
 
         return `
             <div class="score-updater" data-match-id="${matchId}">

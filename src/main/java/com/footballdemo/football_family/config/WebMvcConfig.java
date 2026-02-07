@@ -21,36 +21,37 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private String uploadsDir;
 
     @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+public void addResourceHandlers(ResourceHandlerRegistry registry) {
 
-        // 🟩 RESSOURCES STATIQUES
-        registry.addResourceHandler("/css/**")
-                .addResourceLocations("classpath:/static/css/");
-        
-        registry.addResourceHandler("/js/**")
-                .addResourceLocations("classpath:/static/js/");
-        
-        registry.addResourceHandler("/app/**")
-                .addResourceLocations("classpath:/static/app/");
-        
-        registry.addResourceHandler("/assets/**")
-                .addResourceLocations("classpath:/static/assets/");
+    // 🟩 RESSOURCES STATIQUES
+    registry.addResourceHandler("/css/**")
+            .addResourceLocations("classpath:/static/css/");
+    
+    registry.addResourceHandler("/js/**")
+            .addResourceLocations("classpath:/static/js/");
+    
+    registry.addResourceHandler("/app/**")
+            .addResourceLocations("classpath:/static/app/");
+    
+    registry.addResourceHandler("/assets/**")
+            .addResourceLocations("classpath:/static/assets/");
 
-        // 🟩 VIDEOS / UPLOADS
-        registry.addResourceHandler("/videos/**")
-                .addResourceLocations("file:" + Paths.get(videosDir).toAbsolutePath() + "/");
+    // ❌ ENLÈVE ÇA (ou commente)
+    // registry.addResourceHandler("/videos/**")
+    //         .addResourceLocations("file:" + Paths.get(videosDir).toAbsolutePath() + "/");
 
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + Paths.get(uploadsDir).toAbsolutePath() + "/");
+    // ✅ GARDE JUSTE LES UPLOADS (images, etc.)
+    registry.addResourceHandler("/uploads/**")
+            .addResourceLocations("file:" + Paths.get(uploadsDir).toAbsolutePath() + "/");
 
-        // 🟩 SERVICE WORKER / MANIFEST
-        registry.addResourceHandler("/service-worker.js")
-                .addResourceLocations("classpath:/static/")
-                .setCachePeriod(0);
+    // 🟩 SERVICE WORKER / MANIFEST
+    registry.addResourceHandler("/service-worker.js")
+            .addResourceLocations("classpath:/static/")
+            .setCachePeriod(0);
 
-        registry.addResourceHandler("/manifest.json")
-                .addResourceLocations("classpath:/static/");
-    }
+    registry.addResourceHandler("/manifest.json")
+            .addResourceLocations("classpath:/static/");
+}
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {

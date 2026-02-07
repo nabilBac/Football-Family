@@ -1,6 +1,8 @@
 package com.footballdemo.football_family.service;
 
 import com.footballdemo.football_family.dto.CreateEventDTO;
+import com.footballdemo.football_family.dto.CreateSingleMatchDTO;
+import com.footballdemo.football_family.dto.EventDTO;
 import com.footballdemo.football_family.dto.GroupRankingDTO;
 import com.footballdemo.football_family.dto.RegisterToEventDTO;
 import com.footballdemo.football_family.exception.BadRequestException;
@@ -12,6 +14,7 @@ import com.footballdemo.football_family.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +26,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Collections;
 import java.util.HashMap;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,13 +53,6 @@ public class EventService {
     private final EventRepository eventRepository;
     private final TournamentRulesService tournamentRulesService;
 
-
-    
-
-
-    // ═══════════════════════════════════════════════════════════
-    // CRÉATION / MISE À JOUR D’ÉVÉNEMENTS
-    // ═══════════════════════════════════════════════════════════
 
     /**
      * Crée un événement UTF (OPEN_EVENT ou CLUB_EVENT).
@@ -115,9 +112,29 @@ if (registrationType != RegistrationType.INDIVIDUAL &&
                 .visibility(visibility)
                 .maxParticipants(dto.getMaxParticipants())
                 .maxTeamsPerClub(dto.getMaxTeamsPerClub())
+                .registrationFeeCents(dto.getRegistrationFeeCents() != null ? Math.max(dto.getRegistrationFeeCents(), 0) : 0)
+
                 .organizer(organizer)
-                .status(EventStatus.UPCOMING)
-                .teamsFormed(false);
+               .status(EventStatus.PUBLISHED)
+                .teamsFormed(false)
+
+                .deleted(false)
+                .registrationClosed(false)
+
+
+                .category(dto.getCategory())
+.level(dto.getLevel())
+.numFields(dto.getNumFields())
+.surface(dto.getSurface())
+.hasParking(dto.getHasParking())
+.hasVestiaires(dto.getHasVestiaires())
+.hasDouches(dto.getHasDouches())
+.hasBuvette(dto.getHasBuvette())
+.hasWifi(dto.getHasWifi())
+.hasFirstAid(dto.getHasFirstAid())
+.rules(dto.getRules())
+.contactEmail(dto.getContactEmail())
+.contactPhone(dto.getContactPhone());
 
         // ╔═══════════════════════════════════════════════╗
         // ║      CAS SPÉCIFIQUE : CLUB_EVENT              ║
@@ -157,6 +174,154 @@ if (type == EventType.CLUB_EVENT) {
         return saved;
     }
 
+
+    /**
+ * 🆕 Crée un événement de type MATCH UNIQUE (médiatisation)
+ * - Format = SINGLE_MATCH
+ * - Crée automatiquement 1 match
+ * - Gère les équipes externes
+ */
+public Event createSingleMatchEvent(CreateSingleMatchDTO dto, User organizer) {
+   log.info("Création match unique: {} par {} - CompetitionLevel={}, FieldType={}", 
+    dto.getName(), 
+    organizer.getUsername(),
+    dto.getCompetitionLevel(),  // 🆕
+    dto.getFieldType()          // 🆕
+);
+
+    // ═════════════════════════════════════════
+    // 1️⃣ VALIDATIONS
+    // ═════════════════════════════════════════
+
+    if (dto.getDate() == null) {
+        throw new BadRequestException("La date du match est obligatoire");
+    }
+    if (dto.getName() == null || dto.getName().isBlank()) {
+        throw new BadRequestException("Le nom du match est obligatoire");
+    }
+    if (dto.getHomeTeamId() == null) {
+        throw new BadRequestException("L'équipe locale est obligatoire");
+    }
+
+    // Validation équipe adverse
+    if (dto.getAwayTeamId() == null) {
+        // Si pas d'ID → équipe externe obligatoire
+        if (dto.getAwayTeamName() == null || dto.getAwayTeamName().isBlank()) {
+            throw new BadRequestException("Le nom de l'équipe adverse est obligatoire");
+        }
+        if (dto.getAwayTeamCity() == null || dto.getAwayTeamCity().isBlank()) {
+            throw new BadRequestException("La ville de l'équipe adverse est obligatoire");
+        }
+    }
+
+    EventType type = dto.getType() != null ? dto.getType() : EventType.CLUB_EVENT;
+    EventVisibility visibility = dto.getVisibility() != null 
+            ? dto.getVisibility() 
+            : EventVisibility.PUBLIC;
+
+    // Validation des droits
+    if (!canCreateEvent(type, organizer, dto.getClubId())) {
+        throw new ForbiddenException("Vous n'avez pas les droits pour créer ce match");
+    }
+
+    // ═════════════════════════════════════════
+    // 2️⃣ CRÉER L'EVENT
+    // ═════════════════════════════════════════
+
+    Event.EventBuilder builder = Event.builder()
+            .name(dto.getName())
+            .description(dto.getDescription())
+            .imageUrl(dto.getImageUrl())
+            .type(type)
+            .registrationType(RegistrationType.CLUB_ONLY)  // Pas d'inscriptions
+            .format(EventFormat.SINGLE_MATCH)  // 🆕 FORMAT MATCH UNIQUE
+            .tournamentPhase(TournamentPhase.REGISTRATION)  // Phase par défaut
+            .date(dto.getDate())
+            .startTime(dto.getStartTime())
+            .endTime(dto.getEndTime() != null ? dto.getEndTime() : dto.getStartTime().plusHours(2))
+            .location(dto.getLocation())
+            .address(dto.getAddress())
+            .city(dto.getCity())
+            .zipCode(dto.getZipCode())
+            .visibility(visibility)
+            .organizer(organizer)
+            .status(EventStatus.PUBLISHED)
+            .registrationClosed(true)  // Pas d'inscriptions pour un match unique
+            .teamsFormed(true)
+            .maxTeamsPerClub(1)              // 🆕 AJOUTE
+.maxParticipants(2)              // 🆕 AJOUTE (PAS capacity!)
+.acceptedParticipants(2);
+            
+
+    // Association club si CLUB_EVENT
+    if (type == EventType.CLUB_EVENT) {
+        if (dto.getClubId() == null) {
+            throw new BadRequestException("Un CLUB_EVENT doit être lié à un club");
+        }
+        Club club = clubRepo.findById(dto.getClubId())
+                .orElseThrow(() -> new ResourceNotFoundException("Club", dto.getClubId()));
+        builder.club(club);
+    }
+
+    Event event = builder.build();
+    Event savedEvent = eventRepo.save(event);
+
+    log.info("✅ Event match unique créé - id={}", savedEvent.getId());
+
+    // ═════════════════════════════════════════
+    // 3️⃣ RÉCUPÉRER/CRÉER LES ÉQUIPES
+    // ═════════════════════════════════════════
+
+    // Équipe locale (existe forcément dans la base)
+    Team homeTeam = teamRepo.findById(dto.getHomeTeamId())
+            .orElseThrow(() -> new ResourceNotFoundException("Équipe locale", dto.getHomeTeamId()));
+
+    Team awayTeam;
+
+    if (dto.getAwayTeamId() != null) {
+        // Équipe adverse dans la base
+        awayTeam = teamRepo.findById(dto.getAwayTeamId())
+                .orElseThrow(() -> new ResourceNotFoundException("Équipe adverse", dto.getAwayTeamId()));
+    } else {
+        // 🆕 Créer une équipe externe temporaire
+        awayTeam = Team.builder()
+                .name(dto.getAwayTeamName())
+                .category(dto.getCategory())
+                .teamType(TeamType.TEMPORARY)
+                .event(savedEvent)  // Lié à cet event
+                .color("#999999")  // Couleur par défaut
+                .players(new ArrayList<>())
+                .build();
+        
+        awayTeam = teamRepo.save(awayTeam);
+        log.info("✅ Équipe externe créée - id={}, name={}", awayTeam.getId(), awayTeam.getName());
+    }
+
+    // ═════════════════════════════════════════
+    // 4️⃣ CRÉER LE MATCH
+    // ═════════════════════════════════════════
+
+   Match match = Match.builder()
+        .event(savedEvent)
+        .teamA(homeTeam)
+        .teamB(awayTeam)
+        .date(dto.getDate())
+        .time(dto.getStartTime().toLocalTime())
+        .field(dto.getField())
+        .competitionLevel(dto.getCompetitionLevel())  // 🆕
+        .fieldType(dto.getFieldType())                // 🆕
+        .location(dto.getLocation())
+        .status(MatchStatus.SCHEDULED)
+        .build();
+
+    Match savedMatch = matchRepo.save(match);
+
+    log.info("✅ Match créé - id={}, {}vs{}", 
+             savedMatch.getId(), homeTeam.getName(), awayTeam.getName());
+
+    return savedEvent;
+}
+
     @Transactional(readOnly = true)
     public Event getEventById(Long eventId) {
         return eventRepo.findById(eventId)
@@ -167,6 +332,89 @@ if (type == EventType.CLUB_EVENT) {
     public Page<Event> getAllEvents(Pageable pageable) {
         return eventRepo.findAll(pageable);
     }
+
+/**
+ * 🆕 Récupérer TOUS les événements actifs (pour l'admin)
+ * Exclut les événements deleted = true
+ */
+@Transactional(readOnly = true)
+public List<EventDTO> getAllActiveEventDtos(User admin) {
+    List<Event> events = eventRepo.findAllActive(); // deleted = false
+    
+    return events.stream()
+        .map(e -> EventDTO.from(
+            e,
+            admin.getId(),
+            countAcceptedParticipants(e.getId()),
+            null,
+            null
+        ))
+        .toList();
+}
+
+/**
+ * 🆕 Récupérer les événements ACTIFS (PUBLISHED, ONGOING)
+ */
+@Transactional(readOnly = true)
+public List<EventDTO> getActiveEventDtos(User admin) {
+    List<Event> events = eventRepo.findAllActive().stream()
+        .filter(e -> e.getStatus() == EventStatus.PUBLISHED || 
+                     e.getStatus() == EventStatus.ONGOING)
+        .toList();
+    
+    return events.stream()
+        .map(e -> EventDTO.from(
+            e,
+            admin.getId(),
+            countAcceptedParticipants(e.getId()),
+            null,
+            null
+        ))
+        .toList();
+}
+
+/**
+ * 🆕 Récupérer les événements TERMINÉS (COMPLETED)
+ */
+@Transactional(readOnly = true)
+public List<EventDTO> getCompletedEventDtos(User admin) {
+    List<Event> events = eventRepo.findAllActive().stream()
+        .filter(e -> e.getStatus() == EventStatus.COMPLETED)
+        .toList();
+    
+    return events.stream()
+        .map(e -> EventDTO.from(
+            e,
+            admin.getId(),
+            countAcceptedParticipants(e.getId()),
+            null,
+            null
+        ))
+        .toList();
+}
+
+/**
+ * 🆕 Récupérer les événements ANNULÉS (CANCELED)
+ */
+@Transactional(readOnly = true)
+public List<EventDTO> getCanceledEventDtos(User admin) {
+    List<Event> events = eventRepo.findAllActive().stream()
+        .filter(e -> e.getStatus() == EventStatus.CANCELED)
+        .toList();
+    
+    return events.stream()
+        .map(e -> EventDTO.from(
+            e,
+            admin.getId(),
+            countAcceptedParticipants(e.getId()),
+            null,
+            null
+        ))
+        .toList();
+}
+
+// ✅ getDeletedEventDtos() existe déjà (ligne 971) !
+
 
     /**
      * Mise à jour du statut de l'événement.
@@ -492,12 +740,11 @@ public Page<Event> filterAndSearch(String type, String term, Pageable pageable) 
     /**
      * Récupère les événements publics à venir.
      */
-    @Transactional(readOnly = true)
-    public Page<Event> getUpcomingPublicEvents(Pageable pageable) {
-        return eventRepo.findByStatus(EventStatus.UPCOMING, pageable)
-                .map(e -> e)
-                .map(event -> event);
-    }
+   public Page<Event> getUpcomingPublicEvents(Pageable pageable) {
+    return eventRepo.findByStatus(EventStatus.PUBLISHED, pageable)
+            .map(e -> e)
+            .map(event -> event);
+}
 
     // ═══════════════════════════════════════════════════════════
     // UTILITAIRES / SUPPRESSION
@@ -507,20 +754,27 @@ public Page<Event> filterAndSearch(String type, String term, Pageable pageable) 
     /**
      * Suppression complète d’un événement + registrations + médias + matchs.
      */
-    public void deleteEvent(Long eventId, User currentUser) {
-        Event event = getEventById(eventId);
+@Transactional
+public boolean deleteEvent(Long eventId, User currentUser) {
 
-        if (!canManageEvent(event, currentUser)) {
-            throw new ForbiddenException("Vous ne pouvez pas supprimer cet événement");
-        }
+    Event event = getEventById(eventId);
 
-        registrationRepo.deleteAll(event.getRegistrations());
-        mediaRepo.deleteAll(event.getMediaUploads());
-        matchRepo.deleteAll(event.getMatches());
-        eventRepo.delete(event);
-
-        log.info("Événement {} supprimé", eventId);
+    if (!canManageEvent(event, currentUser)) {
+        throw new ForbiddenException("Vous ne pouvez pas supprimer cet événement");
     }
+
+    boolean changed = event.softDelete(currentUser.getId());
+    eventRepo.save(event);
+
+    if (!changed) {
+        log.info("Événement {} déjà archivé (user {})", eventId, currentUser.getId());
+        return false;
+    }
+
+    log.info("Événement {} archivé par user {}", eventId, currentUser.getId());
+    return true;
+}
+
 
     // ═══════════════════════════════════════════════════════════
     // LOGIQUE MÉTIER INTERNE
@@ -965,40 +1219,104 @@ public Map<Long, List<GroupRankingDTO>> computeGroupRankings(Long eventId, User 
         }
 
         // Parcours des matchs
-        for (Match m : matches) {
+       for (Match m : matches) {
 
-            // Si pas encore joué → on ignore
-            if (m.getScoreTeamA() == null || m.getScoreTeamB() == null)
-                continue;
+    // Si pas encore joué → on ignore
+   if (m.getTeamA() == null || m.getTeamB() == null) continue; // ✅ important
+    if (m.getScoreTeamA() == null || m.getScoreTeamB() == null) continue;
 
-            GroupRankingDTO a = table.get(m.getTeamA().getId());
-            GroupRankingDTO b = table.get(m.getTeamB().getId());
+    GroupRankingDTO a = table.get(m.getTeamA().getId());
+    GroupRankingDTO b = table.get(m.getTeamB().getId());
+      if (a == null || b == null) continue; 
 
-            int sa = m.getScoreTeamA();
-            int sb = m.getScoreTeamB();
+    int sa = m.getScoreTeamA();
+    int sb = m.getScoreTeamB();
 
-            a.goalsFor += sa;
-            a.goalsAgainst += sb;
+  // played (J)
+a.setPlayed(a.getPlayed() + 1);
+b.setPlayed(b.getPlayed() + 1);
 
-            b.goalsFor += sb;
-            b.goalsAgainst += sa;
+// buts
+a.setGoalsFor(a.getGoalsFor() + sa);
+a.setGoalsAgainst(a.getGoalsAgainst() + sb);
 
-            if (sa > sb) {
-                a.points += 3;
-            } else if (sa < sb) {
-                b.points += 3;
-            } else {
-                a.points += 1;
-                b.points += 1;
-            }
-        }
+b.setGoalsFor(b.getGoalsFor() + sb);
+b.setGoalsAgainst(b.getGoalsAgainst() + sa);
+
+// points + W/D/L
+if (sa > sb) {
+    a.setPoints(a.getPoints() + 3);
+    a.setWins(a.getWins() + 1);
+    b.setLosses(b.getLosses() + 1);
+} else if (sa < sb) {
+    b.setPoints(b.getPoints() + 3);
+    b.setWins(b.getWins() + 1);
+    a.setLosses(a.getLosses() + 1);
+} else {
+    a.setPoints(a.getPoints() + 1);
+    b.setPoints(b.getPoints() + 1);
+    a.setDraws(a.getDraws() + 1);
+    b.setDraws(b.getDraws() + 1);
+}
+
+}
 
         // Convertir en liste pour classer
         List<GroupRankingDTO> sorted = new ArrayList<>(table.values());
+sorted.sort((a, b) -> {
+    // 1. Points
+    int cmp = Integer.compare(b.getPoints(), a.getPoints());
+    if (cmp != 0) return cmp;
 
-        sorted.sort(Comparator.comparing(GroupRankingDTO::getPoints).reversed()
-                .thenComparing(r -> r.getGoalDifference(), Comparator.reverseOrder())
-                .thenComparing(r -> r.goalsFor, Comparator.reverseOrder()));
+    // 2. Goal average
+    int diffA = a.getGoalDifference();
+    int diffB = b.getGoalDifference();
+    cmp = Integer.compare(diffB, diffA);
+    if (cmp != 0) return cmp;
+
+    // 3. Buts marqués
+    cmp = Integer.compare(b.getGoalsFor(), a.getGoalsFor());
+    if (cmp != 0) return cmp;
+
+    // 4. Victoires
+    cmp = Integer.compare(b.getWins(), a.getWins());
+    if (cmp != 0) return cmp;
+
+    // 5. Fair-play (plus petit = meilleur)
+    int fairA = a.getYellowCards() + (a.getRedCards() * 3);
+    int fairB = b.getYellowCards() + (b.getRedCards() * 3);
+    cmp = Integer.compare(fairA, fairB);
+    if (cmp != 0) return cmp;
+
+    // 6. Dernier recours : ID
+    return Long.compare(a.getTeamId(), b.getTeamId());
+});
+
+
+// ✅ ÉCRIT DANS UN FICHIER
+try {
+    StringBuilder debug = new StringBuilder();
+    debug.append("🔥 CLASSEMENT GROUPE " + group.getName() + " :\n");
+    for (int i = 0; i < sorted.size(); i++) {
+        GroupRankingDTO dto = sorted.get(i);
+debug.append("  " + (i+1) + ". " + dto.getTeamName() +
+    " → pts=" + dto.getPoints() +
+    ", J=" + dto.getPlayed() +
+    ", G=" + dto.getWins() +
+    ", N=" + dto.getDraws() +
+    ", P=" + dto.getLosses() +
+    ", diff=" + dto.getGoalDifference() +
+    ", buts=" + dto.getGoalsFor() +
+    ", id=" + dto.getTeamId() + "\n");
+    }
+    
+   java.nio.file.Files.writeString(
+    java.nio.file.Paths.get("C:/Users/drika/Desktop/debug-classement-groupe-" + group.getId() + ".txt"),
+    debug.toString()
+);
+} catch (Exception ex) { 
+    ex.printStackTrace(); 
+}
 
         rankings.put(group.getId(), sorted);
     }
@@ -1094,4 +1412,190 @@ public List<Team> getTeamsByEventId(Long eventId) {
     Event event = getEventById(eventId);
  return teamRepo.findByEvent_Id(eventId);
 }
+
+
+public Optional<Event> findById(Long id) {
+    return eventRepository.findById(id);
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🆕 GESTION ADMIN - SOFT DELETE
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * 🆕 Restaurer un event supprimé (admin uniquement)
+ */
+@Transactional
+public Event restoreEvent(Long eventId, User currentUser) {
+    
+    // Récupérer l'event même s'il est supprimé
+    Event event = eventRepo.findByIdIncludingDeleted(eventId)
+            .orElseThrow(() -> new ResourceNotFoundException("Événement", eventId));
+    
+    if (!event.isDeleted()) {
+        throw new BadRequestException("L'événement n'est pas supprimé");
+    }
+    
+    // SUPER_ADMIN → Peut tout restaurer
+    if (currentUser.isSuperAdmin()) {
+        event.restore();
+        Event restored = eventRepo.save(event);
+        log.info("✅ Événement {} restauré par SUPER_ADMIN {}", eventId, currentUser.getId());
+        return restored;
+    }
+    
+    // CLUB_ADMIN → Seulement SES events
+    if (currentUser.isClubAdmin()) {
+        if (!event.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Vous ne pouvez restaurer que vos propres événements");
+        }
+        
+        event.restore();
+        Event restored = eventRepo.save(event);
+        log.info("✅ Événement {} restauré par CLUB_ADMIN {}", eventId, currentUser.getId());
+        return restored;
+    }
+    
+    throw new ForbiddenException("Seul un administrateur peut restaurer un événement");
+}
+
+/**
+ * 🆕 Suppression définitive d'un event (HARD DELETE - RGPD)
+ * ⚠️ IRRÉVERSIBLE - Utiliser avec précaution
+ */
+@Transactional
+public void hardDeleteEvent(Long eventId, User currentUser) {
+    
+    Event event = eventRepo.findByIdIncludingDeleted(eventId)
+            .orElseThrow(() -> new ResourceNotFoundException("Événement", eventId));
+    
+    // Seul un SUPER_ADMIN peut hard delete
+    if (!currentUser.isSuperAdmin()) {
+        throw new ForbiddenException("Seul un administrateur peut supprimer définitivement un événement");
+    }
+    
+    // Vérifier que l'event est déjà soft deleted
+    if (!event.isDeleted()) {
+        throw new BadRequestException("L'événement doit d'abord être archivé avant suppression définitive");
+    }
+    
+    // Suppression en cascade (orphanRemoval = true)
+    eventRepo.delete(event);
+    
+    log.warn("⚠️ Événement {} supprimé DÉFINITIVEMENT par user {}", eventId, currentUser.getId());
+}
+
+/**
+ * 🆕 Récupérer tous les events supprimés (admin uniquement)
+ */
+@Transactional(readOnly = true)
+public List<EventDTO> getDeletedEventDtos(User currentUser) {
+
+    List<Event> events;
+
+    if (currentUser.isSuperAdmin()) {
+        events = eventRepo.findAllDeleted();
+    } else if (currentUser.isClubAdmin()) {
+        events = eventRepo.findDeletedByOrganizer(currentUser);
+    } else {
+        throw new ForbiddenException("Accès non autorisé");
+    }
+
+    return events.stream()
+        .map(e -> EventDTO.from(
+            e,
+            currentUser.getId(),
+            countAcceptedParticipants(e.getId()),
+            null,
+            null
+        ))
+        .toList();
+}
+
+
+/**
+ * 🆕 Récupérer un event par ID (même s'il est supprimé) - Admin uniquement
+ */
+@Transactional(readOnly = true)
+public EventDTO getEventDtoByIdIncludingDeleted(Long eventId, User currentUser) {
+
+    Event event = eventRepo.findByIdIncludingDeleted(eventId)
+            .orElseThrow(() -> new ResourceNotFoundException("Événement", eventId));
+
+    if (!currentUser.isSuperAdmin() && !canManageEvent(event, currentUser)) {
+        throw new ForbiddenException("Vous n'avez pas les droits pour voir cet événement");
+    }
+
+    return EventDTO.from(
+        event,
+        currentUser.getId(),
+        countAcceptedParticipants(eventId),
+        null,
+        null
+    );
+}
+
+
+@Transactional
+public Event startTournament(Long eventId) {
+    Event event = getEventById(eventId);
+    
+    event.setStatus(EventStatus.ONGOING);
+    event.setActualStartDateTime(LocalDateTime.now());
+    Event saved = eventRepository.save(event);
+    
+    // 🆕 SI MATCH UNIQUE → démarrer aussi le match
+    if (event.getFormat() == EventFormat.SINGLE_MATCH) {
+        List<Match> matches = matchRepo.findByEventId(eventId);
+        if (!matches.isEmpty()) {
+            Match match = matches.get(0);
+            match.setStatus(MatchStatus.IN_PROGRESS);
+            matchRepo.save(match);
+        }
+    }
+    
+    return saved;
+}
+
+@Transactional
+public Event finishTournament(Long eventId) {
+    Event event = getEventById(eventId);
+    
+    event.setStatus(EventStatus.COMPLETED);
+    event.setActualEndDateTime(LocalDateTime.now());
+    Event saved = eventRepository.save(event);
+    
+    // 🆕 Terminer TOUS les matchs associés
+    List<Match> matches = matchRepo.findByEventId(eventId);
+    for (Match match : matches) {
+        if (match.getStatus() != MatchStatus.COMPLETED) {
+            match.setStatus(MatchStatus.COMPLETED);
+            matchRepo.save(match);
+        }
+    }
+    
+    return saved;
+}
+
+public void addTeamToEvent(Long eventId, Long teamId) {
+    Team team = teamRepo.findById(teamId)
+            .orElseThrow(() -> new ResourceNotFoundException("Team", teamId));
+    
+    Event event = eventRepo.findById(eventId)
+            .orElseThrow(() -> new ResourceNotFoundException("Event", eventId));
+    
+    team.setEvent(event);
+    teamRepo.save(team);
+    
+    // ⬇️ AJOUTE CES LIGNES ⬇️
+    // Créer aussi une EventRegistration ACCEPTED
+    EventRegistration registration = EventRegistration.builder()
+            .event(event)
+            .team(team)
+            .status(RegistrationStatus.ACCEPTED)
+            .registrationDate(LocalDate.now())
+            .build();
+    registrationRepo.save(registration);
+}
+
 }

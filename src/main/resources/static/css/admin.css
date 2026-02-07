@@ -682,3 +682,378 @@ body.is-admin-page {
     background: #f7f9fc !important;
     color: #222 !important;
 }
+/* =========================================
+   ✨ AMÉLIORATIONS DASHBOARD
+   ========================================= */
+
+/* ================================
+   👋 HEADER PERSONNALISÉ
+   ================================ */
+.welcome-header {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    padding: 30px;
+    border-radius: 16px;
+    margin-bottom: 30px;
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: fadeIn 0.4s ease;
+}
+
+.welcome-content {
+    flex: 1;
+}
+
+.welcome-title {
+    margin: 0 0 8px 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+}
+
+.welcome-subtitle {
+    margin: 0;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 500;
+}
+
+.welcome-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    background: white;
+}
+
+.welcome-logo-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    backdrop-filter: blur(10px);
+}
+
+/* ================================
+   🎯 CTA CARD (Créer événement)
+   ================================ */
+.dashboard-card-pro.cta {
+    background: linear-gradient(135deg, #27ae60, #229954);
+    color: white;
+    border: 3px solid #1e8449;
+    position: relative;
+    overflow: hidden;
+}
+
+.dashboard-card-pro.cta::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.dashboard-card-pro.cta .dashboard-card-icon {
+    color: white;
+    font-size: 2.8rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.dashboard-card-pro.cta .dashboard-card-title {
+    color: white;
+    font-size: 1.3rem;
+}
+
+.dashboard-card-pro.cta .dashboard-card-value {
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.dashboard-card-pro.cta .dashboard-card-meta {
+    color: rgba(255, 255, 255, 0.95);
+    border-top-color: rgba(255, 255, 255, 0.3);
+    font-weight: 600;
+}
+
+.dashboard-card-pro.cta:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(39, 174, 96, 0.4);
+}
+
+/* ================================
+   📊 META INFO CARTES
+   ================================ */
+.dashboard-card-meta {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #ecf0f1;
+    font-weight: 500;
+}
+
+/* ================================
+   ⚡ ACTIONS RAPIDES
+   ================================ */
+.quick-actions-section {
+    margin-top: 35px;
+    animation: fadeIn 0.5s ease 0.2s backwards;
+}
+
+.section-title {
+    font-size: 1.4rem;
+    color: #2c3e50;
+    margin-bottom: 18px;
+    font-weight: 600;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+}
+
+.quick-action-btn {
+    padding: 18px 22px;
+    background: white;
+    border: 2px solid #ecf0f1;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.quick-action-btn:hover {
+    border-color: #3498db;
+    background: #f0f8ff;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(52, 152, 219, 0.2);
+}
+
+.quick-action-btn i {
+    color: #3498db;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.quick-action-btn span {
+    flex: 1;
+}
+
+/* ================================
+   📊 ACTIVITÉ RÉCENTE
+   ================================ */
+.recent-activity-section {
+    margin-top: 35px;
+    animation: fadeIn 0.6s ease 0.3s backwards;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 16px 20px;
+    background: white;
+    border: 2px solid #ecf0f1;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: inherit;
+}
+
+.activity-item:hover {
+    border-color: #3498db;
+    background: #f0f8ff;
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.15);
+}
+
+.activity-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.activity-icon.upcoming {
+    background: #d5f4e6;
+    color: #27ae60;
+}
+
+.activity-icon.past {
+    background: #ecf0f1;
+    color: #7f8c8d;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.activity-meta {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+}
+
+.activity-arrow {
+    font-size: 1.2rem;
+    color: #bdc3c7;
+    transition: transform 0.3s ease;
+}
+
+.activity-item:hover .activity-arrow {
+    transform: translateX(5px);
+    color: #3498db;
+}
+
+.activity-empty {
+    text-align: center;
+    padding: 40px;
+    color: #95a5a6;
+}
+
+/* ================================
+   📱 RESPONSIVE AMÉLIORATIONS
+   ================================ */
+@media (max-width: 768px) {
+    .welcome-header {
+        flex-direction: column;
+        text-align: center;
+        padding: 25px 20px;
+        gap: 15px;
+    }
+
+    .welcome-title {
+        font-size: 1.6rem;
+    }
+
+    .welcome-subtitle {
+        font-size: 1.05rem;
+    }
+
+    .welcome-logo,
+    .welcome-logo-placeholder {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+
+    .quick-actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .section-title {
+        font-size: 1.2rem;
+    }
+
+    .activity-item {
+        padding: 14px 16px;
+    }
+
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+
+    .activity-title {
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .welcome-header {
+        padding: 20px 15px;
+    }
+
+    .welcome-title {
+        font-size: 1.4rem;
+    }
+
+    .welcome-subtitle {
+        font-size: 0.95rem;
+    }
+
+    .dashboard-card-value {
+        font-size: 1.8rem !important;
+    }
+
+    .quick-action-btn {
+        padding: 14px 18px;
+        font-size: 0.9rem;
+    }
+
+    .activity-item {
+        gap: 10px;
+    }
+}
+/* ========================================
+   GESTION ÉVÉNEMENTS SUPPRIMÉS
+   ======================================== */
+
+.event-deleted {
+    opacity: 0.85;
+    border-left: 4px solid #999;
+}
+
+.status-badge.archived {
+    background: #999;
+    color: white;
+}
+
+.admin-btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.admin-btn-success:hover {
+    background: #218838;
+}
+
+.admin-btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.admin-btn-danger:hover {
+    background: #c82333;
+}

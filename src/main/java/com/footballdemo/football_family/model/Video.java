@@ -39,6 +39,11 @@ public class Video {
     @Column(columnDefinition = "int default 0")
     @Min(0)
     private int commentsCount = 0;
+    
+    // ✅ NOUVEAU : Statut de la vidéo
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private VideoStatus status = VideoStatus.PROCESSING;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -50,9 +55,12 @@ public class Video {
     @OneToMany(mappedBy = "video", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<VideoLike> videoLikes;
 
-    // --- Hook JPA pour dateUpload automatique ---
     @PrePersist
     protected void onCreate() {
         this.dateUpload = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = VideoStatus.PROCESSING;
+        }
     }
 }
+

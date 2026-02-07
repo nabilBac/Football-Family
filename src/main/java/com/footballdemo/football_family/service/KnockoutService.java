@@ -127,6 +127,14 @@ public class KnockoutService {
             seconds.add(ranking.get(1));
         }
 
+       try {
+    java.nio.file.Files.writeString(
+        java.nio.file.Paths.get("C:/debug-bracket.txt"),
+        "FIRSTS: " + firsts.stream().map(ts -> ts.getTeam().getName()).toList() + "\n" +
+        "SECONDS: " + seconds.stream().map(ts -> ts.getTeam().getName()).toList() + "\n"
+    );
+} catch (Exception e) { e.printStackTrace(); }
+
         // QUARTS
         Match qf1 = createKO(firsts.get(0).getTeam(), seconds.get(3).getTeam(), "Quarter-final", event);
         Match qf2 = createKO(firsts.get(1).getTeam(), seconds.get(2).getTeam(), "Quarter-final", event);

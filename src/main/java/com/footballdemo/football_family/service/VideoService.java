@@ -5,6 +5,7 @@ import com.footballdemo.football_family.dto.VideoDto;
 import com.footballdemo.football_family.model.User;
 import com.footballdemo.football_family.model.Video;
 import com.footballdemo.football_family.model.VideoLike;
+import com.footballdemo.football_family.model.VideoStatus;
 import com.footballdemo.football_family.repository.*;
 import com.footballdemo.football_family.repository.VideoRepository.VideoFeedProjection;
 
@@ -12,21 +13,25 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+
 import java.io.IOException;
 import java.io.InputStream;
+
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Service("videoService")
 @RequiredArgsConstructor
@@ -38,60 +43,49 @@ public class VideoService {
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ThumbnailService thumbnailService;
+    private final VideoOptimizationService videoOptimizationService;  
 
     @Value("${videos.upload.dir}")
     private String uploadDir;
 
-    // ⭐ AUCUN CONSTRUCTEUR → Lombok s’occupe de tout
-
     // ---------------------------
-    // FEED GLOBAL
+    // FEED GLOBAL (SEULEMENT VIDÉOS READY)
     // ---------------------------
-
     public List<VideoDto> getFeedVideosForUser(Pageable pageable, String username) {
-
-        Page<VideoFeedProjection> videosPage = videoRepository.findFeedProjectionOrderByDateUploadDesc(pageable);
-
+        Page<VideoFeedProjection> videosPage = videoRepository.findReadyFeedProjectionOrderByDateUploadDesc(pageable);
         return mapToVideoDtoList(videosPage, username);
     }
 
     // ---------------------------
-    // FEED PUBLIC
+    // FEED PUBLIC (SEULEMENT VIDÉOS READY)
     // ---------------------------
-   public List<VideoDto> getPublicFeedVideos(Pageable pageable) {
-    return getFeedVideosForUser(pageable, null);
-}
-
+    public List<VideoDto> getPublicFeedVideos(Pageable pageable) {
+        return getFeedVideosForUser(pageable, null);
+    }
 
     // ---------------------------
-    // FEED FOLLOWED
+    // FEED FOLLOWED (SEULEMENT VIDÉOS READY)
     // ---------------------------
-
     public List<VideoDto> getFollowedFeedVideosForUser(Pageable pageable, String username) {
-
-       User currentUser = userService.getUserByUsername(username)
-        .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé."));
-
+        User currentUser = userService.getUserByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé."));
 
         List<Long> followedIds = followRepository.findFollowingIdsByFollower(currentUser);
 
         if (followedIds.isEmpty())
             return List.of();
 
-        Page<VideoFeedProjection> videosPage = videoRepository.findFollowedFeedProjection(followedIds, pageable);
-
+        Page<VideoFeedProjection> videosPage = videoRepository.findReadyFollowedFeedProjection(followedIds, pageable);
         return mapToVideoDtoList(videosPage, username);
     }
 
     // ---------------------------
     // MAPPER → DTO
+    // ---------------------------
     private List<VideoDto> mapToVideoDtoList(Page<VideoRepository.VideoFeedProjection> page, String username) {
+        User currentUser = userService.findUserByUsernameCached(username);
 
-        // 1️⃣ utilisateur courant (ou null si anonyme)
-      User currentUser = userService.findUserByUsernameCached(username);
-
-
-        // 2️⃣ IDs des vidéos dans cette page
         List<Long> videoIds = page.getContent().stream()
                 .map(VideoRepository.VideoFeedProjection::getId)
                 .toList();
@@ -100,7 +94,6 @@ public class VideoService {
             return List.of();
         }
 
-        // 3️⃣ Map des vidéos likées par l'utilisateur courant : { videoId -> true }
         Map<Long, Boolean> likedMap = new HashMap<>();
         if (currentUser != null) {
             List<Long> likedIds = videoLikeRepository.findLikedVideoIdsByUserAndVideoIds(currentUser, videoIds);
@@ -109,7 +102,6 @@ public class VideoService {
             }
         }
 
-        // 4️⃣ Map des compteurs de likes réels par vidéo : { videoId -> count }
         Map<Long, Long> likeCountsMap = new HashMap<>();
         List<Object[]> rows = videoLikeRepository.countLikesForVideoIds(videoIds);
         for (Object[] row : rows) {
@@ -118,7 +110,6 @@ public class VideoService {
             likeCountsMap.put(videoId, count);
         }
 
-        // 5️⃣ Construction des DTO (on n'utilise PLUS p.getLikesCount())
         return page.getContent().stream()
                 .map(p -> VideoDto.builder()
                         .id(p.getId())
@@ -129,13 +120,8 @@ public class VideoService {
                         .dateUpload(p.getDateUpload())
                         .filename(p.getFilename())
                         .thumbnailUrl(p.getThumbnailUrl())
-
-                        // ✅ VRAI compteur basé sur video_like
                         .likesCount(likeCountsMap.getOrDefault(p.getId(), 0L).intValue())
-
-                        // ✅ Vrai état like pour l'utilisateur
                         .likedByCurrentUser(likedMap.getOrDefault(p.getId(), false))
-
                         .commentsCount(p.getCommentsCount())
                         .build())
                 .toList();
@@ -144,9 +130,8 @@ public class VideoService {
     // ---------------------------
     // LIKE / UNLIKE
     // ---------------------------
-    @Transactional
-    public LikeResponseDto toggleLike(Long videoId, String username) {
-
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+public LikeResponseDto toggleLike(Long videoId, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -169,20 +154,15 @@ public class VideoService {
 
         long count = videoLikeRepository.countByVideo(video);
 
-        // ✅ NOUVELLE PARTIE : Notification WebSocket à tous les clients
         LikeResponseDto response = new LikeResponseDto(liked, count);
 
-        // Créer un objet avec l'ID de la vidéo pour que le frontend sache quelle vidéo
-        // update
         Map<String, Object> notification = new HashMap<>();
         notification.put("videoId", videoId);
         notification.put("liked", liked);
         notification.put("likesCount", count);
         notification.put("username", username);
 
-        // Envoyer à tous les abonnés du topic /topic/likes
         messagingTemplate.convertAndSend("/topic/video/" + videoId + "/likes", notification);
-
 
         return response;
     }
@@ -191,9 +171,8 @@ public class VideoService {
     // DELETE VIDEO
     // ---------------------------
     @Transactional
-    @CacheEvict(value = "profileVideos", allEntries = true)
+    //@CacheEvict(value = "profileVideos", allEntries = true)
     public void deleteVideo(Long videoId, String uploaderUsername) throws IOException {
-
         Video video = videoRepository.findById(videoId)
                 .orElseThrow(() -> new EntityNotFoundException("Vidéo introuvable"));
 
@@ -222,21 +201,34 @@ public class VideoService {
             Files.delete(target);
     }
 
-    @CacheEvict(value = "videoFeed", allEntries = true)
+    //@CacheEvict(value = "videoFeed", allEntries = true)
     public void evictFeedCache() {
     }
 
     // ---------------------------
-    // UPLOAD VIDEO
+    // ✅ UPLOAD VIDEO - VERSION CORRIGÉE
     // ---------------------------
+    @Transactional
     public Video uploadVideo(MultipartFile file, String title, String category, String username)
             throws IOException {
 
-       User uploader = userService.findUserByUsernameCached(username);
-if (uploader == null) {
-    throw new RuntimeException("User not found");
-}
-
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("Fichier vide");
+        }
+        
+        if (file.getSize() > 100 * 1024 * 1024) { // 100MB
+            throw new IllegalArgumentException("Fichier trop volumineux (max 100MB)");
+        }
+        
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("video/")) {
+            throw new IllegalArgumentException("Format non supporté");
+        }
+        
+        User uploader = userService.findUserByUsernameCached(username);
+        if (uploader == null) {
+            throw new RuntimeException("User not found");
+        }
 
         String original = StringUtils.cleanPath(file.getOriginalFilename());
         if (original.isEmpty())
@@ -262,47 +254,44 @@ if (uploader == null) {
         video.setFilename(filename);
         video.setDateUpload(LocalDateTime.now());
         video.setUploader(uploader);
-        video.setThumbnailUrl("thumbnails/" + filename.replace(ext, ".png"));
+        video.setThumbnailUrl("thumbnails/default.png");  // ✅ Placeholder
         video.setLikesCount(0);
         video.setCommentsCount(0);
+        video.setStatus(VideoStatus.PROCESSING);
 
-        String thumb = generateThumbnail(filename);
-        if (thumb != null) {
-            video.setThumbnailUrl(thumb);
-        }
+        Video savedVideo = videoRepository.save(video);
 
-        return videoRepository.save(video);
+        System.out.println("📹 Vidéo #" + savedVideo.getId() + " uploadée, optimisation lancée");
+
+        // ✅ GÉNÈRE LA THUMBNAIL EN PREMIER (elle met à jour thumbnailUrl)
+        thumbnailService.generateThumbnailAsync(savedVideo.getId(), filename);
+
+        // ✅ LANCE L'OPTIMISATION APRÈS
+        videoOptimizationService.optimizeVideoForMobile(savedVideo.getId(), filename);
+
+        return savedVideo;
     }
 
-    public String generateThumbnail(String filename) {
-        try {
-            Path thumbDir = Paths.get(uploadDir, "thumbnails");
-            Files.createDirectories(thumbDir);
-
-            String output = filename.replace(".mp4", ".png");
-            String fullOut = thumbDir.resolve(output).toString();
-
-            String command = String.format(
-                    "ffmpeg -i \"%s/%s\" -ss 00:00:02 -vframes 1 \"%s\"",
-                    uploadDir, filename, fullOut);
-
-            Process p = Runtime.getRuntime().exec(command);
-            p.waitFor();
-
-            return "thumbnails/" + output;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
+    // ---------------------------
+    // GET VIDEO BY ID
+    // ---------------------------
     public VideoDto getVideoById(Long id) {
+        return getVideoById(id, null);
+    }
 
+    public VideoDto getVideoById(Long id, String username) {
         Video video = videoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vidéo introuvable : " + id));
 
         long likesCount = videoLikeRepository.countByVideo(video);
+        
+        boolean likedByCurrentUser = false;
+        if (username != null) {
+            User user = userService.findUserByUsernameCached(username);
+            if (user != null) {
+                likedByCurrentUser = videoLikeRepository.findByUserAndVideo(user, video).isPresent();
+            }
+        }
 
         return VideoDto.builder()
                 .id(video.getId())
@@ -315,77 +304,203 @@ if (uploader == null) {
                 .thumbnailUrl(video.getThumbnailUrl())
                 .likesCount((int) likesCount)
                 .commentsCount(video.getCommentsCount())
-                .likedByCurrentUser(false) // pas utile ici
+                .likedByCurrentUser(likedByCurrentUser)
                 .build();
     }
 
+    // ---------------------------
+    // GET VIDEOS FOR USER ID
+    // ---------------------------
     public List<VideoDto> getVideosForUserId(Long userId) {
-
         User uploader = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        var list = videoRepository.findAllByUploader(
+        List<Video> videos = videoRepository.findAllByUploader(
                 uploader,
                 org.springframework.data.domain.Sort.by("dateUpload").descending());
 
-        return list.stream()
-                .map(v -> {
-                    long likesCount = videoLikeRepository.countByVideo(v);
-                    return VideoDto.builder()
-                            .id(v.getId())
-                            .title(v.getTitle())
-                            .uploaderUsername(uploader.getUsername())
-                            .uploaderId(uploader.getId())
-                            .category(v.getCategory())
-                            .dateUpload(v.getDateUpload())
-                            .filename(v.getFilename())
-                            .thumbnailUrl(v.getThumbnailUrl())
-                            .likesCount((int) likesCount)
-                            .commentsCount(v.getCommentsCount())
-                            .likedByCurrentUser(false)
-                            .build();
-                })
+        List<Long> videoIds = videos.stream().map(Video::getId).toList();
+        
+        Map<Long, Long> likeCountsMap = new HashMap<>();
+        if (!videoIds.isEmpty()) {
+            List<Object[]> rows = videoLikeRepository.countLikesForVideoIds(videoIds);
+            for (Object[] row : rows) {
+                likeCountsMap.put((Long) row[0], (Long) row[1]);
+            }
+        }
+
+        return videos.stream()
+                .map(video -> VideoDto.builder()
+                        .id(video.getId())
+                        .title(video.getTitle())
+                        .uploaderUsername(uploader.getUsername())
+                        .uploaderId(uploader.getId())
+                        .category(video.getCategory())
+                        .dateUpload(video.getDateUpload())
+                        .filename(video.getFilename())
+                        .thumbnailUrl(video.getThumbnailUrl())
+                        .likesCount(likeCountsMap.getOrDefault(video.getId(), 0L).intValue())
+                        .commentsCount(video.getCommentsCount())
+                        .likedByCurrentUser(false)
+                        .build())
                 .toList();
     }
 
     // ---------------------------
-    // VIDÉOS D'UN UTILISATEUR (pour le profil SPA)
+    // GET VIDEOS FOR USERNAME
     // ---------------------------
     public List<VideoDto> getVideosForUser(String username) {
+        User uploader = userService.findUserByUsernameCached(username);
+        if (uploader == null) {
+            throw new RuntimeException("User not found");
+        }
 
-        // 1️⃣ Récupérer l'utilisateur
-       User uploader = userService.findUserByUsernameCached(username);
-if (uploader == null) {
-    throw new RuntimeException("User not found");
-}
-
-
-        // 2️⃣ Récupérer les vidéos triées par date
-        var videos = videoRepository.findAllByUploader(
+        List<Video> videos = videoRepository.findAllByUploader(
                 uploader,
                 org.springframework.data.domain.Sort.by("dateUpload").descending());
 
-        // 3️⃣ Mapper vers VideoDto (en recalculant les likes à partir de VideoLike)
+        List<Long> videoIds = videos.stream()
+                .map(Video::getId)
+                .toList();
+
+        Map<Long, Long> likeCountsMap = new HashMap<>();
+        if (!videoIds.isEmpty()) {
+            List<Object[]> rows = videoLikeRepository.countLikesForVideoIds(videoIds);
+            for (Object[] row : rows) {
+                Long videoId = (Long) row[0];
+                Long count = (Long) row[1];
+                likeCountsMap.put(videoId, count);
+            }
+        }
+
         return videos.stream()
-                .map(video -> {
-                    long likesCount = videoLikeRepository.countByVideo(video);
-                    // Ici, on ne calcule pas likedByCurrentUser (ce n'est pas nécessaire pour le
-                    // profil simple)
-                    return VideoDto.builder()
-                            .id(video.getId())
-                            .title(video.getTitle())
-                            .uploaderUsername(uploader.getUsername())
-                            .uploaderId(uploader.getId())
-                            .category(video.getCategory())
-                            .dateUpload(video.getDateUpload())
-                            .filename(video.getFilename())
-                            .thumbnailUrl(video.getThumbnailUrl())
-                            .likesCount((int) likesCount)
-                            .commentsCount(video.getCommentsCount())
-                            .likedByCurrentUser(false) // la SPA pourra gérer ça plus tard si besoin
-                            .build();
-                })
+                .map(video -> VideoDto.builder()
+                        .id(video.getId())
+                        .title(video.getTitle())
+                        .uploaderUsername(uploader.getUsername())
+                        .uploaderId(uploader.getId())
+                        .category(video.getCategory())
+                        .dateUpload(video.getDateUpload())
+                        .filename(video.getFilename())
+                        .thumbnailUrl(video.getThumbnailUrl())
+                        .likesCount(likeCountsMap.getOrDefault(video.getId(), 0L).intValue())
+                        .commentsCount(video.getCommentsCount())
+                        .likedByCurrentUser(false)
+                        .build())
                 .toList();
     }
 
+    // ---------------------------
+    // IS UPLOADER (pour @PreAuthorize)
+    // ---------------------------
+    public boolean isUploader(Long videoId, String username) {
+        return videoRepository.findById(videoId)
+                .map(v -> v.getUploader().getUsername().equals(username))
+                .orElse(false);
+    }
+
+    // ✅ UPLOAD ASYNC
+    @Async
+    @Transactional
+    public CompletableFuture<Video> uploadVideoAsync(MultipartFile file, String title, String category, String username) {
+        try {
+            if (file.isEmpty()) {
+                throw new IllegalArgumentException("Fichier vide");
+            }
+
+            if (file.getSize() > 100 * 1024 * 1024) {
+                throw new IllegalArgumentException("Fichier trop volumineux");
+            }
+
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("video/")) {
+                throw new IllegalArgumentException("Format non supporté");
+            }
+
+            User uploader = userService.findUserByUsernameCached(username);
+            if (uploader == null) {
+                throw new RuntimeException("User not found");
+            }
+
+            String original = StringUtils.cleanPath(file.getOriginalFilename());
+            if (original.isEmpty())
+                throw new IOException("Fichier invalide");
+
+            String ext = original.contains(".")
+                    ? original.substring(original.lastIndexOf("."))
+                    : "";
+
+            String filename = System.currentTimeMillis() + "_" + uploader.getUsername() + ext;
+
+            Path path = Paths.get(uploadDir);
+            if (!Files.exists(path))
+                Files.createDirectories(path);
+
+            try (InputStream is = file.getInputStream()) {
+                Files.copy(is, path.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            Video video = new Video();
+            video.setTitle(title);
+            video.setCategory(category);
+            video.setFilename(filename);
+            video.setDateUpload(LocalDateTime.now());
+            video.setUploader(uploader);
+            video.setThumbnailUrl("thumbnails/default.png");
+            video.setLikesCount(0);
+            video.setCommentsCount(0);
+            video.setStatus(VideoStatus.PROCESSING);
+
+            Video savedVideo = videoRepository.save(video);
+
+            System.out.println("📹 Vidéo #" + savedVideo.getId() + " uploadée");
+
+            thumbnailService.generateThumbnailAsync(savedVideo.getId(), filename);
+            videoOptimizationService.optimizeVideoForMobile(savedVideo.getId(), filename);
+
+            return CompletableFuture.completedFuture(savedVideo);
+
+        } catch (Exception e) {
+            System.err.println("❌ Erreur upload async: " + e.getMessage());
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    // ✅ PAGINATION: Vidéos par user
+    // @Cacheable(value = "profileVideos", key = "#username + '-' + #pageable.pageNumber")  // ✅ COMMENTÉ EN DEV
+    public Page<VideoDto> getVideosForUserPaginated(String username, Pageable pageable) {
+        User uploader = userService.findUserByUsernameCached(username);
+        if (uploader == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        Page<Video> videos = videoRepository.findAllByUploader(uploader, pageable);
+        
+        List<Long> videoIds = videos.getContent().stream()
+            .map(Video::getId)
+            .toList();
+        
+        Map<Long, Long> likeCountsMap = new HashMap<>();
+        if (!videoIds.isEmpty()) {
+            List<Object[]> rows = videoLikeRepository.countLikesForVideoIds(videoIds);
+            for (Object[] row : rows) {
+                likeCountsMap.put((Long) row[0], (Long) row[1]);
+            }
+        }
+
+        return videos.map(video -> VideoDto.builder()
+            .id(video.getId())
+            .title(video.getTitle())
+            .uploaderUsername(uploader.getUsername())
+            .uploaderId(uploader.getId())
+            .category(video.getCategory())
+            .dateUpload(video.getDateUpload())
+            .filename(video.getFilename())
+            .thumbnailUrl(video.getThumbnailUrl())
+            .likesCount(likeCountsMap.getOrDefault(video.getId(), 0L).intValue())
+            .commentsCount(video.getCommentsCount())
+            .likedByCurrentUser(false)
+            .build()
+        );
+    }
 }

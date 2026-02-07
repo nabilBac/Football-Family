@@ -35,7 +35,8 @@ public class SecurityConfig {
     @Autowired
     private CustomUserDetailsService userDetailsService;
 
-    @Value("${app.mode-dev:true}")
+   @Value("${app.mode-dev:false}")
+
     private boolean modeDev;
 
     // Password encoder
@@ -96,8 +97,9 @@ public class SecurityConfig {
                             .hasRole("SUPER_ADMIN")
 
                             // ORGANIZER & CLUB
-                            .requestMatchers("/api/events/manage/**")
-                            .hasAnyRole("SUPER_ADMIN", "CLUB_ADMIN", "COACH")
+                           .requestMatchers(HttpMethod.POST, "/api/events/manage/**").authenticated()
+.requestMatchers("/api/events/manage/**").hasAnyRole("SUPER_ADMIN", "CLUB_ADMIN", "COACH")
+
 
                             // CLUB ONLY (register-team)
                             .requestMatchers(HttpMethod.POST,
@@ -116,6 +118,9 @@ public class SecurityConfig {
 
                             // LIVE
                             .requestMatchers(HttpMethod.GET, "/api/live/all").authenticated()
+                                        // TOURNAMENT ADMIN (CLUB_ADMIN autorisé)
+.requestMatchers("/api/tournament/admin/**")
+.hasAnyRole("SUPER_ADMIN", "CLUB_ADMIN")
 
                             // Default
                             .anyRequest().authenticated();
@@ -142,7 +147,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/topic/**").permitAll()
                         .requestMatchers("/app/**").permitAll()
-                        .requestMatchers("/api/**").permitAll()
+              
                         .requestMatchers("/", "/home", "/login", "/register",
                                 "/app/**", "/assets/**", "/css/**", "/js/**", "/images/**",
                                 "/favicon.ico", "/manifest.json",

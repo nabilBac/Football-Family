@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(FollowController.class)
-@Import(RestExceptionHandler.class)
+
 @AutoConfigureMockMvc(addFilters = false)
 public class FollowControllerTest {
 

@@ -22,11 +22,9 @@ import com.footballdemo.football_family.service.TournamentSummaryService;
 import com.footballdemo.football_family.model.User;
 import com.footballdemo.football_family.service.TournamentRulesService;
 import com.footballdemo.football_family.service.UserService;
-
-
-
-
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger; // ✅ AJOUT
+import org.slf4j.LoggerFactory; // ✅ AJOUT
 
 import java.security.Principal;
 import java.util.*;
@@ -37,6 +35,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BracketApiController {
 
+    // ✅ AJOUT : Logger pour sécurité
+    private static final Logger log = LoggerFactory.getLogger(BracketApiController.class);
+
     private final ClassementService classementService;
     private final BracketService bracketService;
     private final ConsolanteService consolanteService;
@@ -44,70 +45,70 @@ public class BracketApiController {
     private final FinalResultService finalResultService;
     private final TournamentSummaryService tournamentSummaryService;
     private final EventSecurityService eventSecurityService;
-        private final TournamentRulesService tournamentRulesService;
-        private final UserService userService;
-        private final EventService eventService;
-
-
+    private final TournamentRulesService tournamentRulesService;
+    private final UserService userService;
+    private final EventService eventService;
 
     /**
-     * Génère automatiquement le bracket KO complet d'un événement.
+     * ✅ Génère automatiquement le bracket KO complet d'un événement.
      */
-@PostMapping("/{eventId}/bracket/generate")
-public ResponseEntity<ApiResponse<List<BracketMatchDTO>>> generateBracket(
-        @PathVariable Long eventId,
-        Principal principal
-) {
-    try {
-        // 🔐 USER AUTHENTIFIÉ (ROBUSTE)
-        User currentUser = userService
-                .getUserByUsername(principal.getName())
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+    @PostMapping("/{eventId}/bracket/generate")
+    public ResponseEntity<ApiResponse<List<BracketMatchDTO>>> generateBracket(
+            @PathVariable Long eventId,
+            Principal principal
+    ) {
+        try {
+            // 🔐 USER AUTHENTIFIÉ
+            User currentUser = userService
+                    .getUserByUsername(principal.getName())
+                    .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-        // 🔒 SÉCURITÉ
-        eventSecurityService.assertAdminOrOrganizer(eventId, currentUser);
+            // 🔒 SÉCURITÉ
+            eventSecurityService.assertAdminOrOrganizer(eventId, currentUser);
 
-        // 1️⃣ Classements des groupes
-        Map<Long, List<TeamStats>> groupRankings =
-                classementService.computeRankingsForEvent(eventId);
+            // 1️⃣ Classements des groupes
+            Map<Long, List<TeamStats>> groupRankings =
+                    classementService.computeRankingsForEvent(eventId);
 
-        Map<String, List<TeamStats>> rankings =
-                groupRankings.entrySet().stream()
-                        .filter(e -> e.getKey() != null)
-                        .collect(Collectors.toMap(
-                                e -> e.getKey().toString(),
-                                Map.Entry::getValue
-                        ));
+            // ✅ FIX : Passer directement Map<Long, List<TeamStats>>
+            // (Suppression de la conversion String inutile)
+            List<Match> matches = bracketService.generateBracket(eventId, groupRankings);
 
-        // 2️⃣ Génération du bracket
-        List<Match> matches = bracketService.generateBracket(eventId, rankings);
+            // 3️⃣ DTO
+            List<BracketMatchDTO> dto = matches.stream()
+                    .map(BracketMatchDTO::from)
+                    .toList();
 
-        // 3️⃣ DTO
-        List<BracketMatchDTO> dto = matches.stream()
-                .map(BracketMatchDTO::from)
-                .toList();
+            return ResponseEntity.ok(
+                    new ApiResponse<>(true, "Bracket généré avec succès", dto)
+            );
 
-        return ResponseEntity.ok(
-                new ApiResponse<>(true, "Bracket généré avec succès", dto)
-        );
+        } catch (IllegalStateException e) {
+            // ✅ Erreurs métier (phase incorrecte, etc.)
+            log.warn("Erreur métier génération bracket eventId={}: {}", eventId, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, e.getMessage(), null));
 
-    } catch (Exception e) {
-        return ResponseEntity.status(500)
-                .body(new ApiResponse<>(
-                        false,
-                        "Erreur lors de la génération du bracket : " + e.getMessage(),
-                        null
-                ));
+        } catch (IllegalArgumentException e) {
+            // ✅ Erreurs de validation (pas assez d'équipes, etc.)
+            log.warn("Erreur validation génération bracket eventId={}: {}", eventId, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, e.getMessage(), null));
+
+        } catch (Exception e) {
+            // ❌ Erreurs inattendues (ne JAMAIS exposer au client)
+            log.error("Erreur interne génération bracket eventId=" + eventId, e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(
+                            false,
+                            "Erreur interne du serveur. Contactez l'administrateur.",
+                            null
+                    ));
+        }
     }
-}
-
-/**
- * Génère la phase finale après les barrages
- */
-
 
     /**
-     * Récupère la totalité du bracket KO.
+     * ✅ Récupère la totalité du bracket KO.
      */
     @GetMapping("/{eventId}/bracket")
     public ResponseEntity<ApiResponse<List<BracketMatchDTO>>> getBracket(
@@ -125,32 +126,30 @@ public ResponseEntity<ApiResponse<List<BracketMatchDTO>>> generateBracket(
             );
 
         } catch (Exception e) {
+            log.error("Erreur récupération bracket eventId={}", eventId, e);
             return ResponseEntity.status(500)
                     .body(new ApiResponse<>(false,
-                            "Erreur lors de la récupération du bracket : " + e.getMessage(),
+                            "Erreur lors de la récupération du bracket",
                             null));
         }
     }
 
-
     /**
- * Génère le bracket de CONSOLANTE (tournoi B) pour un événement.
- */
+     * ✅ Génère le bracket de CONSOLANTE (tournoi B) pour un événement.
+     */
 @PostMapping("/{eventId}/consolante/generate")
 public ResponseEntity<ApiResponse<List<BracketMatchDTO>>> generateConsolante(
         @PathVariable Long eventId,
+        @RequestParam(name = "overwrite", defaultValue = "false") boolean overwrite,
         Principal principal
 ) {
     try {
-        // 🔐 USER AUTHENTIFIÉ (ROBUSTE)
         User currentUser = userService
                 .getUserByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
-        // 🔒 SÉCURITÉ
         eventSecurityService.assertAdminOrOrganizer(eventId, currentUser);
 
-        // 1️⃣ Classements des groupes
         Map<Long, List<TeamStats>> groupRankings =
                 classementService.computeRankingsForEvent(eventId);
 
@@ -159,14 +158,14 @@ public ResponseEntity<ApiResponse<List<BracketMatchDTO>>> generateConsolante(
                         .filter(e -> e.getKey() != null)
                         .collect(Collectors.toMap(
                                 e -> e.getKey().toString(),
-                                Map.Entry::getValue
+                                Map.Entry::getValue,
+                                (v1, v2) -> v1,
+                                LinkedHashMap::new
                         ));
 
-        // 2️⃣ Génération consolante
         List<Match> matches =
-                consolanteService.generateConsolanteBracket(eventId, rankings);
+                consolanteService.generateConsolanteBracket(eventId, rankings, overwrite);
 
-        // 3️⃣ DTO
         List<BracketMatchDTO> dto = matches.stream()
                 .map(BracketMatchDTO::from)
                 .toList();
@@ -175,114 +174,136 @@ public ResponseEntity<ApiResponse<List<BracketMatchDTO>>> generateConsolante(
                 new ApiResponse<>(true, "Bracket de consolante généré avec succès", dto)
         );
 
+    } catch (com.footballdemo.football_family.exception.DuplicateResourceException e) {
+        return ResponseEntity.status(409)
+                .body(new ApiResponse<>(false, e.getMessage(), null));
+
+    } catch (IllegalStateException e) {
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(false, e.getMessage(), null));
+
+    } catch (IllegalArgumentException e) {
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(false, e.getMessage(), null));
+
     } catch (Exception e) {
+        log.error("Erreur interne génération consolante eventId=" + eventId, e);
         return ResponseEntity.status(500)
-                .body(new ApiResponse<>(
-                        false,
-                        "Erreur lors de la génération du bracket de consolante : " + e.getMessage(),
-                        null
-                ));
+                .body(new ApiResponse<>(false, "Erreur interne du serveur. Contactez l'administrateur.", null));
     }
 }
 
 
 
-/**
- * Récupère la totalité du bracket de CONSOLANTE.
- */
-@GetMapping("/{eventId}/consolante")
-public ResponseEntity<ApiResponse<List<BracketMatchDTO>>> getConsolante(
-        @PathVariable Long eventId
-) {
-    try {
-        List<Match> matches = consolanteService.getConsolanteBracket(eventId);
+    /**
+     * ✅ Récupère la totalité du bracket de CONSOLANTE.
+     */
+    @GetMapping("/{eventId}/consolante")
+    public ResponseEntity<ApiResponse<List<BracketMatchDTO>>> getConsolante(
+            @PathVariable Long eventId
+    ) {
+        try {
+            List<Match> matches = consolanteService.getConsolanteBracket(eventId);
 
-        List<BracketMatchDTO> dto = matches.stream()
-                .map(BracketMatchDTO::from)
-                .toList();
+            List<BracketMatchDTO> dto = matches.stream()
+                    .map(BracketMatchDTO::from)
+                    .toList();
 
-        return ResponseEntity.ok(
-                new ApiResponse<>(true, "Bracket de consolante récupéré", dto)
-        );
+            return ResponseEntity.ok(
+                    new ApiResponse<>(true, "Bracket de consolante récupéré", dto)
+            );
 
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500)
-                .body(new ApiResponse<>(false,
-                        "Erreur lors de la récupération du bracket de consolante : " + e.getMessage(),
-                        null));
+        } catch (Exception e) {
+            log.error("Erreur récupération consolante eventId=" + eventId, e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(false,
+                            "Erreur lors de la récupération du bracket de consolante",
+                            null));
+        }
     }
-}
 
+    /**
+     * ✅ Supprime tous les matchs d'un événement (DANGEREUX)
+     */
+    @DeleteMapping("/{eventId}/matches/reset")
+    @Transactional
+    public ResponseEntity<ApiResponse<String>> resetMatches(
+            @PathVariable Long eventId,
+            Principal principal
+    ) {
+        try {
+            User currentUser = userService
+                    .getUserByUsername(principal.getName())
+                    .orElseThrow();
 
-@DeleteMapping("/{eventId}/matches/reset")
-@Transactional
-public ResponseEntity<ApiResponse<String>> resetMatches(
-        @PathVariable Long eventId,
-        Principal principal
-) {
-    try {
-        User currentUser = userService
-                .getUserByUsername(principal.getName())
-                .orElseThrow();
+            eventSecurityService.assertAdminOrOrganizer(eventId, currentUser);
+            tournamentRulesService.assertNoScoresExist(eventId);
 
-        eventSecurityService.assertAdminOrOrganizer(eventId, currentUser);
-        tournamentRulesService.assertNoScoresExist(eventId);
+            matchRepository.clearNextMatchLinks(eventId);
+            matchRepository.deleteByEventId(eventId);
 
-        matchRepository.clearNextMatchLinks(eventId);
-        matchRepository.deleteByEventId(eventId);
+            Event event = eventService.getEventById(eventId);
+            event.setTournamentPhase(TournamentPhase.GROUP_STAGE_FINISHED);
+            eventService.save(event);
 
-        // ✅ LA LIGNE QUI MANQUAIT
-        Event event = eventService.getEventById(eventId);
-        event.setTournamentPhase(TournamentPhase.GROUP_STAGE_FINISHED);
-        eventService.save(event);
+            log.info("Matchs supprimés pour eventId={} par userId={}", eventId, currentUser.getId());
 
-        return ResponseEntity.ok(
-                new ApiResponse<>(true, "Matchs supprimés avec succès", "OK")
-        );
+            return ResponseEntity.ok(
+                    new ApiResponse<>(true, "Matchs supprimés avec succès", "OK")
+            );
 
-    } catch (Exception e) {
-        return ResponseEntity.status(500)
-                .body(new ApiResponse<>(
-                        false,
-                        "Erreur lors de la suppression des matchs : " + e.getMessage(),
-                        null
-                ));
+        } catch (IllegalStateException e) {
+            log.warn("Erreur métier reset matches eventId={}: {}", eventId, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, e.getMessage(), null));
+
+        } catch (Exception e) {
+            log.error("Erreur interne reset matches eventId=" + eventId, e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(
+                            false,
+                            "Erreur interne du serveur",
+                            null
+                    ));
+        }
     }
-}
 
+    /**
+     * ✅ Récupère les résultats finaux d'un tournoi
+     */
+    @GetMapping("/{eventId}/final-results")
+    public ResponseEntity<ApiResponse<FinalResultsDTO>> getFinalResults(
+            @PathVariable Long eventId
+    ) {
+        try {
+            FinalResultsDTO results = finalResultService.getFinalResults(eventId);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Résultats finaux", results));
 
-
-@GetMapping("/{eventId}/final-results")
-public ResponseEntity<ApiResponse<FinalResultsDTO>> getFinalResults(
-        @PathVariable Long eventId
-) {
-    try {
-        FinalResultsDTO results = finalResultService.getFinalResults(eventId);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Résultats finaux", results));
-
-    } catch (Exception e) {
-        return ResponseEntity.status(500)
-                .body(new ApiResponse<>(false, "Erreur : " + e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Erreur récupération résultats finaux eventId=" + eventId, e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(false, "Erreur lors de la récupération des résultats", null));
+        }
     }
-}
 
-        @GetMapping("/{eventId}/tournament-summary")
-public ResponseEntity<ApiResponse<TournamentSummaryDTO>> getTournamentSummary(
-        @PathVariable Long eventId
-) {
-    try {
-        TournamentSummaryDTO summary = tournamentSummaryService.getSummary(eventId);
+    /**
+     * ✅ Récupère le résumé complet d'un tournoi
+     */
+    @GetMapping("/{eventId}/tournament-summary")
+    public ResponseEntity<ApiResponse<TournamentSummaryDTO>> getTournamentSummary(
+            @PathVariable Long eventId
+    ) {
+        try {
+            TournamentSummaryDTO summary = tournamentSummaryService.getSummary(eventId);
 
-        return ResponseEntity.ok(
-                new ApiResponse<>(true, "Résumé du tournoi", summary)
-        );
+            return ResponseEntity.ok(
+                    new ApiResponse<>(true, "Résumé du tournoi", summary)
+            );
 
-    } catch (Exception e) {
-        return ResponseEntity.status(500)
-                .body(new ApiResponse<>(false, "Erreur : " + e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Erreur récupération résumé tournoi eventId=" + eventId, e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(false, "Erreur lors de la récupération du résumé", null));
+        }
     }
-}
-
-
 }
