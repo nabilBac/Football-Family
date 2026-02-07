@@ -1,8 +1,9 @@
 import { Router } from "./router.js";
 
 export const Auth = {
-    accessToken: localStorage.getItem("accessToken"),
-    refreshToken: localStorage.getItem("refreshToken"),
+accessToken: (localStorage.getItem("accessToken") || "").trim(),
+refreshToken: (localStorage.getItem("refreshToken") || "").trim(),
+
     currentUser: JSON.parse(localStorage.getItem("currentUser") || "null"),
 
 
@@ -31,18 +32,21 @@ export const Auth = {
         }
     },
 
-    saveTokens(access, refresh, user = null) {
-        this.accessToken = access;
-        this.refreshToken = refresh;
+   saveTokens(access, refresh, user = null) {
+  access = (access || "").trim();
+  refresh = (refresh || "").trim();
 
-        localStorage.setItem("accessToken", access);
-        localStorage.setItem("refreshToken", refresh);
+  this.accessToken = access;
+  this.refreshToken = refresh;
 
-        if (user) {
-            this.currentUser = user;
-            localStorage.setItem("currentUser", JSON.stringify(user));
-        }
-    },
+  localStorage.setItem("accessToken", access);
+  localStorage.setItem("refreshToken", refresh);
+
+  if (user) {
+    this.currentUser = user;
+    localStorage.setItem("currentUser", JSON.stringify(user));
+  }
+},
 
     clear() {
         localStorage.removeItem("accessToken");
@@ -103,14 +107,19 @@ export const Auth = {
 },
 
 
-    async loadUser() {
-    if (!this.accessToken) return null;
+   async loadUser() {
+  // 🔒 resync token (mobile/PWA safe)
+this.accessToken = (localStorage.getItem("accessToken") || "").trim();
 
-    const res = await this.secureFetch("/api/auth/me");
 
-    if (!res.ok) return null;
+  if (!this.accessToken || this.accessToken === "null" || this.accessToken === "undefined") {
+    return null;
+  }
 
-    const user = await res.json();
+  const res = await this.secureFetch("/api/auth/me");
+  if (!res.ok) return null;
+
+  const user = await res.json();
 
     // ✅ DÉCODER LE TOKEN POUR RÉCUPÉRER clubId
     const payload = this.decodeToken(this.accessToken);
@@ -140,12 +149,20 @@ export const Auth = {
 
 
     async refresh() {
-        if (!this.refreshToken) return false;
+            // 🔒 resync mobile/PWA
+  this.refreshToken = (localStorage.getItem("refreshToken") || "").trim();
+
+
+if (!this.refreshToken || this.refreshToken === "null" || this.refreshToken === "undefined") {
+  return false;
+}
+
 
         const res = await fetch("/api/auth/refresh", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refreshToken: this.refreshToken })
+            body: JSON.stringify({ refreshToken: this.refreshToken.trim() })
+
         });
 
         if (!res.ok) {
@@ -155,14 +172,17 @@ export const Auth = {
 
         const data = await res.json();
         this.saveTokens(data.accessToken, data.refreshToken);
+       
+
 
         return true;
     },
 
 async secureFetch(url, options = {}) {
   // 🔒 relire à chaque appel (mobile/PWA safe)
-  const accessToken = localStorage.getItem("accessToken");
-  const refreshToken = localStorage.getItem("refreshToken");
+const accessToken = (localStorage.getItem("accessToken") || "").trim();
+const refreshToken = (localStorage.getItem("refreshToken") || "").trim();
+
 
   const headers = new Headers(options.headers || {});
   const isFormData = options.body instanceof FormData;
@@ -175,7 +195,8 @@ async secureFetch(url, options = {}) {
 
   // ✅ Ajoute Authorization UNIQUEMENT si token valide
   if (accessToken && accessToken !== "null" && accessToken !== "undefined") {
-    headers.set("Authorization", "Bearer " + accessToken);
+   headers.set("Authorization", "Bearer " + accessToken.trim());
+
   } else {
     // évite Authorization: Bearer null/undefined
     headers.delete("Authorization");
@@ -186,11 +207,13 @@ async secureFetch(url, options = {}) {
   let res = await doFetch();
 
   // 🔁 Retry après refresh si 401
-  if (res.status === 401 && refreshToken) {
+  if (res.status === 401 && refreshToken && refreshToken !== "null" && refreshToken !== "undefined") {
+
     const ok = await this.refresh();
     if (ok) {
       const newToken = localStorage.getItem("accessToken");
-      if (newToken) headers.set("Authorization", "Bearer " + newToken);
+  if (newToken) headers.set("Authorization", "Bearer " + newToken.trim());
+
       res = await doFetch();
     }
   }
@@ -204,15 +227,26 @@ async secureFetch(url, options = {}) {
         Router.go("/login");
     },
 
-    async requireAuth() {
-        if (!this.accessToken) {
-            Router.go("/login");
-            return;
-        }
+   async requireAuth() {
+  // 🔒 re-sync mobile/PWA
+this.accessToken = (localStorage.getItem("accessToken") || "").trim();
+this.refreshToken = (localStorage.getItem("refreshToken") || "").trim();
 
-        const user = await this.loadUser();
-        if (!user) this.logout();
-    }
+
+  if (!this.accessToken || this.accessToken === "null" || this.accessToken === "undefined") {
+    Router.go("/login");
+    return false;
+  }
+
+  const user = await this.loadUser();
+  if (!user) {
+    this.logout();
+    return false;
+  }
+
+  return true;
+}
+
 };
 
 /* 🌟 Redirection PWA après connexion */

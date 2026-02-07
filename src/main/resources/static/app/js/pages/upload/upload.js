@@ -53,7 +53,8 @@ export const UploadPage = {
 
    async init() {
 
-              await Auth.requireAuth();
+               const ok = await Auth.requireAuth();
+            if (!ok) return;
 
 
 
