@@ -159,36 +159,45 @@ export const Auth = {
         return true;
     },
 
-    async secureFetch(url, options = {}) {
-        if (!options.headers || typeof options.headers !== "object") {
-            options.headers = {};
-        }
+async secureFetch(url, options = {}) {
+  // 🔒 relire à chaque appel (mobile/PWA safe)
+  const accessToken = localStorage.getItem("accessToken");
+  const refreshToken = localStorage.getItem("refreshToken");
 
-        const isFormData = options.body instanceof FormData;
+  const headers = new Headers(options.headers || {});
+  const isFormData = options.body instanceof FormData;
+  const method = (options.method || "GET").toUpperCase();
 
-        if (options.method && options.method !== "GET" && !isFormData) {
-            if (!options.headers["Content-Type"]) {
-                options.headers["Content-Type"] = "application/json";
-            }
-        }
+  // ✅ JSON seulement si pas FormData
+  if (method !== "GET" && !isFormData && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
 
-        if (this.accessToken) {
-            options.headers["Authorization"] = "Bearer " + this.accessToken;
-        }
+  // ✅ Ajoute Authorization UNIQUEMENT si token valide
+  if (accessToken && accessToken !== "null" && accessToken !== "undefined") {
+    headers.set("Authorization", "Bearer " + accessToken);
+  } else {
+    // évite Authorization: Bearer null/undefined
+    headers.delete("Authorization");
+  }
 
-        let res = await fetch(url, options);
+  const doFetch = () => fetch(url, { ...options, headers });
 
-        if (res.status === 401 && this.refreshToken) {
-            const ok = await this.refresh();
+  let res = await doFetch();
 
-            if (ok) {
-                options.headers["Authorization"] = "Bearer " + this.accessToken;
-                res = await fetch(url, options);
-            }
-        }
+  // 🔁 Retry après refresh si 401
+  if (res.status === 401 && refreshToken) {
+    const ok = await this.refresh();
+    if (ok) {
+      const newToken = localStorage.getItem("accessToken");
+      if (newToken) headers.set("Authorization", "Bearer " + newToken);
+      res = await doFetch();
+    }
+  }
 
-        return res;
-    },
+  return res;
+},
+
 
     logout() {
         this.clear();

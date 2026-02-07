@@ -51,7 +51,12 @@ export const UploadPage = {
         `;
     },
 
-    init() {
+   async init() {
+
+              await Auth.requireAuth();
+
+
+
         const form = document.getElementById("uploadForm");
         const loader = document.getElementById("uploadLoader");
         const toast = document.getElementById("toast");
