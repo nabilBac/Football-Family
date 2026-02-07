@@ -58,10 +58,10 @@ public void addViewControllers(ViewControllerRegistry registry) {
 
     // SPA routes = pas d'assets (pas de ".") + exclusions API / WS / fichiers servis
     registry.addViewController("/{path:^(?!api|ws|videos|uploads|css|js|assets|app|webjars|actuator|error$)[^\\.]*$}")
-            .setViewName("forward:/");
+            .setViewName("forward:/index.html");
 
     registry.addViewController("/**/{path:^(?!api|ws|videos|uploads|css|js|assets|app|webjars|actuator|error$)[^\\.]*$}")
-            .setViewName("forward:/");
+            .setViewName("forward:/index.html");
 }
 
 
