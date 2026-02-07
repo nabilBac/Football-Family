@@ -12,11 +12,12 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
+# (optionnel mais utile) créer un dossier data pour H2 file
+RUN mkdir -p /app/data
+
 COPY --from=build /app/target/*.jar app.jar
 
-# Render fournit PORT (par défaut 10000)
 ENV PORT=10000
 EXPOSE 10000
 
-# Important : binder Spring sur le PORT fourni
 ENTRYPOINT ["sh","-c","java -Dserver.port=${PORT} -jar /app/app.jar"]
