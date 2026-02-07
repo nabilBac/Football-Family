@@ -53,16 +53,16 @@ public void addResourceHandlers(ResourceHandlerRegistry registry) {
             .addResourceLocations("classpath:/static/");
 }
 
-    @Override
-    public void addViewControllers(ViewControllerRegistry registry) {
+  @Override
+public void addViewControllers(ViewControllerRegistry registry) {
 
-        // 🟦 ROUTAGE SPA UNIQUEMENT SI PAS D’EXTENSION
-        registry.addViewController("/{path:^(?!.*\\.).*$}")
-                .setViewName("forward:/index.html");
+    registry.addViewController("/{path:^(?!api|ws|videos|uploads|css|js|assets|app|webjars|actuator|error$).*$}")
+            .setViewName("forward:/index.html");
 
-        registry.addViewController("/**/{path:^(?!.*\\.).*$}")
-                .setViewName("forward:/index.html");
-    }
+    registry.addViewController("/{path:^(?!api|ws|videos|uploads|css|js|assets|app|webjars|actuator|error$).*$}/**")
+            .setViewName("forward:/index.html");
+}
+
 
     @Bean
     public FilterRegistrationBean<ServiceWorkerFilter> swFilter() {
