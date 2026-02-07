@@ -13,7 +13,8 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # (optionnel mais utile) créer un dossier data pour H2 file
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data /app/uploads /app/videos
+
 
 COPY --from=build /app/target/*.jar app.jar
 
