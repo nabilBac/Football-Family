@@ -106,11 +106,14 @@ export const UploadPage = {
 
             form.reset();
             
-            toast.textContent = "✅ Vidéo uploadée ! Redirection vers ton profil...";
+           toast.textContent = "✅ Vidéo uploadée ! Redirection vers ton profil...";
             toast.style.background = "#10B981";
             showToast();
 
-            // ✅ 4. REDIRECTION VERS PROFIL AVEC TIMESTAMP (force refresh)
+            // ✅ MARQUER QU'ON VIENT D'UPLOADER
+            sessionStorage.setItem("justUploaded", "true");
+
+            // ✅ REDIRECTION VERS PROFIL AVEC TIMESTAMP (force refresh)
             setTimeout(() => {
                 window.location.href = '/profile?refresh=' + Date.now();
             }, 1500);

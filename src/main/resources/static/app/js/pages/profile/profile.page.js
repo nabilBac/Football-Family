@@ -220,6 +220,16 @@ if (!isCurrentUser && Auth.currentUser?.id && user?.id && Number(Auth.currentUse
 }
 
 export function init(params) {
+
+              // ✅ SOLUTION SIMPLE: Recharge la page 4 secondes après l'upload
+    const justUploaded = sessionStorage.getItem("justUploaded");
+    if (justUploaded) {
+        sessionStorage.removeItem("justUploaded");
+        console.log("🔄 Rechargement du profil dans 4s...");
+        setTimeout(() => {
+            window.location.reload();
+        }, 4000);
+    }
     // ✅ AUTO-REFRESH: Vérifie toutes les 2 secondes pendant 10 secondes si miniatures ont changé
     let checkCount = 0;
     const maxChecks = 5; // 5 × 2s = 10 secondes max
