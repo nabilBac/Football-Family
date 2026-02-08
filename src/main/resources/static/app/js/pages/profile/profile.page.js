@@ -220,30 +220,26 @@ if (!isCurrentUser && Auth.currentUser?.id && user?.id && Number(Auth.currentUse
 }
 
 export function init(params) {
-    // ✅ WEBSOCKET: Écouter les mises à jour de miniatures
-    if (window.stompClient && window.stompClient.connected) {
-        const videoGrid = document.querySelector(".video-grid");
-        if (videoGrid) {
-            const userId = videoGrid.dataset.userId;
-            
-            // Pour chaque vidéo affichée, écouter les mises à jour de miniature
-            document.querySelectorAll(".video-item").forEach((item) => {
-                const videoId = item.dataset.id;
-                
-                window.stompClient.subscribe(`/topic/video/${videoId}/thumbnail`, (message) => {
-                    const data = JSON.parse(message.body);
-                    console.log(`🔄 Miniature mise à jour pour vidéo #${videoId}`, data);
-                    
-                    // Mettre à jour l'image de la miniature
-                    const img = item.querySelector("img");
-                    if (img && data.thumbnailUrl) {
-                        // Force le reload avec cache busting
-                        img.src = `/videos/${data.thumbnailUrl}?t=${Date.now()}`;
-                    }
-                });
-            });
+    // ✅ AUTO-REFRESH: Vérifie toutes les 2 secondes pendant 10 secondes si miniatures ont changé
+    let checkCount = 0;
+    const maxChecks = 5; // 5 × 2s = 10 secondes max
+    
+    const intervalId = setInterval(() => {
+        checkCount++;
+        
+        document.querySelectorAll(".video-item").forEach((item) => {
+            const img = item.querySelector("img");
+            if (img && img.src.includes('thumbnails/default')) {
+                // Si c'est encore l'image par défaut, force le refresh
+                const currentSrc = img.src.split('?')[0];
+                img.src = currentSrc + '?t=' + Date.now();
+            }
+        });
+        
+        if (checkCount >= maxChecks) {
+            clearInterval(intervalId);
         }
-    }
+    }, 2000); // Vérifie toutes les 2 secondes
 
     // Navigation vers feed immersif depuis une vidéo
     document.querySelectorAll(".video-item").forEach((item) => {
@@ -270,11 +266,10 @@ export function init(params) {
         });
     }
 
-    // Bouton Mon Club - REDIRECTION DIRECTE
+    // Bouton Mon Club
     const goToAdminBtn = document.getElementById("goToAdminBtn");
     if (goToAdminBtn) {
        goToAdminBtn.addEventListener("click", () => {
-           console.log("🔥 Navigation vers admin via Router");
            Router.go("/admin");
        });
     }
