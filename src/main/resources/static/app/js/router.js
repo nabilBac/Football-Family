@@ -206,6 +206,9 @@ async go(url) {
             if (url === "/videos/go-live" || url.startsWith("/videos/watch/"))
                 this.root.classList.add("is-live-page");
 
+                    if (url === "/live/matches") this.root.classList.add("is-live-page");
+
+
             // Resolve route
             const resolved = this.resolveRoute(url);
 
@@ -241,7 +244,34 @@ if (url.startsWith("/club-admin") || url.startsWith("/admin")) {
                 return;
             }
 
-            const module = await import(resolved.modulePath);
+            // ✅ DEBUG + SAFE IMPORT (mobile/render)
+const moduleUrl = resolved.modulePath;
+console.log("[Router] importing:", moduleUrl, "for url=", url);
+
+try {
+  const r = await fetch(moduleUrl, { cache: "no-store" });
+  const ct = (r.headers.get("content-type") || "").toLowerCase();
+
+  console.log("[Router] module fetch:", moduleUrl, "status=", r.status, "ct=", ct);
+
+  if (!r.ok) {
+    throw new Error(`Module introuvable: ${moduleUrl} (HTTP ${r.status})`);
+  }
+
+  // Si Render renvoie index.html au lieu du JS => fallback SPA trop large
+  if (ct.includes("text/html")) {
+    const txt = await r.text();
+    console.error("⚠️ HTML renvoyé au lieu de JS pour", moduleUrl);
+    console.log("HTML head:", txt.slice(0, 150));
+    throw new Error(`Module ${moduleUrl} renvoie HTML (fallback SPA).`);
+  }
+} catch (e) {
+  console.error("❌ Précheck import échoué:", e);
+  throw e;
+}
+
+const module = await import(moduleUrl);
+
             const Page =
                 module.default ||
                 module.Page ||
@@ -293,6 +323,9 @@ if (url.startsWith("/club-admin") || url.startsWith("/admin")) {
             if (url === "/hub") this.root.classList.add("is-hub-page");
             if (url === "/videos/go-live" || url.startsWith("/videos/watch/"))
                 this.root.classList.add("is-live-page");
+
+                    if (url === "/live/matches") this.root.classList.add("is-live-page");
+
 
             // Reload post buttons only if not admin
             if (!isAdminPage) {
