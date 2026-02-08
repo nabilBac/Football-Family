@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.repository.query.Param;
-
+import com.footballdemo.football_family.model.VideoStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -32,18 +32,20 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
     /**
      * Projection légère pour le feed - charge uniquement les colonnes nécessaires
      */
-    interface VideoFeedProjection {
-        Long getId();
-        String getTitle();
-        String getCategory();
-        String getFilename();
-        String getThumbnailUrl();
-        LocalDateTime getDateUpload();
-        String getUploaderUsername();
-        Long getUploaderId();
-        int getLikesCount();
-        long getCommentsCount();
-    }
+  interface VideoFeedProjection {
+    Long getId();
+    String getTitle();
+    String getCategory();
+    String getFilename();
+    String getThumbnailUrl();
+    LocalDateTime getDateUpload();
+    String getUploaderUsername();
+    Long getUploaderId();
+    VideoStatus getStatus();          // ✅ AJOUT
+    int getLikesCount();
+    long getCommentsCount();
+}
+
 
     // ==========================================
     // 2️⃣ FEED QUERIES (READY videos only)
@@ -59,6 +61,7 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
                v.category AS category, 
                v.filename AS filename, 
                v.thumbnailUrl AS thumbnailUrl, 
+                v.status AS status, 
                v.dateUpload AS dateUpload, 
                v.uploader.username AS uploaderUsername, 
                v.uploader.id AS uploaderId, 
@@ -80,6 +83,7 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
                v.category AS category, 
                v.filename AS filename, 
                v.thumbnailUrl AS thumbnailUrl, 
+                v.status AS status, 
                v.dateUpload AS dateUpload, 
                v.uploader.username AS uploaderUsername, 
                v.uploader.id AS uploaderId, 
@@ -94,6 +98,51 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
         @Param("followedUserIds") List<Long> followedUserIds, 
         Pageable pageable
     );
+
+    @Query("""
+    SELECT v.id AS id, 
+           v.title AS title, 
+           v.category AS category, 
+           v.filename AS filename, 
+           v.thumbnailUrl AS thumbnailUrl, 
+           v.dateUpload AS dateUpload, 
+           v.uploader.username AS uploaderUsername, 
+           v.uploader.id AS uploaderId,
+           v.status AS status,
+           v.likesCount AS likesCount, 
+           v.commentsCount AS commentsCount
+    FROM Video v
+    WHERE v.status IN :statuses
+    ORDER BY v.dateUpload DESC
+""")
+Page<VideoFeedProjection> findFeedProjectionByStatuses(
+    @Param("statuses") List<VideoStatus> statuses,
+    Pageable pageable
+);
+
+@Query("""
+    SELECT v.id AS id, 
+           v.title AS title, 
+           v.category AS category, 
+           v.filename AS filename, 
+           v.thumbnailUrl AS thumbnailUrl, 
+           v.dateUpload AS dateUpload, 
+           v.uploader.username AS uploaderUsername, 
+           v.uploader.id AS uploaderId,
+           v.status AS status,
+           v.likesCount AS likesCount, 
+           v.commentsCount AS commentsCount
+    FROM Video v
+    WHERE v.uploader.id IN :followedUserIds
+      AND v.status IN :statuses
+    ORDER BY v.dateUpload DESC
+""")
+Page<VideoFeedProjection> findFollowedFeedProjectionByStatuses(
+    @Param("followedUserIds") List<Long> followedUserIds,
+    @Param("statuses") List<VideoStatus> statuses,
+    Pageable pageable
+);
+
 
     // ==========================================
     // 3️⃣ PROFILE QUERIES

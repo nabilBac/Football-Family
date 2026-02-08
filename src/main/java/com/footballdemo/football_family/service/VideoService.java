@@ -53,7 +53,9 @@ public class VideoService {
     // FEED GLOBAL (SEULEMENT VIDÉOS READY)
     // ---------------------------
     public List<VideoDto> getFeedVideosForUser(Pageable pageable, String username) {
-        Page<VideoFeedProjection> videosPage = videoRepository.findReadyFeedProjectionOrderByDateUploadDesc(pageable);
+     var statuses = List.of(VideoStatus.READY, VideoStatus.PROCESSING);
+Page<VideoFeedProjection> videosPage = videoRepository.findFeedProjectionByStatuses(statuses, pageable);
+
         return mapToVideoDtoList(videosPage, username);
     }
 
@@ -76,7 +78,9 @@ public class VideoService {
         if (followedIds.isEmpty())
             return List.of();
 
-        Page<VideoFeedProjection> videosPage = videoRepository.findReadyFollowedFeedProjection(followedIds, pageable);
+      var statuses = List.of(VideoStatus.READY, VideoStatus.PROCESSING);
+Page<VideoFeedProjection> videosPage = videoRepository.findFollowedFeedProjectionByStatuses(followedIds, statuses, pageable);
+
         return mapToVideoDtoList(videosPage, username);
     }
 
@@ -120,6 +124,7 @@ public class VideoService {
                         .dateUpload(p.getDateUpload())
                         .filename(p.getFilename())
                         .thumbnailUrl(p.getThumbnailUrl())
+                       
                         .likesCount(likeCountsMap.getOrDefault(p.getId(), 0L).intValue())
                         .likedByCurrentUser(likedMap.getOrDefault(p.getId(), false))
                         .commentsCount(p.getCommentsCount())

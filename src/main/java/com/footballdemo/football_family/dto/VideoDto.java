@@ -5,6 +5,7 @@ import lombok.Value;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import com.footballdemo.football_family.model.VideoStatus;
 
 import java.util.Collections;
 
@@ -23,6 +24,7 @@ public class VideoDto {
     LocalDateTime dateUpload;
     String filename;
     String thumbnailUrl;
+    VideoStatus status; 
 
     @Builder.Default
     List<CommentDto> topComments = Collections.emptyList();
