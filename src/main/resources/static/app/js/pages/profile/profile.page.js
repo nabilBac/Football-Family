@@ -220,50 +220,11 @@ if (!isCurrentUser && Auth.currentUser?.id && user?.id && Number(Auth.currentUse
 }
 
 export function init(params) {
-
-             
-  // ✅ Détecte si on vient d'uploader via l'URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const justUploaded = urlParams.get('uploaded');
-    
-    if (justUploaded === 'true') {
-        console.log("🔄 Upload détecté ! Rechargement dans 5s...");
-        
-        // Nettoie l'URL
-        window.history.replaceState({}, '', '/profile');
-        
-        // Recharge après 5 secondes
-        setTimeout(() => {
-            console.log("🔄 RELOAD NOW!");
-            window.location.reload();
-        }, 5000);
-    }
-    // ✅ AUTO-REFRESH: Vérifie toutes les 2 secondes pendant 10 secondes si miniatures ont changé
-    let checkCount = 0;
-    const maxChecks = 5; // 5 × 2s = 10 secondes max
-    
-    const intervalId = setInterval(() => {
-        checkCount++;
-        
-        document.querySelectorAll(".video-item").forEach((item) => {
-            const img = item.querySelector("img");
-            if (img && img.src.includes('thumbnails/default')) {
-                // Si c'est encore l'image par défaut, force le refresh
-                const currentSrc = img.src.split('?')[0];
-                img.src = currentSrc + '?t=' + Date.now();
-            }
-        });
-        
-        if (checkCount >= maxChecks) {
-            clearInterval(intervalId);
-        }
-    }, 2000); // Vérifie toutes les 2 secondes
-
     // Navigation vers feed immersif depuis une vidéo
     document.querySelectorAll(".video-item").forEach((item) => {
         item.addEventListener("click", () => {
             const id = item.dataset.id;
-           Router.go(`/videos/feed/${id}`);
+            Router.go(`/videos/feed/${id}`);
         });
     });
 
