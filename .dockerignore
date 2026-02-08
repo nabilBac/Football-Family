@@ -1,0 +1,7 @@
+videos/
+data/
+*.log
+target/
+.git/
+node_modules/
+uploads/
