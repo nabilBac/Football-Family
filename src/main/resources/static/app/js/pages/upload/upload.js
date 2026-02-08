@@ -110,12 +110,9 @@ export const UploadPage = {
             toast.style.background = "#10B981";
             showToast();
 
-            // ✅ MARQUER QU'ON VIENT D'UPLOADER
-            sessionStorage.setItem("justUploaded", "true");
-
-            // ✅ REDIRECTION VERS PROFIL AVEC TIMESTAMP (force refresh)
+            // ✅ REDIRECTION AVEC PARAMÈTRE SPÉCIAL
             setTimeout(() => {
-                window.location.href = '/profile?refresh=' + Date.now();
+                window.location.href = '/profile?uploaded=true&t=' + Date.now();
             }, 1500);
         });
 

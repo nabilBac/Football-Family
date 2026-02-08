@@ -221,14 +221,22 @@ if (!isCurrentUser && Auth.currentUser?.id && user?.id && Number(Auth.currentUse
 
 export function init(params) {
 
-              // ✅ SOLUTION SIMPLE: Recharge la page 4 secondes après l'upload
-    const justUploaded = sessionStorage.getItem("justUploaded");
-    if (justUploaded) {
-        sessionStorage.removeItem("justUploaded");
-        console.log("🔄 Rechargement du profil dans 4s...");
+             
+  // ✅ Détecte si on vient d'uploader via l'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const justUploaded = urlParams.get('uploaded');
+    
+    if (justUploaded === 'true') {
+        console.log("🔄 Upload détecté ! Rechargement dans 5s...");
+        
+        // Nettoie l'URL
+        window.history.replaceState({}, '', '/profile');
+        
+        // Recharge après 5 secondes
         setTimeout(() => {
+            console.log("🔄 RELOAD NOW!");
             window.location.reload();
-        }, 4000);
+        }, 5000);
     }
     // ✅ AUTO-REFRESH: Vérifie toutes les 2 secondes pendant 10 secondes si miniatures ont changé
     let checkCount = 0;
