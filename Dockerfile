@@ -12,9 +12,13 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
+# ✅ INSTALLER FFMPEG (AJOUTE CETTE LIGNE)
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
 # (optionnel mais utile) créer un dossier data pour H2 file
 RUN mkdir -p /app/data /app/uploads /app/videos
-
 
 COPY --from=build /app/target/*.jar app.jar
 
