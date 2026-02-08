@@ -220,6 +220,30 @@ if (!isCurrentUser && Auth.currentUser?.id && user?.id && Number(Auth.currentUse
 }
 
 export function init(params) {
+    // ✅ WEBSOCKET: Écouter les mises à jour de miniatures
+    if (window.stompClient && window.stompClient.connected) {
+        const videoGrid = document.querySelector(".video-grid");
+        if (videoGrid) {
+            const userId = videoGrid.dataset.userId;
+            
+            // Pour chaque vidéo affichée, écouter les mises à jour de miniature
+            document.querySelectorAll(".video-item").forEach((item) => {
+                const videoId = item.dataset.id;
+                
+                window.stompClient.subscribe(`/topic/video/${videoId}/thumbnail`, (message) => {
+                    const data = JSON.parse(message.body);
+                    console.log(`🔄 Miniature mise à jour pour vidéo #${videoId}`, data);
+                    
+                    // Mettre à jour l'image de la miniature
+                    const img = item.querySelector("img");
+                    if (img && data.thumbnailUrl) {
+                        // Force le reload avec cache busting
+                        img.src = `/videos/${data.thumbnailUrl}?t=${Date.now()}`;
+                    }
+                });
+            });
+        }
+    }
 
     // Navigation vers feed immersif depuis une vidéo
     document.querySelectorAll(".video-item").forEach((item) => {
@@ -246,14 +270,13 @@ export function init(params) {
         });
     }
 
-
-     // Bouton Mon Club - REDIRECTION DIRECTE
+    // Bouton Mon Club - REDIRECTION DIRECTE
     const goToAdminBtn = document.getElementById("goToAdminBtn");
     if (goToAdminBtn) {
        goToAdminBtn.addEventListener("click", () => {
-    console.log("🔥 Navigation vers admin via Router");
-    Router.go("/admin");  // ✅ BON
-});
+           console.log("🔥 Navigation vers admin via Router");
+           Router.go("/admin");
+       });
     }
 
     // FOLLOW SYSTEM
@@ -261,34 +284,32 @@ export function init(params) {
     if (followBtn) {
         const targetId = followBtn.dataset.targetId;
 
-      async function refreshFollowStatus() {
-  try {
-    const res = await fetch(`/api/follow/check/${targetId}`, {
-      headers: { "Authorization": Auth.getAuthHeader() }
-    });
+        async function refreshFollowStatus() {
+            try {
+                const res = await fetch(`/api/follow/check/${targetId}`, {
+                    headers: { "Authorization": Auth.getAuthHeader() }
+                });
 
-    // ✅ invité / interdit → on masque le module follow, sans casser la page
-    if (res.status === 401 || res.status === 403) {
-      followBtn.style.display = "none";
-      return;
-    }
+                if (res.status === 401 || res.status === 403) {
+                    followBtn.style.display = "none";
+                    return;
+                }
 
-    if (!res.ok) {
-      console.warn("follow check failed:", res.status);
-      return;
-    }
+                if (!res.ok) {
+                    console.warn("follow check failed:", res.status);
+                    return;
+                }
 
-    const result = await res.json();
-    const data = result.data;
+                const result = await res.json();
+                const data = result.data;
 
-    followBtn.classList.toggle("following", data.isFollowing);
-    followBtn.textContent = data.isFollowing ? "Abonné" : "S'abonner";
+                followBtn.classList.toggle("following", data.isFollowing);
+                followBtn.textContent = data.isFollowing ? "Abonné" : "S'abonner";
 
-  } catch (e) {
-    console.warn("refreshFollowStatus error:", e);
-  }
-}
-
+            } catch (e) {
+                console.warn("refreshFollowStatus error:", e);
+            }
+        }
 
         refreshFollowStatus();
 
