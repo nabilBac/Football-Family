@@ -53,7 +53,8 @@ public class VideoService {
     // FEED GLOBAL (SEULEMENT VIDÉOS READY)
     // ---------------------------
     public List<VideoDto> getFeedVideosForUser(Pageable pageable, String username) {
-     var statuses = List.of(VideoStatus.READY, VideoStatus.PROCESSING);
+    var statuses = List.of(VideoStatus.READY, VideoStatus.PROCESSING, VideoStatus.FAILED);
+
 Page<VideoFeedProjection> videosPage = videoRepository.findFeedProjectionByStatuses(statuses, pageable);
 
         return mapToVideoDtoList(videosPage, username);
@@ -78,7 +79,8 @@ Page<VideoFeedProjection> videosPage = videoRepository.findFeedProjectionByStatu
         if (followedIds.isEmpty())
             return List.of();
 
-      var statuses = List.of(VideoStatus.READY, VideoStatus.PROCESSING);
+     var statuses = List.of(VideoStatus.READY, VideoStatus.PROCESSING, VideoStatus.FAILED);
+
 Page<VideoFeedProjection> videosPage = videoRepository.findFollowedFeedProjectionByStatuses(followedIds, statuses, pageable);
 
         return mapToVideoDtoList(videosPage, username);
