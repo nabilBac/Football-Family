@@ -224,7 +224,7 @@ export function init(params) {
     document.querySelectorAll(".video-item").forEach((item) => {
         item.addEventListener("click", () => {
             const id = item.dataset.id;
-            Router.go(`/videos/feed/${id}`);
+          Router.go(`/videos/feed/profile/${id}`);
         });
     });
 
