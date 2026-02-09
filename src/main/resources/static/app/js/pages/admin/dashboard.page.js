@@ -3,40 +3,60 @@
 
 export const AdminDashboardPage = {
 
-    async render() {
-        return `
-            <div class="admin-main" style="padding: 20px; margin-top: 40px;">
-                <div id="admin-dashboard-content" class="admin-dashboard-loading">
-                    <div class="loader">⏳ Chargement du tableau de bord...</div>
-                </div>
-            </div>
-        `;
-    },
+  async render() {
+  return `
+    <div class="admin-main" style="padding: 20px; margin-top: 40px;">
+      <div id="admin-dashboard-content"></div>
+    </div>
+  `;
+},
+
 
     async init() {
         const container = document.getElementById("admin-dashboard-content");
 
+        if (!container) return;
+
+
+                    // ✅ Anti-flash loader (affiché seulement si > 200ms)
+let t = setTimeout(() => {
+  if (container) {
+    container.innerHTML = `
+      <div class="admin-card">
+        <p>⏳ Chargement du tableau de bord...</p>
+      </div>
+    `;
+  }
+}, 200);
+
+
         const token = localStorage.getItem("accessToken");
         const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 
-        if (!currentUser) {
-            container.innerHTML = `<p>Utilisateur non connecté.</p>`;
-            return;
-        }
+       if (!currentUser) {
+  clearTimeout(t);
+  container.innerHTML = `<p>Utilisateur non connecté.</p>`;
+  return;
+}
+
 
      const userRole = currentUser.highestRole || "";
    const isAllowed = userRole === "CLUB_ADMIN" || userRole === "SUPER_ADMIN";
 
    if (!isAllowed) {
-       container.innerHTML = `<p>❌ Accès refusé. Vous devez être CLUB_ADMIN ou SUPER_ADMIN.</p>`;
-       return;
-   }
+  clearTimeout(t);
+  container.innerHTML = `<p>❌ Accès refusé. Vous devez être CLUB_ADMIN ou SUPER_ADMIN.</p>`;
+  return;
+}
+
     // ⬆️ FIN DU GUARD
 
-    if (!currentUser.clubId) {
-        container.innerHTML = `<p>❌ Aucun club n'est associé à ce compte.</p>`;
-        return;
-    }
+ if (!currentUser.clubId) {
+  clearTimeout(t);
+  container.innerHTML = `<p>❌ Aucun club n'est associé à ce compte.</p>`;
+  return;
+}
+
 
 
         const clubId = currentUser.clubId;
@@ -70,7 +90,7 @@ const pastEvents = events.filter(e => {
             const nextEvent = upcomingEvents.length > 0 
                 ? upcomingEvents.sort((a, b) => new Date(a.date) - new Date(b.date))[0]
                 : null;
-
+                        clearTimeout(t);
             // =============================
             // 🎨 RENDU HTML
             // =============================
