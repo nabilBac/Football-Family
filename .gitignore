@@ -16,7 +16,7 @@ data/
 # Uploads & media (runtime only)
 ####################################
 uploads/
-videos/
+./videos/
 videos_temp_test/
 
 ####################################
