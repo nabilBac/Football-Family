@@ -630,7 +630,7 @@ body.is-event-detail-page #app {
     border-radius: 999px !important;
     background: rgba(255, 255, 255, 0.06) !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    color: rgba(255, 255, 255, 0.85) !important;
+     color: #7f8c8d !important; 
     font-weight: 800 !important;
     font-size: 13px !important;
     white-space: nowrap !important;
@@ -655,7 +655,7 @@ body.is-event-detail-page #app {
 .tournament-tab.active {
     background: rgba(124, 58, 237, 0.22) !important;
     border-color: rgba(124, 58, 237, 0.35) !important;
-    color: rgba(255, 255, 255, 0.95) !important;
+ color: #3498db !important; 
 }
 
 .tab-pill:active,

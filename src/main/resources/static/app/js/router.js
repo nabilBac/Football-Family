@@ -171,10 +171,13 @@ async go(url) {
         return null;
     },
 
-    async navigate(url) {
-        try {
-            // 🟣 START TRANSITION (fade-out)
-            this.root.classList.add("fade-out");
+async navigate(url) {
+    try {
+        // 🟣 START TRANSITION (fade-out)
+        this.root.classList.add("fade-out");
+        
+        // ⏳ Attendre que le fade-out soit visible (150ms)
+        await new Promise(resolve => setTimeout(resolve, 150));
 
             if (this.currentModule && this.currentModule.cleanup) {
                 this.currentModule.cleanup();
@@ -309,15 +312,18 @@ const module = await import(moduleUrl);
             const navbar = document.querySelector(".mobile-navbar");
             if (navbar) navbar.removeAttribute("style");
 
-            // 🟢 END TRANSITION (fade-in)
-            setTimeout(() => {
-                this.root.classList.remove("fade-out");
-                this.root.classList.add("fade-in");
+          // Retirer fade-out immédiatement après render
+this.root.classList.remove("fade-out");
 
-                setTimeout(() => {
-                    this.root.classList.remove("fade-in");
-                }, 250);
-            }, 10);
+// Ajouter fade-in après un micro-délai
+setTimeout(() => {
+    this.root.classList.add("fade-in");
+    
+    // Retirer fade-in après l'animation
+    setTimeout(() => {
+        this.root.classList.remove("fade-in");
+    }, 300);
+}, 50);
 
             // Re-apply classes AFTER html reset
             if (url === "/hub") this.root.classList.add("is-hub-page");

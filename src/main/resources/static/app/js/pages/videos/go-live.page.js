@@ -2,37 +2,69 @@
 import { Auth } from "/app/js/auth.js";
 import { Router } from "/app/js/router.js";
 
+let __cleanup = null;
+
 
 export function render() {
-    return `
+  return `
     <div class="live-page">
-        <div id="liveBanner">
-            <div id="liveAvatar">
-                <img src="/images/streamer.jpg" alt="profil streamer">
-                <span id="connectionDot" class="online"></span>
-            </div>
-            <span id="liveText">🔴 LIVE – 0 spectateur</span>
+      <div id="liveBanner">
+        <div id="liveAvatar" aria-label="Profil">
+          <div class="avatar-placeholder" aria-hidden="true">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <span id="connectionDot" class="online"></span>
         </div>
 
-        <div class="live-video-wrapper">
-            <video id="localVideo" autoplay playsinline muted></video>
-            <div id="chatOverlay"></div>
-        </div>
+        <span id="liveText">🔴 LIVE – 0 spectateur</span>
+      </div>
 
-        <form id="chatForm">
-            <input id="chatInput" placeholder="💬 Écris un message..." />
-            <button id="sendBtn" type="button">Envoyer</button>
-        </form>
+      <div class="live-video-wrapper">
+        <video id="localVideo" autoplay playsinline muted></video>
+        <div id="chatOverlay"></div>
+      </div>
 
-        <button id="startButton">🚀 Démarrer le live</button>
-        <button id="endButton">🛑 Terminer le live</button>
-        <button id="backButton">⬅️ Retour au hub</button>
+      <form id="chatForm">
+        <input id="chatInput" placeholder="💬 Écris un message..." />
+        <button id="sendBtn" type="button">Envoyer</button>
+      </form>
+
+      <button id="startButton">🚀 Démarrer le live</button>
+      <button id="endButton">🛑 Terminer le live</button>
+      <button id="backButton">⬅️ Retour au hub</button>
     </div>
-    `;
+  `;
 }
+
 
 export function init() {
     Auth.requireAuth();
+
+              __cleanup = () => {
+    const navbar = document.querySelector(".mobile-navbar");
+    if (navbar) {
+      navbar.style.visibility = "";
+      navbar.style.pointerEvents = "";
+    }
+    const postGoalBtn = document.querySelector(".gc-post-btn");
+    if (postGoalBtn) postGoalBtn.style.display = "";
+  };
+
+const avatarUrl =
+  (Auth.currentUser?.avatarUrl && Auth.currentUser.avatarUrl.trim() !== "")
+    ? Auth.currentUser.avatarUrl
+    : null;
+
+if (avatarUrl) {
+  const placeholder = document.querySelector("#liveAvatar .avatar-placeholder");
+  if (placeholder) {
+    placeholder.replaceWith(Object.assign(document.createElement("img"), {
+      className: "live-avatar-img",
+      src: avatarUrl,
+      alt: "profil streamer"
+    }));
+  }
+}
 
     setTimeout(() => {
         initWebSocket();
@@ -144,15 +176,32 @@ function initLive(stompClient, socket) {
 
         window.removeEventListener("beforeunload", beforeUnloadHandler);
     }
+      // ✅ On expose un cleanup global pour le Router (SPA)
+  __cleanup = () => {
+    try { cleanupStreamer(); } catch (e) {}
 
-    function beforeUnloadHandler() {
-        if (currentLiveId) {
-            try {
-                navigator.sendBeacon(`/api/live/end/${currentLiveId}`);
-            } catch {}
-        }
-        cleanupStreamer();
+    // remettre navbar si tu l'as cachée
+    const navbar = document.querySelector(".mobile-navbar");
+    if (navbar) {
+      navbar.style.visibility = "";
+      navbar.style.pointerEvents = "";
     }
+
+    // remettre le bouton post si tu l'as caché
+    const postGoalBtn = document.querySelector(".gc-post-btn");
+    if (postGoalBtn) postGoalBtn.style.display = "";
+  };
+
+
+        function beforeUnloadHandler() {
+  if (currentLiveId) {
+    try { navigator.sendBeacon(`/api/live/end/${currentLiveId}`); } catch {}
+  }
+  // cleanup local seulement (sans rien d'autre)
+  if (__cleanup) __cleanup();
+  __cleanup = null;
+}
+
 
     window.addEventListener("beforeunload", beforeUnloadHandler);
 
@@ -366,8 +415,7 @@ function initLive(stompClient, socket) {
 
     liveText.textContent = "🛑 LIVE TERMINÉ";
     liveText.style.color = "#f33";
-
-    cleanupStreamer();
+cleanup();
 
     // ⭐️ FIX DU BOUTON + QUI RESTE CASSÉ APRÈS LE LIVE
     document.getElementById("app")?.classList.remove("is-live-page");
@@ -376,23 +424,15 @@ function initLive(stompClient, socket) {
 });
 
 
-  backButton.addEventListener("click", () => {
-    if (currentLiveId && !confirm("Un live est en cours. Quitter ?")) return;
+ backButton.addEventListener("click", () => {
+  if (currentLiveId && !confirm("Un live est en cours. Quitter ?")) return;
 
-    cleanupStreamer();
+cleanup();
 
-    // 🔥 FIX NAVBAR APRES LE LIVE
-    const navbar = document.querySelector(".mobile-navbar");
-    if (navbar) {
-        navbar.style.visibility = "";
-        navbar.style.pointerEvents = "";
-    }
-
-    document.getElementById("app")?.classList.remove("is-live-page");
-
-
-    Router.go("/hub");
+  document.getElementById("app")?.classList.remove("is-live-page");
+  Router.go("/hub");
 });
+
 
 
     document.getElementById("sendBtn").addEventListener("click", () => {
@@ -407,4 +447,9 @@ function initLive(stompClient, socket) {
 
         chatInput.value = "";
     });
+}
+export function cleanup() {
+  // appelé par le Router quand on quitte la page
+  if (__cleanup) __cleanup();
+  __cleanup = null;
 }

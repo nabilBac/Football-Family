@@ -280,7 +280,7 @@
    ================================ */
 
 /* important pour que 100% / flex marchent */
-html, body { height: 100%; }
+
 
 body.is-events-page{
   height: 100dvh;          /* fiable */

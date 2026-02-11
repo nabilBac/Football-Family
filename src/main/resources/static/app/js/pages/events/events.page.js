@@ -696,28 +696,36 @@ function createEventCard(event) {
 const isCompleted = statusNorm === "COMPLETED";
 const isCanceled = statusNorm === "CANCELED" || statusNorm === "CANCELLED";
 
-const isOngoing = false; // chez toi, event.status ne porte pas le live
+// ✅ Calcul temporaire : événement en cours si date passée mais moins de 24h
+const now = Date.now();
+const isOngoing = statusNorm === "ONGOING";
 
-    const isClub = user && [
-        "COACH",
-        "CLUB_ADMIN",
-        "ORGANIZER",
-        "SUPER_ADMIN"
-    ].includes(user.highestRole);
 
-  const dateObj = new Date(event.date);
+   const isClub = user && user.clubId && [
+    "COACH",
+    "CLUB_ADMIN",
+    "ORGANIZER",
+    "SUPER_ADMIN"
+].includes(user.highestRole);
+// ✅ Date/heure fiable : utiliser startTime ISO si dispo (sinon construire local)
+const dateObj = event.startTime
+  ? new Date(event.startTime)
+  : (() => {
+      if (!event.date) return null;
+      const [y, m, d] = event.date.split("-").map(Number);
+      return new Date(y, (m || 1) - 1, d || 1, 9, 0, 0); // fallback 09:00
+    })();
 
-const dateShort = dateObj.toLocaleDateString('fr-FR', {
-  day: '2-digit',
-  month: 'short'
-});
+const dateShort = dateObj
+  ? dateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+  : "--";
 
-const timeShort = dateObj.toLocaleTimeString('fr-FR', {
-  hour: '2-digit',
-  minute: '2-digit'
-});
+const timeShort = dateObj
+  ? dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  : "--:--";
 
 const date = `${dateShort} • ${timeShort}`;
+
 
 const where = formatCityDept(event.location);
 
@@ -776,9 +784,13 @@ if (isCanceled) {
         </div>
     `;
 } else {
+    // ✅ SI CLUB_ONLY ET USER N'A PAS DE CLUB → PAS DE BADGE "OUVERT"
+    const isClubOnly = event.registrationType === "CLUB_ONLY";
+    const canSeeOpenBadge = !isClubOnly || isClub;
+    
     statusBadgeHtml = `
         <div class="event-registration-status">
-            ${event.pendingTeamsByMyClub > 0 ? `
+           ${(typeof event.pendingTeamsByMyClub === "number" && event.pendingTeamsByMyClub > 0) ? `
                 <span class="registration-badge pending">
                     <i class="fas fa-clock"></i>
                     ${event.pendingTeamsByMyClub} équipe(s) en attente
@@ -788,12 +800,12 @@ if (isCanceled) {
                     <i class="fas fa-lock"></i>
                     Inscriptions fermées
                 </span>
-            ` : `
+            ` : canSeeOpenBadge ? `
                 <span class="registration-badge open">
                     <i class="fas fa-check-circle"></i>
                     Inscriptions ouvertes
                 </span>
-            `}
+            ` : ''}
 
             ${event.registrationDeadline ? `
                 <span class="registration-deadline">
@@ -835,12 +847,10 @@ if (isCanceled) {
                         ${event.pendingTeamsByMyClub} équipe(s) en attente
                     </button>
                 `;
-            } else if (event.teamsRegisteredByMyClub > 0) {
+           } else if (typeof event.teamsRegisteredByMyClub === "number" && event.teamsRegisteredByMyClub > 0) {
+
                 buttonHtml = `
-                    <button class="event-action-btn" disabled style="background: #10b981; cursor: not-allowed;">
-                        <i class="fas fa-check-circle"></i>
-                        ${event.teamsRegisteredByMyClub} équipe(s) inscrites
-                    </button>
+                    
                 `;
             } else if (
                 event.registrationClosed ||
@@ -861,13 +871,10 @@ if (isCanceled) {
 
                 `;
             }
-        } else {
-            buttonHtml = `
-                <button class="event-action-btn" disabled>
-                    <i class="fas fa-lock"></i> Réservé aux clubs
-                </button>
-            `;
-        }
+        }else {
+        // ✅ USER LAMBDA SANS CLUB -> AUCUN BOUTON
+        buttonHtml = '';
+    }
     } else {
         if (event.registrationClosed || event.isFull) {
             buttonHtml = `
@@ -884,41 +891,49 @@ if (isCanceled) {
             `;
         }
     }
+// ✅ Compteurs globaux (ACCEPTÉS uniquement)
+const isTeamMode = (event.registrationType === "CLUB_ONLY"); // tournoi clubs = équipes
+const unit = isTeamMode ? "équipes" : "participants";
 
-    let participantsText = '';
+const registered = Number(event.acceptedParticipants ?? 0);
+const capacity = Number(event.maxParticipants ?? event.capacity ?? 0);
 
-    if (isCompleted) {
-        if (event.registrationType === "CLUB_ONLY") {
-            participantsText = `${event.acceptedParticipants ?? 0} équipes ont participé`;
-        } else {
-            participantsText = `${event.acceptedParticipants ?? 0} participants`;
-        }
-    } else {
-        if (event.registrationType === "CLUB_ONLY") {
-            participantsText = `${event.acceptedParticipants ?? 0} / ${event.maxParticipants ?? "∞"} équipes`;
-        } else {
-            participantsText = `${event.acceptedParticipants ?? 0} / ${event.maxParticipants ?? "∞"} participants`;
-        }
-    }
+// remainingPlaces si l’API le fournit, sinon calcul
+const remaining = Number.isFinite(Number(event.remainingPlaces))
+  ? Number(event.remainingPlaces)
+  : (capacity ? Math.max(0, capacity - registered) : null);
 
-    const regText = (event.registrationClosed || event.isFull || event.groupCount > 0)
-  ? "Fermées"
-  : "Ouvertes";
+const participantsText = capacity
+  ? `${registered}/${capacity} ${unit}`
+  : `${registered} ${unit}`;
 
-const isClubsOnly = event.registrationType === "CLUB_ONLY";
+const remainingText = (remaining !== null)
+  ? `${remaining} place${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""}`
+  : "";
+
+// ✅ Statut inscriptions
+const regText = (event.registrationClosed || event.isFull || event.groupCount > 0)
+  ? "Inscriptions fermées"
+  : "Inscriptions ouvertes";
+
+// ✅ Tarif
 const feeCents = Number(event.registrationFeeCents ?? 0);
-
 const feeLabel = feeCents <= 0
   ? "Gratuit"
   : (() => {
       const euros = (feeCents / 100).toFixed(2).replace(".00", "");
-     const unit = (event.registrationType === "INDIVIDUAL") ? "joueur" : "équipe";
-
-      return `${euros}€ / ${unit}`;
+      const unitPay = (event.registrationType === "INDIVIDUAL") ? "joueur" : "équipe";
+      return `${euros}€ / ${unitPay}`;
     })();
 
-const statusLine = `${participantsText} • ${regText}${isClubsOnly ? " • CLUBS" : ""} • ${feeLabel}`;
-
+// ✅ Ligne finale (sans pending)
+const statusLine = [
+  participantsText,
+  remainingText || null,
+  regText,
+  (event.registrationType === "CLUB_ONLY") ? "CLUBS" : null,
+  feeLabel
+].filter(Boolean).join(" • ");
 
 
     return `
@@ -1097,11 +1112,37 @@ for (let i = 0; i < 3; i++) {
 
         const events = data.data.content;
 
-        // 🆕 FILTRER : Exclure les events COMPLETED
-        const activeEvents = events.filter(event => {
+const now = Date.now();
+
+const activeEvents = (events || []).filter(event => {
   const s = (event.status || "").trim().toUpperCase();
-  return s !== "COMPLETED";
+
+  // 1) Exclure les états "hors Découvrir"
+  if (s === "COMPLETED") return false;
+  if (s === "CANCELLED" || s === "CANCELED") return false;
+  if (s === "ARCHIVED") return false;
+
+  // 2) Garder les events en cours
+  if (s === "ONGOING") return true;
+
+  // 3) Garder seulement les events à venir (UPCOMING)
+  // priorité à startTime (ISO) pour éviter le bug UTC
+  if (event.startTime) {
+    const startMs = new Date(event.startTime).getTime();
+    return !Number.isNaN(startMs) && startMs >= now;
+  }
+
+  // fallback : date-only => construire local (pas new Date("YYYY-MM-DD"))
+  if (event.date) {
+    const [y, m, d] = event.date.split("-").map(Number);
+    const startLocalMs = new Date(y, (m || 1) - 1, d || 1, 0, 0, 0).getTime();
+    return !Number.isNaN(startLocalMs) && startLocalMs >= now;
+  }
+
+  // si aucune date valide, on préfère cacher (évite pollution)
+  return false;
 });
+
 
 
         if (activeEvents.length === 0) {
@@ -1234,6 +1275,29 @@ __stopLiveRefreshFn = stopLiveRefresh;
 __beforeUnloadFn = stopLiveRefresh;
 window.addEventListener('beforeunload', __beforeUnloadFn);
 
+        // ✅ ÉCOUTER LES CHANGEMENTS ADMIN → PUBLIC
+const onEventsChanged = (e) => {
+    console.log('🔄 Events changed:', e.detail);
+    currentPage = 0;
+    hasMore = true;
+    eventsContainer.innerHTML = '';
+    loadEvents(currentFilter, currentCategory);
+};
+window.addEventListener("events:changed", onEventsChanged);
+
+        // ✅ SYNC MULTI-ONGLETS via localStorage
+window.addEventListener("storage", (e) => {
+    if (e.key === "events_invalidated_at") {
+        console.log("🔄 Storage event détecté ! Rafraîchissement automatique...");
+        currentPage = 0;
+        hasMore = true;
+        eventsContainer.innerHTML = '';
+        loadEvents(currentFilter, currentCategory);
+    }
+});
+
+
+
 // === CLICK SUR CARTE (ouvrir détail événement) ===
 eventsContainer.addEventListener("click", (e) => {
     // 👉 SI on clique sur l'icône Google Maps → on laisse faire
@@ -1283,18 +1347,74 @@ async function loadHistoryEvents(filter = 'all') {
     loader.style.display = 'block';
     
     try {
-        let url = `/api/events/public/completed?page=0&size=50`;
-        
-        if (filter !== 'all') {
-            url += `&type=${filter}`;
-        }
-        
-        const res = await Auth.secureFetch(url);
-        const data = await res.json();
-        
-        if (!res.ok) throw new Error(data.message || 'Erreur de chargement');
-        
-        const events = data.data.content || data.data || [];
+       const now = Date.now();
+
+// 1) Completed (source actuelle)
+let completedUrl = `/api/events/public/completed?page=0&size=50`;
+if (filter !== 'all') completedUrl += `&type=${filter}`;
+
+const r1 = await Auth.secureFetch(completedUrl);
+const j1 = await r1.json();
+if (!r1.ok) throw new Error(j1.message || "Erreur de chargement (completed)");
+const completed = (j1.data?.content || j1.data || []);
+
+// 2) Visible (pour récupérer CANCELLED + PAST non clôturés)
+let visibleUrl = `/api/events/public/visible?page=0&size=200`;
+if (filter !== 'all') visibleUrl += `&type=${filter}`;
+
+const r2 = await Auth.secureFetch(visibleUrl);
+const j2 = await r2.json();
+if (!r2.ok) throw new Error(j2.message || "Erreur de chargement (visible)");
+const visible = (j2.data?.content || j2.data || []);
+
+// 3) Extra = annulés + passés (date dépassée)
+const extra = visible.filter(e => {
+  const s = (e.status || "").trim().toUpperCase();
+
+  // ✅ 1) Ne jamais mettre ONGOING dans l’historique
+  if (s === "ONGOING") return false;
+
+  // ✅ 2) Annulés + archivés doivent être en historique
+  const isCanceled = (s === "CANCELLED" || s === "CANCELED");
+  const isArchived = (s === "ARCHIVED");
+
+  // ✅ 3) “Passé” = startTime < now (sinon fallback date locale)
+  let isPast = false;
+
+  if (e.startTime) {
+    const startMs = new Date(e.startTime).getTime();
+    isPast = !Number.isNaN(startMs) && startMs < now;
+  } else if (e.date) {
+    const [y, m, d] = e.date.split("-").map(Number);
+    const localMs = new Date(y, (m || 1) - 1, d || 1, 0, 0, 0).getTime();
+    isPast = !Number.isNaN(localMs) && localMs < now;
+  }
+
+  return isCanceled || isArchived || isPast;
+});
+
+
+// 4) Merge unique (évite doublons)
+const map = new Map();
+[...completed, ...extra].forEach(e => map.set(e.id, e));
+const events = Array.from(map.values());
+
+function startMs(e){
+  if (e.startTime) {
+    const t = new Date(e.startTime).getTime();
+    if (!Number.isNaN(t)) return t;
+  }
+  if (e.date) {
+    const [y,m,d] = e.date.split("-").map(Number);
+    const t = new Date(y,(m||1)-1,d||1,0,0,0).getTime();
+    if (!Number.isNaN(t)) return t;
+  }
+  return 0;
+}
+
+events.sort((a, b) => startMs(b) - startMs(a));
+
+
         
         if (events.length === 0) {
             container.innerHTML = `
@@ -1310,7 +1430,13 @@ async function loadHistoryEvents(filter = 'all') {
         // Grouper par mois
         const byMonth = {};
         events.forEach(event => {
-            const date = new Date(event.date);
+         const date = event.startTime
+  ? new Date(event.startTime)
+  : (() => {
+      const [y,m,d] = (event.date || "1970-01-01").split("-").map(Number);
+      return new Date(y,(m||1)-1,d||1,0,0,0);
+    })();
+
             const monthKey = date.toLocaleDateString('fr-FR', {
                 year: 'numeric',
                 month: 'long'
@@ -1404,24 +1530,25 @@ async function loadHistoryEvents(filter = 'all') {
         });
         
         // 🆕 CLICS SUR LES CARDS
-        container.addEventListener('click', (e) => {
-            if (e.target.closest("[data-map-link]")) return;
-            if (e.target.closest('.accordion-toggle')) return;
+       container.onclick = (e) => {
+  if (e.target.closest("[data-map-link]")) return;
+  if (e.target.closest('.accordion-toggle')) return;
 
-            const btn = e.target.closest(".event-action-btn");
-            if (btn && btn.disabled) {
-                showToast("⛔ Action non disponible", "warning");
-                return;
-            }
+  const btn = e.target.closest(".event-action-btn");
+  if (btn && btn.disabled) {
+    showToast("⛔ Action non disponible", "warning");
+    return;
+  }
 
-            if (btn) {
-                Router.go(`/events/${btn.dataset.eventId}`);
-                return;
-            }
+  if (btn) {
+    Router.go(`/events/${btn.dataset.eventId}`);
+    return;
+  }
 
-            const card = e.target.closest(".event-card");
-            if (card) Router.go(`/events/${card.dataset.eventId}`);
-        });
+  const card = e.target.closest(".event-card");
+  if (card) Router.go(`/events/${card.dataset.eventId}`);
+};
+
         
     } catch (err) {
         console.error('Erreur:', err);
@@ -1462,4 +1589,10 @@ export function cleanup() {
   // (optionnel) reset anti-spam
   __eventsLoadingMore = false;
   __eventsLastTrigger = 0;
+
+
+  // ✅ Retirer l'écoute
+if (typeof onEventsChanged !== 'undefined') {
+    window.removeEventListener("events:changed", onEventsChanged);
+}
 }

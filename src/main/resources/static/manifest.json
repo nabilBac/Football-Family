@@ -1,14 +1,14 @@
 {
-  "name": "VidSync",
-  "short_name": "VidSync",
-  "description": "L'expérience vidéo immersive PWA ultime.",
+  "name": "FootballFamily",
+  "short_name": "GoalClips",
+  "description": "Plateforme de gestion de tournois de football et partage de vidéos",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "fullscreen", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#f4f7f6",
-  "theme_color": "#007bff",
+  "theme_color": "#27ae60",
   "icons": [
     {"src": "/assets/icons/icon-48.png", "sizes": "48x48", "type": "image/png"},
     {"src": "/assets/icons/icon-72.png", "sizes": "72x72", "type": "image/png"},
@@ -18,4 +18,3 @@
     {"src": "/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png"}
   ]
 }
-

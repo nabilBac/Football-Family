@@ -38,21 +38,31 @@ function createLiveCard(live) {
     const title = live.titre || "Live en direct";
     const description = live.description || "";
     const streamer = live.streamer || (live.user && live.user.username) || "Streamer";
-    const avatar = live.user?.avatarUrl || "/images/streamer.jpg";
 
-    card.innerHTML = `
-        <h2>${title}</h2>
-        <p>${description}</p>
 
-        <div class="streamer-info">
-            <img src="${avatar}" alt="avatar streamer">
-            <p>🎥 <strong>${streamer}</strong></p>
-        </div>
 
-        <a href="/videos/watch/${live.id}" data-link class="live-watch-link">
-            ▶️ Regarder le live
-        </a>
-    `;
+const avatar = live.user?.avatarUrl || null;
+
+const avatarHtml = avatar
+  ? `<img class="live-avatar" src="${avatar}" alt="profil">`
+  : `<div class="live-avatar placeholder" aria-label="Profil">
+       <i class="fa-solid fa-user"></i>
+     </div>`;
+
+card.innerHTML = `
+  <h2>${title}</h2>
+  <p>${description}</p>
+
+  <div class="streamer-info">
+      ${avatarHtml}
+      <p>🎥 <strong>${streamer}</strong></p>
+  </div>
+
+  <a href="/videos/watch/${live.id}" data-link class="live-watch-link">
+      ▶️ Regarder le live
+  </a>
+`;
+
 
     return card;
 }

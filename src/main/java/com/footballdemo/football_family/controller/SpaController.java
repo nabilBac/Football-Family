@@ -25,7 +25,9 @@ public class SpaController {
             "/live",
             "/live/**",
             "/tournament/**",
-            "/admin/**" 
+            "/admin/**" ,
+             "/club-admin",
+        "/club-admin/**"
 
     })
     public String spaRoutes() {

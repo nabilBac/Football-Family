@@ -29,6 +29,8 @@ export async function initFeed() {
     videoContainer = document.getElementById("video-container");
     loader = document.getElementById("loader");
 
+    if (loader) loader.style.display = "none";
+
     if (!scrollContainer || !videoContainer) {
         console.error("Feed: conteneurs manquants");
         return;
@@ -304,10 +306,26 @@ function openCommentsModal(videoId) {
     Comments.initModal(videoId);
 }
 
+
+
+let loaderTimer = null;
+
 function showLoader(show) {
-    if (!loader) return;
-    loader.style.display = show ? "block" : "none";
+  if (!loader) return;
+
+  if (show) {
+    clearTimeout(loaderTimer);
+    loaderTimer = setTimeout(() => {
+      // IMPORTANT: on ne change pas la position ici
+      loader.style.display = "block";
+    }, 200);
+  } else {
+    clearTimeout(loaderTimer);
+    loader.style.display = "none";
+  }
 }
+
+
 
 function setupMenu() {
     const burgerBtn = document.getElementById("burger-btn");

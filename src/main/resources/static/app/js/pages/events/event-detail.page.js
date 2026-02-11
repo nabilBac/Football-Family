@@ -3,7 +3,8 @@
 
 import { Auth } from "../../auth.js";
 import { Router } from "../../router.js";
-import * as Components from "./event-detail-components.js";
+import EventDetailComponents from "./event-detail-components.js";
+const Components = EventDetailComponents;
 
 /* ============================================================================ */
 /* 📦 VARIABLES GLOBALES                                                        */
@@ -113,7 +114,7 @@ const isOrganizer = currentUser && event.organizerId === currentUser.id;
 const isRegistered = false; // TODO: à implémenter si besoin
 const registrationStatus = null;
         const isAuthenticated = currentUser !== null;
-        const hasClub = currentUser?.clubId != null;
+       const hasClub = currentUser?.clubId && ["COACH", "CLUB_ADMIN", "ORGANIZER", "SUPER_ADMIN"].includes(currentUser?.highestRole);
         const isSingleMatch = event?.format === "SINGLE_MATCH";
 
         // Add body class for styling
@@ -192,7 +193,7 @@ const registrationStatus = null;
                 ${Components.renderStickyCTAPro(event, isAuthenticated, isOrganizer, isRegistered, hasClub)}
                 
                 <!-- Modales -->
-                ${Components.renderRegistrationModal()}
+               
                 ${Components.renderClubRegistrationModal(event)}
                 ${Components.renderToast()}
             </div>
@@ -252,6 +253,19 @@ function renderError(title, message) {
    ============================================================================ */
 export function init(params) {
     injectCSS();
+
+
+ // 🆕 SYNCHRO AUTO CROSS-TAB
+window.addEventListener("storage", (e) => {
+    if (e.key === "events_invalidated_at") {
+        console.log("🔄 Storage event détecté ! Refresh page publique...");
+        
+        // ✅ SOLUTION SIMPLE : RECHARGER LA PAGE
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+    }
+});
     
     // 🔍 DEBUG
     const cssLoaded = document.querySelector('link[href="/css/event-detail.css"]');
@@ -400,81 +414,12 @@ function initToastSystem() {
    🎮 BOUTONS INSCRIPTION
    ============================================================================ */
 function initRegistrationButtons(eventId, event) {
-    // Inscription individuelle
-    initIndividualRegistration(eventId, event);
+   
     
     // Inscription club
     initClubRegistration(eventId, event);
 }
 
-/* ============================================================================
-   👤 INSCRIPTION INDIVIDUELLE
-   ============================================================================ */
-function initIndividualRegistration(eventId, event) {
-    const registerBtn = document.getElementById("registerBtn");
-    if (!registerBtn || event.registrationType !== "INDIVIDUAL") return;
-
-    const modal = document.getElementById("registrationModal");
-    const cancelBtn = modal.querySelector("#cancelModal");
-    const submitBtn = modal.querySelector("#confirmRegistration");
-    const overlay = modal.querySelector(".utf-modal-overlay");
-
-    // Ouvrir
-    registerBtn.addEventListener("click", () => {
-        modal.classList.remove("hidden");
-        
-        // Focus sur premier champ
-        setTimeout(() => {
-            modal.querySelector('#reg-level').focus();
-        }, 100);
-    });
-
-    // Fermer
-    const closeModal = () => modal.classList.add("hidden");
-    
-    cancelBtn.addEventListener("click", closeModal);
-    overlay.addEventListener("click", closeModal);
-    
-    // ESC pour fermer
-    modal.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeModal();
-    });
-
-    // Soumettre
-    submitBtn.addEventListener("click", async () => {
-        const level = document.getElementById('reg-level').value;
-        const position = document.getElementById('reg-position').value;
-        const notes = document.getElementById('reg-notes').value;
-
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Inscription...';
-
-        try {
-            const res = await Auth.secureFetch(
-                `/api/events/registration/${eventId}/register`,
-                {
-                    method: "POST",
-                    body: JSON.stringify({ level, preferredPosition: position, notes })
-                }
-            );
-
-            const result = await res.json();
-
-            if (res.ok && result.success) {
-                showToast("✅ Inscription envoyée avec succès !", "success");
-                closeModal();
-                setTimeout(() => Router.go(`/events/${eventId}`), 1000);
-            } else {
-                throw new Error(result.message || "Erreur inscription");
-            }
-        } catch (err) {
-            showToast("❌ " + err.message, "error");
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = "Valider";
-        }
-    });
-}
 
 /* ============================================================================
    🏟️ INSCRIPTION CLUB

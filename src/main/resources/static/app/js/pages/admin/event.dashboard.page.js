@@ -1699,9 +1699,7 @@ async checkBracketAndUpdateFinalesButton(eventId, token) {
     }
 },
 
-// ================================
-// 🌤️ PLANIFIER LES POULES (MODE 1 JOUR)
-// ================================
+
 // ================================
 // 🌤️ PLANIFIER LES POULES (MODE 1 JOUR)
 // ================================
@@ -2422,26 +2420,35 @@ initEditMatchSchedule(eventId, token) {
     // ================================
     // 🔒 INSCRIRE UNE ÉQUIPE
     // ================================
-    async registerTeam(eventId, teamId, token) {
-        try {
-            await this.safePost(
-                `/api/events/registration/${eventId}/register-team`,
-                token,
-                { teamId }
-            );
+  async registerTeam(eventId, teamId, token) {
+    try {
+        console.log("🔥 REGISTER TEAM APPELÉ :", {
+            eventId,
+            teamId,
+            token: token ? "✅ Présent" : "❌ Manquant",
+            tokenLength: token?.length
+        });
 
-            this.setGlobalMessage("✅ Équipe inscrite avec succès", false);
+        await this.safePost(
+            `/api/events/registration/${eventId}/register-team`,
+            token,
+            { teamId }
+        );
 
-            await this.loadRegistrations(eventId, token);
-            await this.loadEventDetails(eventId, token);
-            await this.loadMyTeams(eventId, token);
+        this.setGlobalMessage("✅ Équipe inscrite avec succès", false);
 
-        } catch (err) {
-            console.error("registerTeam error:", err);
-            const errorMsg = this.extractErrorMessage(err);
-            this.setGlobalMessage(`❌ ${errorMsg}`, true);
-        }
-    },
+        await this.loadRegistrations(eventId, token);
+        await this.loadEventDetails(eventId, token);
+        await this.loadMyTeams(eventId, token);
+
+    } catch (err) {
+        console.error("🔴 REGISTER TEAM ERROR:", err);
+        console.error("🔴 STATUS:", err.status);
+        console.error("🔴 PAYLOAD:", err.payload);
+        const errorMsg = this.extractErrorMessage(err);
+        this.setGlobalMessage(`❌ ${errorMsg}`, true);
+    }
+},
 
     // ================================
     // 🧩 UTILS GÉNÉRIQUES
@@ -3567,94 +3574,121 @@ async tryEnableBracketButtonsIfGroupsFinished(eventId, safeSetDisabled) {
     // ================================
     // 🔹 2. INSCRIPTIONS
     // ================================
-    async loadRegistrations(eventId, token) {
-        const container = document.getElementById("event-registrations");
-        if (!container) return;
+    // ================================
+// 🔹 2. INSCRIPTIONS
+// ================================
+async loadRegistrations(eventId, token) {
+    const container = document.getElementById("event-registrations");
+    if (!container) return;
 
-        try {
-            const response = await this.safeGet(`/api/events/manage/${eventId}/registrations?size=100`, token);
-            const registrations = response.content || response || [];
+    try {
+        const response = await this.safeGet(`/api/events/manage/${eventId}/registrations?size=100`, token);
+        const registrations = response.content || response || [];
 
-            if (!registrations.length) {
-                container.innerHTML = `<p style="color: #7f8c8d;">Aucune inscription pour le moment</p>`;
-                return;
-            }
-
-            const pending = registrations.filter(r => (r.status || "").toUpperCase() === "PENDING");
-            const accepted = registrations.filter(r => (r.status || "").toUpperCase() === "ACCEPTED");
-            this.acceptedParticipantsCount = accepted.length;
-
-            const rejected = registrations.filter(r => (r.status || "").toUpperCase() === "REJECTED");
-
-            let html = '';
-
-            html += `
-                <div style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 100px; padding: 15px; background: #fff3cd; border-radius: 10px; text-align: center; border: 2px solid #f39c12;">
-                        <div style="font-size: 2em; font-weight: 700; color: #f39c12;">${pending.length}</div>
-                        <div style="font-size: 0.9em; color: #856404; font-weight: 600;">⏳ En attente</div>
-                    </div>
-                    <div style="flex: 1; min-width: 100px; padding: 15px; background: #d4edda; border-radius: 10px; text-align: center; border: 2px solid #27ae60;">
-                        <div style="font-size: 2em; font-weight: 700; color: #27ae60;">${accepted.length}</div>
-                        <div style="font-size: 0.9em; color: #155724; font-weight: 600;">✅ Validées</div>
-                    </div>
-                    ${rejected.length > 0 ? `
-                        <div style="flex: 1; min-width: 100px; padding: 15px; background: #f8d7da; border-radius: 10px; text-align: center; border: 2px solid #e74c3c;">
-                            <div style="font-size: 2em; font-weight: 700; color: #e74c3c;">${rejected.length}</div>
-                            <div style="font-size: 0.9em; color: #721c24; font-weight: 600;">❌ Refusées</div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-
-            if (pending.length > 0) {
-                html += `<h3 style="color: #f39c12; margin: 25px 0 15px 0; font-size: 1.1em;">⏳ Inscriptions en attente (${pending.length})</h3>`;
-                pending.forEach(reg => {
-                    html += this.renderRegistrationCard(reg, true);
-                });
-            }
-
-            if (accepted.length > 0) {
-                html += `<h3 style="color: #27ae60; margin: 25px 0 15px 0; font-size: 1.1em;">✅ Équipes validées (${accepted.length})</h3>`;
-                accepted.forEach(reg => {
-                    html += this.renderRegistrationCard(reg, false);
-                });
-            }
-
-            container.innerHTML = html;
-
-            container.querySelectorAll(".btn-accept-reg").forEach(btn => {
-                btn.addEventListener("click", async (e) => {
-                    const regId = e.target.getAttribute("data-reg-id");
-                    const teamName = e.target.getAttribute("data-team-name");
-                    
-                    if (!confirm(`Accepter l'inscription de "${teamName}" ?\n\nCette action est irréversible.`)) {
-                        return;
-                    }
-                    
-                    await this.handleAcceptRegistration(eventId, regId, token);
-                });
-            });
-
-            container.querySelectorAll(".btn-reject-reg").forEach(btn => {
-                btn.addEventListener("click", async (e) => {
-                    const regId = e.target.getAttribute("data-reg-id");
-                    const teamName = e.target.getAttribute("data-team-name");
-                    
-                    if (!confirm(`Refuser l'inscription de "${teamName}" ?\n\nCette action est irréversible.`)) {
-                        return;
-                    }
-                    
-                    await this.handleRejectRegistration(eventId, regId, token);
-                });
-            });
-
-        } catch (err) {
-            console.error("loadRegistrations error:", err);
-            const errorMsg = this.extractErrorMessage(err);
-            container.innerHTML = `<p style="color: #e74c3c;">❌ ${this.escapeHtml(errorMsg)}</p>`;
+        if (!registrations.length) {
+            container.innerHTML = `<p style="color: #7f8c8d;">Aucune inscription pour le moment</p>`;
+            return;
         }
-    },
+
+        const pending = registrations.filter(r => (r.status || "").toUpperCase() === "PENDING");
+        const accepted = registrations.filter(r => (r.status || "").toUpperCase() === "ACCEPTED");
+        this.acceptedParticipantsCount = accepted.length;
+        const rejected = registrations.filter(r => (r.status || "").toUpperCase() === "REJECTED");
+
+        let html = '';
+
+        // 🆕 Bouton Actualiser
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px; border: 2px solid #3498db;">
+                <h3 style="margin: 0; color: #2c3e50; font-size: 1.2em; font-weight: 700;">
+                    📋 Gestion des inscriptions (${registrations.length} total)
+                </h3>
+                <button id="btn-refresh-registrations" class="admin-btn" style="background: #3498db; padding: 10px 20px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: background 0.3s;">
+                    <i class="fas fa-sync-alt"></i> Actualiser
+                </button>
+            </div>
+        `;
+
+        html += `
+            <div style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 100px; padding: 15px; background: #fff3cd; border-radius: 10px; text-align: center; border: 2px solid #f39c12;">
+                    <div style="font-size: 2em; font-weight: 700; color: #f39c12;">${pending.length}</div>
+                    <div style="font-size: 0.9em; color: #856404; font-weight: 600;">⏳ En attente</div>
+                </div>
+                <div style="flex: 1; min-width: 100px; padding: 15px; background: #d4edda; border-radius: 10px; text-align: center; border: 2px solid #27ae60;">
+                    <div style="font-size: 2em; font-weight: 700; color: #27ae60;">${accepted.length}</div>
+                    <div style="font-size: 0.9em; color: #155724; font-weight: 600;">✅ Validées</div>
+                </div>
+                ${rejected.length > 0 ? `
+                    <div style="flex: 1; min-width: 100px; padding: 15px; background: #f8d7da; border-radius: 10px; text-align: center; border: 2px solid #e74c3c;">
+                        <div style="font-size: 2em; font-weight: 700; color: #e74c3c;">${rejected.length}</div>
+                        <div style="font-size: 0.9em; color: #721c24; font-weight: 600;">❌ Refusées</div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        if (pending.length > 0) {
+            html += `<h3 style="color: #f39c12; margin: 25px 0 15px 0; font-size: 1.1em;">⏳ Inscriptions en attente (${pending.length})</h3>`;
+            pending.forEach(reg => {
+                html += this.renderRegistrationCard(reg, true);
+            });
+        }
+
+        if (accepted.length > 0) {
+            html += `<h3 style="color: #27ae60; margin: 25px 0 15px 0; font-size: 1.1em;">✅ Équipes validées (${accepted.length})</h3>`;
+            accepted.forEach(reg => {
+                html += this.renderRegistrationCard(reg, false);
+            });
+        }
+
+        container.innerHTML = html;
+
+        container.querySelectorAll(".btn-accept-reg").forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+                const regId = e.target.getAttribute("data-reg-id");
+                const teamName = e.target.getAttribute("data-team-name");
+                
+                if (!confirm(`Accepter l'inscription de "${teamName}" ?\n\nCette action est irréversible.`)) {
+                    return;
+                }
+                
+                await this.handleAcceptRegistration(eventId, regId, token);
+            });
+        });
+
+        container.querySelectorAll(".btn-reject-reg").forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+                const regId = e.target.getAttribute("data-reg-id");
+                const teamName = e.target.getAttribute("data-team-name");
+                
+                if (!confirm(`Refuser l'inscription de "${teamName}" ?\n\nCette action est irréversible.`)) {
+                    return;
+                }
+                
+                await this.handleRejectRegistration(eventId, regId, token);
+            });
+        });
+
+        // 🆕 LISTENER BOUTON ACTUALISER (LA SEULE CHOSE AJOUTÉE)
+        const btnRefresh = document.getElementById("btn-refresh-registrations");
+        if (btnRefresh) {
+            btnRefresh.addEventListener("click", async () => {
+                btnRefresh.disabled = true;
+                btnRefresh.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualisation...';
+                
+                await this.loadRegistrations(eventId, token);
+                
+                this.setGlobalMessage("✅ Inscriptions actualisées", false);
+            });
+        }
+
+    } catch (err) {
+        console.error("loadRegistrations error:", err);
+        const errorMsg = this.extractErrorMessage(err);
+        container.innerHTML = `<p style="color: #e74c3c;">❌ ${this.escapeHtml(errorMsg)}</p>`;
+    }
+},
 
     // ================================
     // 🔹 MES ÉQUIPES (ORGANISATEUR)
@@ -3838,7 +3872,6 @@ async tryEnableBracketButtonsIfGroupsFinished(eventId, safeSetDisabled) {
             </div>
         `;
     },
-
 async handleAcceptRegistration(eventId, regId, token) {
     try {
         const response = await fetch(`/api/events/registration/${eventId}/registrations/${regId}/accept`, {
@@ -5957,36 +5990,47 @@ container.querySelectorAll(".btn-delete-match").forEach(btn => {
      /**
      * ✅ NOUVEAU : Démarre le tournoi
      */
-    async startTournament() {
-        const eventId = this.extractEventIdFromPath();
-        const token = localStorage.getItem("accessToken");
-        
-        if (!confirm('⚠️ Êtes-vous sûr de vouloir DÉMARRER ce tournoi ?\n\nCette action ne peut pas être annulée.')) {
-            return;
-        }
+ async startTournament() {
+    const eventId = this.extractEventIdFromPath();
+    const token = localStorage.getItem("accessToken");
+    
+    if (!confirm('⚠️ Êtes-vous sûr de vouloir DÉMARRER ce tournoi ?\n\nCette action ne peut pas être annulée.')) {
+        return;
+    }
 
-        try {
-            const response = await fetch(`/api/events/manage/${eventId}/start`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                this.setGlobalMessage('✅ Tournoi démarré avec succès !', false);
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                this.setGlobalMessage('❌ ' + data.message, true);
+    try {
+        const response = await fetch(`/api/events/manage/${eventId}/start`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
-        } catch (error) {
-            console.error('Erreur démarrage tournoi:', error);
-            this.setGlobalMessage('❌ Erreur lors du démarrage du tournoi', true);
+        });
+
+        if (!response.ok) {
+            const txt = await response.text().catch(() => "");
+            throw new Error(txt || `HTTP ${response.status}`);
         }
-    },
+        
+        const data = await response.json();
+
+        if (data.success) {
+            // 🔥 CORRECTION FSM_EVENT_SYNC (identique à finishTournament)
+            localStorage.setItem("events_invalidated_at", String(Date.now()));
+            window.dispatchEvent(new CustomEvent("events:changed", { detail: { eventId } }));
+
+            this.setGlobalMessage('✅ Tournoi démarré avec succès !', false);
+            
+            // 🔥 Refresh au lieu de reload
+            await this.refreshAllData(eventId, token);
+        } else {
+            this.setGlobalMessage('❌ ' + data.message, true);
+        }
+    } catch (error) {
+        console.error('Erreur démarrage tournoi:', error);
+        this.setGlobalMessage('❌ ' + (error.message || 'Erreur lors du démarrage du tournoi'), true);
+    }
+},
 
     /**
      * ✅ NOUVEAU : Termine le tournoi

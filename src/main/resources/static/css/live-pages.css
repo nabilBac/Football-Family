@@ -59,12 +59,35 @@
     margin-top: 6px;
 }
 
-.streamer-info img {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 2px solid #10B981;
+/* Avatar (image OU placeholder) dans la liste */
+.streamer-info .live-avatar{
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #10B981;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+/* si c'est une image (car l'élément est directement <img class="live-avatar"> ) */
+.streamer-info img.live-avatar{
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #10B981;
+  object-fit: cover;
+  display: block;
+}
+
+
+/* si c'est un placeholder */
+.streamer-info .live-avatar.placeholder{
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
 
 .live-watch-link {
     display: inline-block;

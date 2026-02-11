@@ -35,9 +35,8 @@ export const AdminEventsPage = {
                 </div>
 
                 <div id="admin-events-content" class="admin-dashboard-grid">
-                    <div class="admin-card">
-                        <p>Chargement des tournois...</p>
-                    </div>
+                   <div id="admin-events-content" class="admin-dashboard-grid"></div>
+
                 </div>
 
                 <div style="margin-top:25px;">
@@ -80,49 +79,69 @@ export const AdminEventsPage = {
         });
     },
 
-    async loadActifs() {
-        const container = document.getElementById("admin-events-content");
-        const token = localStorage.getItem("accessToken");
+    showLoading(container) {
+  // affiche après 200ms seulement
+  if (this._loadingTimer) clearTimeout(this._loadingTimer);
 
-        container.innerHTML = `<div class="admin-card"><p>Chargement...</p></div>`;
+  this._loadingTimer = setTimeout(() => {
+    container.innerHTML = `<div class="admin-card"><p>Chargement...</p></div>`;
+  }, 200);
+},
 
-        try {
-            const res = await fetch("/api/tournament/admin/events", {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
+hideLoading() {
+  if (this._loadingTimer) {
+    clearTimeout(this._loadingTimer);
+    this._loadingTimer = null;
+  }
+},
 
-            const json = await res.json();
-            const allEvents = json.data || [];
 
-            // Filtrer : DRAFT, PUBLISHED, ONGOING
-            const events = allEvents.filter(e => 
-                e.status === 'DRAFT' || e.status === 'PUBLISHED' || e.status === 'ONGOING'
-            );
+  async loadActifs() {
+  const container = document.getElementById("admin-events-content");
+  const token = localStorage.getItem("accessToken");
 
-            if (events.length === 0) {
-                container.innerHTML = `
-                    <div class="admin-card">
-                        <p style="text-align: center; color: #666;">
-                            ✅ Aucun événement actif
-                        </p>
-                    </div>
-                `;
-                return;
-            }
+  this.showLoading(container);
 
-            this.renderEvents(events, container);
+  try {
+    const res = await fetch("/api/tournament/admin/events", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
 
-        } catch (e) {
-            console.error(e);
-            container.innerHTML = `<p>Erreur lors du chargement des tournois.</p>`;
-        }
-    },
+    const json = await res.json();
+    const allEvents = json.data || [];
+
+    const events = allEvents.filter(e =>
+      e.status === 'DRAFT' || e.status === 'PUBLISHED' || e.status === 'ONGOING'
+    );
+
+    if (events.length === 0) {
+      container.innerHTML = `
+        <div class="admin-card">
+          <p style="text-align: center; color: #666;">
+            ✅ Aucun événement actif
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    this.renderEvents(events, container);
+
+  } catch (e) {
+    console.error(e);
+    container.innerHTML = `<p>Erreur lors du chargement des tournois.</p>`;
+  } finally {
+    this.hideLoading();
+  }
+},
+
 
     async loadTermines() {
         const container = document.getElementById("admin-events-content");
         const token = localStorage.getItem("accessToken");
 
-        container.innerHTML = `<div class="admin-card"><p>Chargement...</p></div>`;
+        this.showLoading(container);
+
 
         try {
             const res = await fetch("/api/tournament/admin/events", {
@@ -151,14 +170,17 @@ export const AdminEventsPage = {
         } catch (e) {
             console.error(e);
             container.innerHTML = `<p>Erreur lors du chargement des tournois.</p>`;
-        }
+        }finally {
+    this.hideLoading();
+  }
     },
 
     async loadArchives() {
         const container = document.getElementById("admin-events-content");
         const token = localStorage.getItem("accessToken");
 
-        container.innerHTML = `<div class="admin-card"><p>Chargement...</p></div>`;
+        this.showLoading(container);
+
 
         try {
             const res = await fetch("/api/events/admin/deleted", {
@@ -213,7 +235,9 @@ export const AdminEventsPage = {
         } catch (e) {
             console.error(e);
             container.innerHTML = `<p>Erreur lors du chargement des événements archivés.</p>`;
-        }
+        }finally {
+  this.hideLoading();
+}
     },
 
     renderEvents(events, container) {
