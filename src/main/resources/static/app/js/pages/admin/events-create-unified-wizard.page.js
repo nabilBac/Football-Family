@@ -1190,123 +1190,144 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
     // ===================================
     // CRÉATION ÉVÉNEMENT
     // ===================================
-    async createEvent() {
-        const token = localStorage.getItem('accessToken');
-        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  async createEvent() {
+    // 🔥 CRUCIAL : SAUVEGARDER L'ÉTAPE 6 AVANT DE CRÉER
+    this.saveStepData(this.currentStep);
+    
+    const token = localStorage.getItem('accessToken');
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
-        if (!token) {
-            this.showAlert('Vous devez être connecté', 'error');
-            return;
+    if (!token) {
+        this.showAlert('Vous devez être connecté', 'error');
+        return;
+    }
+
+    if (this.userType === 'CLUB' && !currentUser.clubId) {
+        this.showAlert('Vous devez être membre d\'un club pour créer un tournoi club', 'error');
+        return;
+    }
+
+    // 🔥 NOUVEAU : VALIDATION FINALE AVANT ENVOI
+    if (!this.formData.name) {
+        this.showAlert('❌ Le nom du tournoi est manquant', 'error');
+        return;
+    }
+    
+    if (!this.formData.date) {
+        this.showAlert('❌ La date est manquante', 'error');
+        return;
+    }
+    
+    if (!this.formData.city) {
+        this.showAlert('❌ La ville est manquante', 'error');
+        return;
+    }
+    
+    // 🔥 DEBUG : AFFICHER LES DONNÉES AVANT ENVOI
+    console.log('📤 DONNÉES ENVOYÉES:', this.formData);
+
+    const location = `${this.formData.city}${this.formData.address ? ', ' + this.formData.address : ''}`.trim();
+
+    const payload = {
+        name: this.formData.name,
+        description: this.formData.description || '',
+        category: this.formData.category,
+        level: this.formData.level,
+        format: this.formData.format,
+        
+        type: 'CLUB_EVENT',
+        registrationType: this.formData.registrationType || (this.userType === 'CLUB' ? 'CLUB_ONLY' : 'INDIVIDUAL'),
+        visibility: this.formData.visibility || 'PUBLIC',
+        
+        date: this.formData.date,
+        startTime: this.formData.startTime ? `${this.formData.date}T${this.formData.startTime}:00` : null,
+        endTime: this.formData.endTime ? `${this.formData.date}T${this.formData.endTime}:00` : null,
+        
+        city: this.formData.city,
+        address: this.formData.address || '',
+        zipCode: this.formData.zipCode || '',
+        location,
+        
+        maxParticipants: this.formData.maxParticipants,
+        maxTeamsPerClub: this.formData.maxTeamsPerClub || 2,
+        registrationFeeCents: Number(this.formData.registrationFeeCents || 0),
+        registrationDeadline: this.formData.registrationDeadline || null,
+        
+        numFields: this.formData.numFields || 1,
+        surface: this.formData.surface || 'SYNTHETIC',
+        
+        rules: this.formData.rules || '',
+        
+        hasParking: this.formData.hasParking || false,
+        hasVestiaires: this.formData.hasVestiaires || false,
+        hasDouches: this.formData.hasDouches || false,
+        hasBuvette: this.formData.hasBuvette || false,
+        hasWifi: this.formData.hasWifi || false,
+        hasFirstAid: this.formData.hasFirstAid || false,
+        
+        contactEmail: this.formData.contactEmail || '',
+        contactPhone: this.formData.contactPhone || '',
+    };
+
+    if (currentUser.clubId) {
+        payload.clubId = currentUser.clubId;
+    }
+
+    if (this.formData.registrationType === 'INDIVIDUAL') {
+        payload.utfNumTeams = this.formData.utfNumTeams;
+        payload.utfTeamSize = this.formData.utfTeamSize;
+    }
+
+    if (this.formData.coverPhotoData) {
+        payload.coverImage = this.formData.coverPhotoData;
+    }
+
+    console.log('📤 PAYLOAD FINAL:', payload);
+
+    const btn = document.getElementById('btn-create');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création en cours...';
+
+    try {
+        const res = await fetch('/api/events/manage', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            const errorMsg = json?.message || json?.error || `Erreur HTTP ${res.status}`;
+            console.error('❌ ERREUR SERVEUR:', json);
+            throw new Error(errorMsg);
         }
 
-        if (this.userType === 'CLUB' && !currentUser.clubId) {
-            this.showAlert('Vous devez être membre d\'un club pour créer un tournoi club', 'error');
-            return;
+        const eventId = json?.data?.id || json?.id;
+
+        if (!eventId) {
+            throw new Error('L\'ID de l\'événement n\'a pas été retourné');
         }
 
-        const location = `${this.formData.city}${this.formData.address ? ', ' + this.formData.address : ''}`.trim();
+        localStorage.removeItem(this.autoSaveKey);
 
-        const payload = {
-            name: this.formData.name,
-            description: this.formData.description,
-            category: this.formData.category,
-            level: this.formData.level,
-            format: this.formData.format,
-            
-          type: 'CLUB_EVENT',  // Toujours CLUB_EVENT pour les clubs
-            registrationType: this.formData.registrationType || (this.userType === 'CLUB' ? 'CLUB_ONLY' : 'INDIVIDUAL'),
-            visibility: this.formData.visibility || 'PUBLIC',
-            
-            date: this.formData.date,
-            startTime: this.formData.startTime ? `${this.formData.date}T${this.formData.startTime}:00` : null,
-            endTime: this.formData.endTime ? `${this.formData.date}T${this.formData.endTime}:00` : null,
-            
-            city: this.formData.city,
-            address: this.formData.address,
-            zipCode: this.formData.zipCode,
-            location,
-            
-            maxParticipants: this.formData.maxParticipants,
-          maxTeamsPerClub: this.formData.maxTeamsPerClub || 2,  // Valeur par défaut
-            registrationFeeCents: Number(this.formData.registrationFeeCents || 0),
-            registrationDeadline: this.formData.registrationDeadline,
-            
-            numFields: this.formData.numFields,
-            surface: this.formData.surface,
-            
-            rules: this.formData.rules,
-            
-            hasParking: this.formData.hasParking,
-            hasVestiaires: this.formData.hasVestiaires,
-            hasDouches: this.formData.hasDouches,
-            hasBuvette: this.formData.hasBuvette,
-            hasWifi: this.formData.hasWifi,
-            hasFirstAid: this.formData.hasFirstAid,
-            
-            contactEmail: this.formData.contactEmail,
-            contactPhone: this.formData.contactPhone,
-        };
+        this.showAlert('✨ Tournoi créé avec succès ! Redirection...', 'success');
 
-        // Si club
-        if (currentUser.clubId) {
-            payload.clubId = currentUser.clubId;
-        }
+        setTimeout(() => {
+            Router.go(`/admin/events/${eventId}`);
+        }, 1500);
 
-        // Si UTF
-        if (this.formData.registrationType === 'INDIVIDUAL') {
-            payload.utfNumTeams = this.formData.utfNumTeams;
-            payload.utfTeamSize = this.formData.utfTeamSize;
-        }
+    } catch (error) {
+        console.error('❌ ERREUR CRÉATION:', error);
+        this.showAlert(`❌ ${error.message}`, 'error');
 
-        // Si photo (optionnel, peut être null)
-        if (this.formData.coverPhotoData) {
-            payload.coverImage = this.formData.coverPhotoData;
-        }
-
-        const btn = document.getElementById('btn-create');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création en cours...';
-
-        try {
-            const res = await fetch('/api/events/manage', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const json = await res.json().catch(() => ({}));
-
-            if (!res.ok) {
-                const errorMsg = json?.message || json?.error || `Erreur HTTP ${res.status}`;
-                throw new Error(errorMsg);
-            }
-
-            const eventId = json?.data?.id || json?.id;
-
-            if (!eventId) {
-                throw new Error('L\'ID de l\'événement n\'a pas été retourné');
-            }
-
-            // Supprimer le draft
-            localStorage.removeItem(this.autoSaveKey);
-
-            this.showAlert('✨ Tournoi créé avec succès ! Redirection...', 'success');
-
-            setTimeout(() => {
-                Router.go(`/admin/events/${eventId}`);
-            }, 1500);
-
-        } catch (error) {
-            console.error('Erreur création:', error);
-            this.showAlert(`❌ ${error.message}`, 'error');
-
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-rocket"></i> Créer le tournoi';
-        }
-    },
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-rocket"></i> Créer le tournoi';
+    }
+},
 
     // ===================================
     // UPLOAD PHOTO
