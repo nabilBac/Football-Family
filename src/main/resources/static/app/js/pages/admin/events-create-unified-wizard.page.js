@@ -899,14 +899,21 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
             btnCreate.addEventListener('click', () => this.createEvent());
         }
 
-        if (btnClose) {
-            btnClose.addEventListener('click', () => {
-                if (confirm('Êtes-vous sûr de vouloir quitter ? Vos modifications seront sauvegardées.')) {
-                    this.saveDraft();
-                    Router.go('/admin/events');
-                }
-            });
+       if (btnClose) {
+    btnClose.addEventListener('click', () => {
+        if (confirm('Êtes-vous sûr de vouloir quitter ? Vos modifications seront sauvegardées.')) {
+            this.saveDraft();
+            
+            // 🔥 ARRÊTER L'AUTO-SAVE
+            if (this.autoSaveInterval) {
+                clearInterval(this.autoSaveInterval);
+                this.autoSaveInterval = null;
+            }
+            
+            Router.go('/admin/events');
         }
+    });
+}
 
         if (btnSkip) {
             btnSkip.addEventListener('click', () => this.nextStep());
@@ -1306,13 +1313,21 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
             throw new Error(errorMsg);
         }
 
-        const eventId = json?.data?.id || json?.id;
+  const eventId = json?.data?.id || json?.id;
 
-        if (!eventId) {
-            throw new Error('L\'ID de l\'événement n\'a pas été retourné');
-        }
+if (!eventId) {
+    throw new Error('L\'ID de l\'événement n\'a pas été retourné');
+}
 
-        localStorage.removeItem(this.autoSaveKey);
+// 🔥 ARRÊTER L'AUTO-SAVE
+if (this.autoSaveInterval) {
+    clearInterval(this.autoSaveInterval);
+    this.autoSaveInterval = null;
+}
+
+// 🔥 SUPPRIMER LE DRAFT
+localStorage.removeItem(this.autoSaveKey);
+console.log('✅ Draft supprimé et auto-save arrêté');
 
         this.showAlert('✨ Tournoi créé avec succès ! Redirection...', 'success');
 
