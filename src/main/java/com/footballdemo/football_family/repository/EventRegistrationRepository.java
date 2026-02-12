@@ -32,6 +32,8 @@ public interface EventRegistrationRepository extends JpaRepository<EventRegistra
      */
     long countByEventId(Long eventId);
 
+
+
     // ═══════════════════════════════════════════════════════════
     // RECHERCHE PAR JOUEUR (INDIVIDUAL)
     // ═══════════════════════════════════════════════════════════
@@ -63,6 +65,7 @@ public interface EventRegistrationRepository extends JpaRepository<EventRegistra
     // ═══════════════════════════════════════════════════════════
     // RECHERCHE PAR STATUT
     // ═══════════════════════════════════════════════════════════
+    List<EventRegistration> findByTeam_Club_Id(Long clubId);
 
     /**
      * Récupère les inscriptions d'un événement avec un statut spécifique.
@@ -137,4 +140,6 @@ public interface EventRegistrationRepository extends JpaRepository<EventRegistra
         Long eventId,
         RegistrationStatus status
     );
+
+    
 }

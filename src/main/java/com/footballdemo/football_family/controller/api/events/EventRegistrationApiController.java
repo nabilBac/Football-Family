@@ -97,22 +97,30 @@ public class EventRegistrationApiController {
     // ============================================================
     // 🟡 MES INSCRIPTIONS
     // ============================================================
-    @Operation(summary = "Obtenir les inscriptions d'un utilisateur")
-    @GetMapping("/me")
-    public ResponseEntity<ApiResponse<List<EventRegistrationDTO>>> getMyRegistrations(Principal principal) {
-        User user = getCurrentUser(principal);
-
-        List<EventRegistration> registrations = eventService.getRegistrationsForUser(user.getId());
-
-        List<EventRegistrationDTO> dtos = registrations.stream()
-                .map(EventRegistrationDTO::from)
-                .collect(Collectors.toList());
-
+  @Operation(summary = "Obtenir les inscriptions d'un utilisateur")
+@GetMapping("/me")
+public ResponseEntity<ApiResponse<List<EventRegistrationDTO>>> getMyRegistrations(Principal principal) {
+    // ✅ Si pas connecté, retourne une liste vide
+    if (principal == null) {
         return ResponseEntity.ok(new ApiResponse<>(
                 true,
-                "Inscriptions de l'utilisateur",
-                dtos));
+                "Aucune inscription (utilisateur non connecté)",
+                List.of()  // Liste vide
+        ));
     }
+    
+    User user = getCurrentUser(principal);
+    List<EventRegistration> registrations = eventService.getRegistrationsForUser(user.getId());
+
+    List<EventRegistrationDTO> dtos = registrations.stream()
+            .map(EventRegistrationDTO::from)
+            .collect(Collectors.toList());
+
+    return ResponseEntity.ok(new ApiResponse<>(
+            true,
+            "Inscriptions de l'utilisateur",
+            dtos));
+}
 
     // ============================================================
     // 🔵 INSCRIPTION D'UNE ÉQUIPE (CLUB_ONLY)
@@ -209,4 +217,27 @@ public ResponseEntity<ApiResponse<EventRegistrationDTO>> registerTeam(
                 new ApiResponse<>(true, "Inscription rejetée", EventRegistrationDTO.from(reg))
         );
     }
+
+
+    // ============================================================
+// 🔵 RÉCUPÉRER LES INSCRIPTIONS D'UN CLUB
+// ============================================================
+
+@Operation(summary = "Obtenir toutes les inscriptions d'un club pour un événement")
+@GetMapping("/{eventId}/registrations/club/{clubId}")
+@PreAuthorize("isAuthenticated()")
+public ResponseEntity<ApiResponse<List<EventRegistrationDTO>>> getClubRegistrations(
+        @PathVariable Long eventId,
+        @PathVariable Long clubId) {
+
+    List<EventRegistration> registrations = 
+        eventService.getRegistrationsByEventAndClub(eventId, clubId);
+
+    List<EventRegistrationDTO> dtos = registrations.stream()
+            .map(EventRegistrationDTO::from)
+            .collect(Collectors.toList());
+
+    return ResponseEntity.ok(
+            new ApiResponse<>(true, "Inscriptions du club", dtos));
+}
 }

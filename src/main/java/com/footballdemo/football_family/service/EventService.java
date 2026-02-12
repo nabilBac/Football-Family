@@ -599,10 +599,30 @@ return registrationRepo.save(registration);
 }
 
 
-    @Transactional(readOnly = true)
-    public List<EventRegistration> getRegistrationsForUser(Long userId) {
-        return registrationRepo.findByPlayerId(userId);
+@Transactional(readOnly = true)
+public List<EventRegistration> getRegistrationsForUser(Long userId) {
+    // 1. Inscriptions directes (joueur individuel)
+    List<EventRegistration> playerRegs = registrationRepo.findByPlayerId(userId);
+    
+    // 2. Récupérer tous les clubs de l'utilisateur
+    List<ClubUser> memberships = clubUserRepo.findAllByUserId(userId);
+    
+    List<EventRegistration> teamRegs = new ArrayList<>();
+    
+    for (ClubUser membership : memberships) {
+        Long clubId = membership.getClub().getId();
+        // Récupérer toutes les inscriptions d'équipes de ce club
+        List<EventRegistration> clubTeamRegs = registrationRepo.findByTeam_Club_Id(clubId);
+        teamRegs.addAll(clubTeamRegs);
     }
+    
+    // 3. Fusionner les deux listes
+    List<EventRegistration> allRegs = new ArrayList<>();
+    allRegs.addAll(playerRegs);
+    allRegs.addAll(teamRegs);
+    
+    return allRegs;
+}
   
 
     // ═══════════════════════════════════════════════════════════
@@ -1596,6 +1616,11 @@ public void addTeamToEvent(Long eventId, Long teamId) {
             .registrationDate(LocalDate.now())
             .build();
     registrationRepo.save(registration);
+}
+
+@Transactional(readOnly = true)
+public List<EventRegistration> getRegistrationsByEventAndClub(Long eventId, Long clubId) {
+    return registrationRepo.findByEventIdAndTeam_Club_Id(eventId, clubId);
 }
 
 }

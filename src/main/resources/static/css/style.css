@@ -51,7 +51,14 @@
 .events-page,
 .hub-page,
 .profile-page,
-.admin-page {
+.admin-page,
+.dashboard-page,
+.admin-events-page,
+.admin-teams-page,
+.event-dashboard-page,
+.team-create-page,
+.events-create-page,
+.match-create-page {
     animation: smoothPageEntry 0.2s ease-out;
 }
 

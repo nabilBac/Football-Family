@@ -822,6 +822,7 @@ textarea:focus {
         box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
     }
 }
-body.is-events-page .content-sections{
-  height: auto;
+body.is-events-page .content-sections {
+  height: calc(100vh - 200px);
+  overflow-y: auto;
 }

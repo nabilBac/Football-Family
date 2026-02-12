@@ -6,9 +6,9 @@
 }
 
 .tab-btn {
-    background: var(--bg-card, #1a1a1a);
-    color: var(--text-secondary, #999);
-    border: 2px solid var(--border, #333);
+    background: white;
+    color: #7f8c8d;
+    border: 2px solid #ecf0f1;
     padding: 0.75rem 1.5rem;
     border-radius: 12px;
     cursor: pointer;
@@ -18,12 +18,12 @@
 }
 
 .tab-btn:hover {
-    background: var(--bg-hover, #252525);
-    border-color: var(--primary, #10b981);
+    background: #f8f9fa;
+    border-color: #3498db;
 }
 
 .tab-btn.active {
-    background: var(--primary, #10b981);
+    background: #3498db;
     color: white;
-    border-color: var(--primary, #10b981);
+    border-color: #3498db;
 }

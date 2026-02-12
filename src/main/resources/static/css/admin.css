@@ -371,7 +371,7 @@
 /* ================================
    ✨ ANIMATIONS
    ================================ */
-@keyframes fadeIn {
+@keyframes adminFadeIn {
     from {
         opacity: 0;
         transform: translateY(10px);
@@ -380,11 +380,6 @@
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-.admin-card,
-.admin-dashboard-card {
-    animation: fadeIn 0.3s ease-out;
 }
 
 /* Effet de survol sur les cartes */
@@ -592,7 +587,7 @@
     border-radius: 16px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.4);
     margin-bottom: 25px;
-    animation: fadeIn 0.4s ease;
+    animation: adminFadeIn 0.4s ease;
 }
 
 .event-header-top {
@@ -698,7 +693,7 @@ body.is-admin-page {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    animation: fadeIn 0.4s ease;
+    animation: adminFadeIn 0.4s ease;
 }
 
 .welcome-content {
@@ -812,7 +807,7 @@ body.is-admin-page {
    ================================ */
 .quick-actions-section {
     margin-top: 35px;
-    animation: fadeIn 0.5s ease 0.2s backwards;
+    animation: adminFadeIn 0.5s ease 0.2s backwards;
 }
 
 .section-title {
@@ -868,7 +863,7 @@ body.is-admin-page {
    ================================ */
 .recent-activity-section {
     margin-top: 35px;
-    animation: fadeIn 0.6s ease 0.3s backwards;
+    animation: adminFadeIn 0.6s ease 0.3s backwards;
 }
 
 .activity-list {

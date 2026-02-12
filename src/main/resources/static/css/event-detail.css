@@ -1575,4 +1575,63 @@ button, a, .stat-card-scroll, .tab-pill {
     border-color: rgba(255, 255, 255, 0.10) !important;
 }
 
-/* FIN DU FICHIER */
+/* ==========================================================
+   DESCRIPTION ET STATS (sections manquantes)
+========================================================== */
+.description {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin: 0 0 16px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.section-title i {
+    color: var(--primary);
+}
+
+.description-text {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 0 0 16px;
+}
+
+.stat-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--primary);
+    margin-bottom: 6px;
+}
+
+.stat-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}

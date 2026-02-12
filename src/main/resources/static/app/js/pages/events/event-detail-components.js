@@ -1,1093 +1,625 @@
-// =====================================================
-// 🏆 EVENT DETAIL COMPONENTS V2.0
-// Architecture moderne - UN SEUL système onglets
-// Flux vertical scroll - 0 doublon
-// =====================================================
+// event-detail-components.js
+// 🎨 TOUS LES COMPOSANTS VISUELS - VERSION CORRIGÉE POUR TON CSS
 
-export const EventDetailComponents = {
+export function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
-    // =====================================================
-    // 🎨 HERO SECTION (VERSION COMPACTE)
-    // =====================================================
-    renderHeroCompact(event) {
-        const safeName = this.escapeHtml(event.name || "Tournoi");
-        const safeLocation = this.escapeHtml(event.city || event.location || "Lieu NC");
-        const date = event.date ? new Date(event.date).toLocaleDateString('fr-FR', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        }) : 'Date à confirmer';
-        
-        const statusConfig = this.getStatusConfig(event.status);
-        
-        return `
-            <div class="hero-compact">
-                <!-- Image ou Logo -->
-                ${event.logoUrl || event.imageUrl ? `
-                    <div class="hero-image">
-                        <img src="${this.escapeHtml(event.logoUrl || event.imageUrl)}" 
-                             alt="${safeName}"
-                             loading="lazy">
-                    </div>
-                ` : `
-                    <div class="hero-icon">🏆</div>
-                `}
-                
-                <!-- Infos principales -->
-                <div class="hero-content">
-                    <h1 class="hero-title">${safeName}</h1>
-                    
-                    <div class="hero-meta">
-                        <span class="meta-item">
-                            <i class="fas fa-calendar"></i>
-                            ${date}
+/* ============================================================================
+   HEADER
+   ============================================================================ */
+export function renderHeader(isOrganizer) {
+    return `
+        <div class="event-detail-header">
+            <button class="back-btn" id="backBtn">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1>Détail événement</h1>
+            ${isOrganizer ? `
+                <button class="menu-btn" id="menuBtn">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+            ` : '<div style="width: 42px;"></div>'}
+        </div>
+    `;
+}
+function getPlacesRestantes(inscrits, max) {
+    if (!max) return 'Places illimitées';
+    const restantes = max - (inscrits || 0);
+    if (restantes <= 0) return 'Complet';
+    return `${restantes} place${restantes > 1 ? 's' : ''} restante${restantes > 1 ? 's' : ''}`;
+}
+/* ============================================================================
+   HERO SECTION
+   ============================================================================ */
+export function renderHero(event) {
+    const statusBadge = getStatusBadge(event.status, event.format === "SINGLE_MATCH");
+    const typeIcon = event.format === "SINGLE_MATCH" ? "fa-futbol" : "fa-trophy";
+    const typeLabel = event.format === "SINGLE_MATCH" ? "Match" : "Tournoi";
+    
+    return `
+        <div class="hero-section-pro">
+            <div class="hero-background"></div>
+            <div class="hero-gradient"></div>
+            <div class="hero-content-grid">
+                <div class="hero-left">
+                    ${statusBadge}
+                    <div class="hero-badges-row">
+                        <span class="hero-badge">
+                            <i class="fas ${typeIcon}"></i>
+                            ${typeLabel}
                         </span>
-                        <span class="meta-item">
+                    </div>
+                    <h1 class="hero-title">${escapeHtml(event.name)}</h1>
+                    <div class="hero-meta-grid">
+                        <div class="hero-meta-item">
+                            <i class="fas fa-calendar-alt"></i>
+                            ${formatDate(event.startDate)}
+                        </div>
+                        <div class="hero-meta-item">
                             <i class="fas fa-map-marker-alt"></i>
-                            ${safeLocation}
-                        </span>
-                        <span class="meta-item">
-                            <i class="fas fa-users"></i>
-                            ${event.acceptedParticipants || 0} équipes
-                        </span>
-                    </div>
-                    
-                    <!-- Badge statut -->
-                    <div class="hero-status">
-                        <span class="status-badge" style="
-                            background: ${statusConfig.bg};
-                            color: ${statusConfig.color};
-                        ">
-                            ${statusConfig.icon} ${statusConfig.label}
-                        </span>
-                    </div>
-                    
-                    <!-- CTA principal (si applicable) -->
-                    ${this.renderHeroCTA(event)}
-                </div>
-            </div>
-            
-            <style>
-                .hero-compact {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 30px 20px;
-                    border-radius: 16px;
-                    margin-bottom: 20px;
-                    display: flex;
-                    align-items: center;
-                    gap: 20px;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                }
-                
-                .hero-image {
-                    width: 100px;
-                    height: 100px;
-                    border-radius: 12px;
-                    overflow: hidden;
-                    flex-shrink: 0;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                }
-                
-                .hero-image img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-                
-                .hero-icon {
-                    width: 100px;
-                    height: 100px;
-                    background: rgba(255,255,255,0.2);
-                    border-radius: 12px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 3em;
-                    flex-shrink: 0;
-                }
-                
-                .hero-content {
-                    flex: 1;
-                }
-                
-                .hero-title {
-                    margin: 0 0 15px 0;
-                    font-size: 1.8em;
-                    font-weight: 800;
-                    line-height: 1.2;
-                }
-                
-                .hero-meta {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 15px;
-                    margin-bottom: 15px;
-                }
-                
-                .meta-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    font-size: 0.9em;
-                    opacity: 0.95;
-                }
-                
-                .meta-item i {
-                    opacity: 0.8;
-                }
-                
-                .hero-status {
-                    margin-top: 15px;
-                }
-                
-                .status-badge {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 8px 16px;
-                    border-radius: 20px;
-                    font-weight: 700;
-                    font-size: 0.9em;
-                }
-                
-                .hero-cta {
-                    margin-top: 15px;
-                }
-                
-                .hero-cta button {
-                    background: white;
-                    color: #667eea;
-                    border: none;
-                    padding: 12px 24px;
-                    border-radius: 8px;
-                    font-weight: 700;
-                    font-size: 1em;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-                }
-                
-                .hero-cta button:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                }
-                
-                @media (max-width: 768px) {
-                    .hero-compact {
-                        flex-direction: column;
-                        text-align: center;
-                    }
-                    
-                    .hero-title {
-                        font-size: 1.5em;
-                    }
-                    
-                    .hero-meta {
-                        justify-content: center;
-                    }
-                }
-            </style>
-        `;
-    },
-
-    renderHeroCTA(event) {
-        const status = event.status?.toUpperCase();
-        
-        // Inscriptions ouvertes
-        if (status === 'PUBLISHED') {
-            return `
-                <div class="hero-cta">
-                    <button onclick="EventDetailPage.showRegistrationModal()">
-                        ➕ S'inscrire au tournoi
-                    </button>
-                </div>
-            `;
-        }
-        
-        // Tournoi en cours
-        if (status === 'ONGOING') {
-            return `
-                <div class="hero-cta">
-                    <button onclick="EventDetailPage.scrollToLive()">
-                        🔴 Voir le live
-                    </button>
-                </div>
-            `;
-        }
-        
-        return '';
-    },
-
-    // =====================================================
-    // 📊 STICKY TABS (SEUL SYSTÈME D'ONGLETS)
-    // =====================================================
-    renderStickyTabs(event) {
-        const status = event.status?.toUpperCase();
-        const isSingleMatch = event.format === "SINGLE_MATCH";
-        
-        // Déterminer quels onglets afficher selon le mode
-        const tabs = this.getTabsForEvent(event);
-        
-        return `
-            <div class="sticky-tabs-container" id="sticky-tabs">
-                <div class="sticky-tabs">
-                    ${tabs.map((tab, index) => `
-                        <button 
-                            class="tournament-tab tab-btn ${index === 0 ? 'active' : ''}" 
-                            data-tab="${tab.id}"
-                            ${tab.disabled ? 'disabled' : ''}
-                        >
-                            <i class="${tab.icon}"></i>
-                            <span>${tab.label}</span>
-                        </button>
-                    `).join('')}
-                </div>
-            </div>
-            
-            <style>
-                .sticky-tabs-container {
-                    position: sticky;
-                    top: 60px;
-                    background: white;
-                    z-index: 100;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                    margin: 0 -20px 30px -20px;
-                    padding: 0 20px;
-                }
-                
-                .sticky-tabs {
-                    display: flex;
-                    gap: 8px;
-                    overflow-x: auto;
-                    -webkit-overflow-scrolling: touch;
-                    scrollbar-width: thin;
-                    padding: 12px 0;
-                }
-                
-                .sticky-tabs::-webkit-scrollbar {
-                    height: 4px;
-                }
-                
-                .sticky-tabs::-webkit-scrollbar-thumb {
-                    background: #bdc3c7;
-                    border-radius: 4px;
-                }
-                
-                .tab-btn {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 12px 20px;
-                    background: transparent;
-                    border: none;
-                    border-bottom: 3px solid transparent;
-                    color: #7f8c8d;
-                    font-weight: 600;
-                    font-size: 0.95em;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    white-space: nowrap;
-                }
-                
-                .tab-btn:hover:not(:disabled) {
-                    background: #f8f9fa;
-                    color: #2c3e50;
-                }
-                
-                .tab-btn.active {
-                    color: #3498db;
-                    border-bottom-color: #3498db;
-                    background: rgba(52, 152, 219, 0.05);
-                }
-                
-                .tab-btn:disabled {
-                    opacity: 0.4;
-                    cursor: not-allowed;
-                }
-                
-                @media (max-width: 768px) {
-                    .tab-btn {
-                        flex-direction: column;
-                        padding: 10px 12px;
-                        gap: 4px;
-                        min-width: 70px;
-                    }
-                    
-                    .tab-btn i {
-                        font-size: 1.3em;
-                    }
-                    
-                    .tab-btn span {
-                        font-size: 0.75em;
-                    }
-                }
-            </style>
-        `;
-    },
-
-    getTabsForEvent(event) {
-        const status = event.status?.toUpperCase();
-        const isSingleMatch = event.format === "SINGLE_MATCH";
-        
-        // MATCH UNIQUE : onglets simplifiés
-        if (isSingleMatch) {
-            return [
-                { id: 'live', label: 'Live', icon: 'fas fa-broadcast-tower', disabled: status !== 'ONGOING' },
-                { id: 'matches', label: 'Match', icon: 'fas fa-futbol', disabled: false },
-                { id: 'feed', label: 'Actu', icon: 'fas fa-newspaper', disabled: false }
-            ];
-        }
-        
-        // TOURNOI : onglets complets
-        const tabs = [];
-        
-        // Onglet Live (en premier si tournoi en cours)
-        if (status === 'ONGOING') {
-            tabs.push({ id: 'live', label: 'Live', icon: 'fas fa-broadcast-tower', disabled: false });
-        }
-        
-        // Onglets toujours visibles
-        tabs.push(
-            { id: 'matches', label: 'Matchs', icon: 'fas fa-futbol', disabled: false },
-            { id: 'rankings', label: 'Classements', icon: 'fas fa-chart-line', disabled: false }
-        );
-        
-        // Bracket (si phase finale)
-        if (status === 'ONGOING' || status === 'COMPLETED') {
-            tabs.push({ id: 'bracket', label: 'Phase finale', icon: 'fas fa-trophy', disabled: false });
-        }
-        
-        // Fil d'actualité
-        tabs.push({ id: 'feed', label: 'Actu', icon: 'fas fa-newspaper', disabled: false });
-        
-        return tabs;
-    },
-
-    // =====================================================
-    // 📱 CONTENU DYNAMIQUE SELON ONGLET ACTIF
-    // =====================================================
-    renderTabContent(event, tabId) {
-        switch(tabId) {
-            case 'overview':
-                return this.renderOverviewTab(event);
-            case 'live':
-                return this.renderLiveTab(event);
-            case 'matches':
-                return this.renderMatchesTab(event);
-            case 'rankings':
-                return this.renderRankingsTab(event);
-            case 'bracket':
-                return this.renderBracketTab(event);
-            case 'infos':
-                return this.renderInfosTab(event);
-            default:
-                return '<p>Onglet non trouvé</p>';
-        }
-    },
-
-    // =====================================================
-    // 🏠 ONGLET VUE D'ENSEMBLE
-    // =====================================================
-    renderOverviewTab(event) {
-        return `
-            <div class="tab-content-wrapper">
-                <!-- Description -->
-                ${event.description ? `
-                    <div class="content-card">
-                        <h3>📝 À propos</h3>
-                        <p>${this.escapeHtml(event.description)}</p>
-                    </div>
-                ` : ''}
-                
-                <!-- Stats rapides -->
-                <div class="content-card">
-                    <h3>📊 Chiffres clés</h3>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <div class="stat-value">${event.acceptedParticipants || 0}</div>
-                            <div class="stat-label">Équipes</div>
-                        </div>
-                        ${event.groupCount ? `
-                            <div class="stat-item">
-                                <div class="stat-value">${event.groupCount}</div>
-                                <div class="stat-label">Poules</div>
-                            </div>
-                        ` : ''}
-                        <div class="stat-item">
-                            <div class="stat-value">${event.totalMatches || 0}</div>
-                            <div class="stat-label">Matchs</div>
+                            ${escapeHtml(event.location)}
                         </div>
                     </div>
                 </div>
-                
-                <!-- Prochains matchs (si applicable) -->
-                <div id="overview-next-matches"></div>
-            </div>
-            
-            <style>
-                .tab-content-wrapper {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 20px;
-                }
-                
-                .content-card {
-                    background: white;
-                    padding: 25px;
-                    border-radius: 12px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                
-                .content-card h3 {
-                    margin: 0 0 15px 0;
-                    color: #2c3e50;
-                    font-size: 1.2em;
-                    font-weight: 700;
-                }
-                
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-                    gap: 15px;
-                }
-                
-                .stat-item {
-                    text-align: center;
-                    padding: 20px;
-                    background: #f8f9fa;
-                    border-radius: 10px;
-                }
-                
-                .stat-value {
-                    font-size: 2.5em;
-                    font-weight: 800;
-                    color: #3498db;
-                    line-height: 1;
-                    margin-bottom: 8px;
-                }
-                
-                .stat-label {
-                    color: #7f8c8d;
-                    font-size: 0.85em;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-            </style>
-        `;
-    },
-
-    // =====================================================
-    // 🔴 ONGLET LIVE
-    // =====================================================
-    renderLiveTab(event) {
-        return `
-            <div class="tab-content-wrapper">
-                <!-- Feed actualité en direct -->
-                <div class="content-card">
-                    <h3>🔴 Fil d'actualité en direct</h3>
-                    <div id="liveFeedContainer">
-                        <div class="loader">⏳ Chargement du live...</div>
-                    </div>
-                </div>
-                
-                <!-- Matchs en cours -->
-                <div class="content-card">
-                    <h3>⚽ Matchs en cours</h3>
-                    <div id="liveMatchesContainer">
-                        <div class="loader">⏳ Chargement...</div>
+                <div class="hero-right">
+                   <div class="hero-stat-mini accent">
+    <div class="stat-mini-value">
+        ${event.acceptedParticipants ?? 0}/${event.maxParticipants ?? '∞'}
+    </div>
+    <div class="stat-mini-label">
+        ${getPlacesRestantes(event.acceptedParticipants, event.maxParticipants)}
+    </div>
+</div>
+                    <div class="hero-stat-mini secondary">
+                        <div class="stat-mini-value">${event.category ?? 'U19'}</div>
+                        <div class="stat-mini-label">Catégorie</div>
                     </div>
                 </div>
             </div>
-            
-            <style>
-                .live-event-item {
-                    padding: 15px;
-                    border-left: 4px solid #e74c3c;
-                    background: #fff5f5;
-                    border-radius: 8px;
-                    margin-bottom: 12px;
-                }
-                
-                .live-event-time {
-                    font-weight: 700;
-                    color: #e74c3c;
-                    margin-bottom: 5px;
-                }
-                
-                .live-event-content {
-                    color: #2c3e50;
-                }
-                
-                .loader {
-                    text-align: center;
-                    padding: 40px;
-                    color: #7f8c8d;
-                }
-            </style>
-        `;
-    },
+        </div>
+    `;
+}
 
-    // =====================================================
-    // ⚽ ONGLET MATCHS
-    // =====================================================
-    renderMatchesTab(event) {
+function getStatusBadge(status, isSingleMatch) {
+    if (status === 'ONGOING') {
         return `
-            <div class="tab-content-wrapper">
-                <div class="content-card">
-                    <h3>⚽ Tous les matchs</h3>
-                    <div id="allMatchesContainer">
-                        <div class="loader">⏳ Chargement des matchs...</div>
-                    </div>
-                </div>
+            <div class="hero-status-badge live">
+                <span class="pulse-dot"></span>
+                EN DIRECT
             </div>
-        `;
-    },
-
-    // =====================================================
-    // 📊 ONGLET CLASSEMENTS
-    // =====================================================
-    renderRankingsTab(event) {
-        return `
-            <div class="tab-content-wrapper">
-                <div class="content-card">
-                    <h3>📊 Classements des poules</h3>
-                    <div id="rankingsContainer">
-                        <div class="loader">⏳ Chargement des classements...</div>
-                    </div>
-                </div>
-            </div>
-        `;
-    },
-
-    // =====================================================
-    // 🏆 ONGLET BRACKET
-    // =====================================================
-    renderBracketTab(event) {
-        return `
-            <div class="tab-content-wrapper">
-                <!-- Bracket principal -->
-                <div class="content-card">
-                    <h3>🏆 Phase finale principale</h3>
-                    <div id="bracketContainer">
-                        <div class="loader">⏳ Chargement du bracket...</div>
-                    </div>
-                </div>
-            </div>
-        `;
-    },
-
-    // =====================================================
-    // ℹ️ ONGLET INFOS PRATIQUES
-    // =====================================================
-    renderInfosTab(event) {
-        const safeLocation = this.escapeHtml(event.location || event.city || "Lieu non communiqué");
-        const deadline = event.registrationDeadline ? 
-            new Date(event.registrationDeadline).toLocaleDateString('fr-FR') : 
-            "Non définie";
-        
-        return `
-            <div class="tab-content-wrapper">
-                <div class="content-card">
-                    <h3>ℹ️ Informations pratiques</h3>
-                    
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <div class="info-icon">📍</div>
-                            <div class="info-content">
-                                <div class="info-label">Lieu</div>
-                                <div class="info-value">${safeLocation}</div>
-                            </div>
-                        </div>
-                        
-                        ${event.surface ? `
-                            <div class="info-item">
-                                <div class="info-icon">🏟️</div>
-                                <div class="info-content">
-                                    <div class="info-label">Surface</div>
-                                    <div class="info-value">${this.formatSurface(event.surface)}</div>
-                                </div>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="info-item">
-                            <div class="info-icon">⏰</div>
-                            <div class="info-content">
-                                <div class="info-label">Date limite d'inscription</div>
-                                <div class="info-value">${deadline}</div>
-                            </div>
-                        </div>
-                        
-                        ${event.entryFee ? `
-                            <div class="info-item">
-                                <div class="info-icon">💰</div>
-                                <div class="info-content">
-                                    <div class="info-label">Frais d'inscription</div>
-                                    <div class="info-value">${event.entryFee}€</div>
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    ${event.rules ? `
-                        <div style="margin-top: 25px;">
-                            <h4 style="margin: 0 0 12px 0; color: #2c3e50;">📜 Règlement</h4>
-                            <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; line-height: 1.6;">
-                                ${this.escapeHtml(event.rules)}
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-            
-            <style>
-                .info-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                    gap: 20px;
-                }
-                
-                .info-item {
-                    display: flex;
-                    gap: 15px;
-                    align-items: flex-start;
-                }
-                
-                .info-icon {
-                    font-size: 2em;
-                    flex-shrink: 0;
-                }
-                
-                .info-content {
-                    flex: 1;
-                }
-                
-                .info-label {
-                    color: #7f8c8d;
-                    font-size: 0.85em;
-                    font-weight: 600;
-                    margin-bottom: 5px;
-                }
-                
-                .info-value {
-                    color: #2c3e50;
-                    font-weight: 700;
-                    font-size: 1.1em;
-                }
-            </style>
-        `;
-    },
-
-    // =====================================================
-    // 🎯 STICKY CTA (UN SEUL)
-    // =====================================================
-    renderStickyCTA(event) {
-        const status = event.status?.toUpperCase();
-        
-        // Pas de CTA si tournoi terminé
-        if (status === 'COMPLETED' || status === 'CANCELLED') {
-            return '';
-        }
-        
-        let ctaText = '';
-        let ctaAction = '';
-        let ctaColor = '#3498db';
-        
-        if (status === 'PUBLISHED') {
-            ctaText = '➕ S\'inscrire au tournoi';
-            ctaAction = 'EventDetailPage.showRegistrationModal()';
-            ctaColor = '#27ae60';
-        } else if (status === 'ONGOING') {
-            ctaText = '🔴 Voir le live';
-            ctaAction = 'EventDetailPage.scrollToLive()';
-            ctaColor = '#e74c3c';
-        }
-        
-        if (!ctaText) return '';
-        
-        return `
-            <div class="sticky-cta">
-                <button 
-                    class="cta-button" 
-                    onclick="${ctaAction}"
-                    style="background: ${ctaColor};"
-                >
-                    ${ctaText}
-                </button>
-            </div>
-            
-            <style>
-                .sticky-cta {
-                    position: fixed;
-                    bottom: 20px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    z-index: 999;
-                    animation: slideUp 0.5s ease-out;
-                }
-                
-                .cta-button {
-                    padding: 16px 32px;
-                    color: white;
-                    border: none;
-                    border-radius: 50px;
-                    font-weight: 700;
-                    font-size: 1.1em;
-                    cursor: pointer;
-                    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-                    transition: all 0.3s;
-                }
-                
-                .cta-button:hover {
-                    transform: translateY(-3px);
-                    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-                }
-                
-                .cta-button:active {
-                    transform: translateY(-1px);
-                }
-                
-                @keyframes slideUp {
-                    from {
-                        opacity: 0;
-                        transform: translateX(-50%) translateY(20px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateX(-50%) translateY(0);
-                    }
-                }
-                
-                @media (max-width: 768px) {
-                    .sticky-cta {
-                        left: 20px;
-                        right: 20px;
-                        transform: none;
-                    }
-                    
-                    .cta-button {
-                        width: 100%;
-                    }
-                }
-            </style>
-        `;
-    },
-
-    // =====================================================
-    // 🛠️ HELPERS
-    // =====================================================
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    },
-
-    getStatusConfig(status) {
-        const configs = {
-            'DRAFT': { 
-                label: 'Brouillon', 
-                icon: '📝', 
-                color: '#95a5a6', 
-                bg: '#ecf0f1' 
-            },
-            'PUBLISHED': { 
-                label: 'Inscriptions ouvertes', 
-                icon: '✅', 
-                color: '#27ae60', 
-                bg: '#d4edda' 
-            },
-            'REGISTRATION_CLOSED': { 
-                label: 'Inscriptions fermées', 
-                icon: '🔒', 
-                color: '#f39c12', 
-                bg: '#fff3cd' 
-            },
-            'ONGOING': { 
-                label: 'EN DIRECT', 
-                icon: '🔴', 
-                color: '#e74c3c', 
-                bg: '#fee' 
-            },
-            'COMPLETED': { 
-                label: 'Terminé', 
-                icon: '🏆', 
-                color: '#3498db', 
-                bg: '#e3f2fd' 
-            },
-            'CANCELLED': { 
-                label: 'Annulé', 
-                icon: '❌', 
-                color: '#e74c3c', 
-                bg: '#f8d7da' 
-            }
-        };
-        
-        return configs[status?.toUpperCase()] || configs['DRAFT'];
-    },
-
-    formatSurface(surface) {
-        const surfaces = {
-            'NATURAL_GRASS': '🌿 Pelouse naturelle',
-            'SYNTHETIC': '🟢 Synthétique',
-            'INDOOR': '🏢 Salle',
-            'BEACH': '🏖️ Beach soccer'
-        };
-        return surfaces[surface] || surface;
-    },
-
-    // =====================================================
-    // 🔙 HEADER (COMPATIBILITÉ)
-    // =====================================================
-    renderHeader(isOrganizer) {
-        return `
-            <div class="event-header">
-                <button id="backBtn" class="back-button">
-                    <i class="fas fa-arrow-left"></i>
-                    Retour
-                </button>
-            </div>
-            
-            <style>
-                .event-header {
-                    padding: 15px 20px;
-                    background: white;
-                    border-bottom: 1px solid #e1e8ed;
-                }
-                
-                .back-button {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 10px 16px;
-                    background: transparent;
-                    border: none;
-                    color: #3498db;
-                    font-weight: 600;
-                    font-size: 1em;
-                    cursor: pointer;
-                    border-radius: 8px;
-                    transition: all 0.3s;
-                }
-                
-                .back-button:hover {
-                    background: #f8f9fa;
-                    color: #2980b9;
-                }
-                
-                .back-button i {
-                    font-size: 1.1em;
-                }
-            </style>
-        `;
-    },
-
-    // =====================================================
-    // 🎨 HERO SECTION PRO (ALIAS POUR COMPATIBILITÉ)
-    // =====================================================
-    renderHeroSectionPro(event) {
-        return this.renderHeroCompact(event);
-    },
-
-    // =====================================================
-    // ℹ️ PRACTICAL INFO SECTION
-    // =====================================================
-    renderPracticalInfoSection(event) {
-        return ''; // Intégré dans l'onglet Infos maintenant
-    },
-
-    // =====================================================
-    // 📊 QUICK STATS SCROLL
-    // =====================================================
-    renderQuickStatsScroll(event) {
-        return ''; // Intégré dans Hero compact maintenant
-    },
-
-    // =====================================================
-    // 📊 STICKY TABS PRO (ALIAS POUR COMPATIBILITÉ)
-    // =====================================================
-    renderStickyTabsPro(event, isOrganizer, currentUser) {
-        return this.renderStickyTabs(event);
-    },
-
-    // =====================================================
-    // 📝 DESCRIPTION
-    // =====================================================
-    renderDescription(description) {
-        if (!description) return '';
-        
-        return `
-            <div class="event-description">
-                <h3>À propos</h3>
-                <p>${this.escapeHtml(description)}</p>
-            </div>
-        `;
-    },
-
-    // =====================================================
-    // 🎯 STICKY CTA PRO (ALIAS POUR COMPATIBILITÉ)
-    // =====================================================
-    renderStickyCTAPro(event, isAuthenticated, isOrganizer, isRegistered, hasClub) {
-        return this.renderStickyCTA(event);
-    },
-
-    // =====================================================
-    // 🏢 MODAL INSCRIPTION CLUB
-    // =====================================================
-    renderClubRegistrationModal(event) {
-        return `
-            <div id="clubRegistrationModal" class="utf-modal hidden">
-                <div class="utf-modal-overlay"></div>
-                <div class="utf-modal-content">
-                    <div class="utf-modal-header">
-                        <h3>Inscrire mes équipes</h3>
-                        <button class="utf-modal-close" id="cancelClubModal">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    
-                    <div class="utf-modal-body">
-                        <div style="margin-bottom: 20px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">
-                                Nombre d'équipes à inscrire
-                            </label>
-                            <select id="teamCountSelect" style="
-                                width: 100%;
-                                padding: 10px;
-                                border: 2px solid #e1e8ed;
-                                border-radius: 8px;
-                                font-size: 1em;
-                            ">
-                                <option value="1">1 équipe</option>
-                            </select>
-                        </div>
-                        
-                        <div style="margin-bottom: 20px;">
-                            <label style="display: block; margin-bottom: 12px; font-weight: 600;">
-                                Sélectionner les équipes
-                            </label>
-                            <div id="club-teams-checkboxes" style="
-                                display: flex;
-                                flex-direction: column;
-                                gap: 12px;
-                                max-height: 300px;
-                                overflow-y: auto;
-                                padding: 15px;
-                                background: #f8f9fa;
-                                border-radius: 8px;
-                            ">
-                                <!-- Rempli dynamiquement -->
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="utf-modal-footer">
-                        <button class="btn-secondary" id="cancelClubModal">
-                            Annuler
-                        </button>
-                        <button class="btn-primary" id="confirmClubRegistration">
-                            Inscrire les équipes
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    },
-
-    // =====================================================
-    // 🍞 TOAST
-    // =====================================================
-    renderToast() {
-        return `
-            <div id="toast" class="toast"></div>
-            
-            <style>
-                .toast {
-                    position: fixed;
-                    bottom: -100px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: #2c3e50;
-                    color: white;
-                    padding: 15px 25px;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    z-index: 10000;
-                    transition: bottom 0.3s ease;
-                    font-weight: 600;
-                }
-                
-                .toast.show {
-                    bottom: 30px;
-                }
-            </style>
-        `;
-    },
-
-    // =====================================================
-    // 👤 SECTIONS UTILISATEUR
-    // =====================================================
-    renderGuestSection() {
-        return `
-            <div class="user-section guest-section">
-                <p>Connectez-vous pour participer</p>
-            </div>
-        `;
-    },
-
-    renderPlayerSection(registrationStatus) {
-        return `
-            <div class="user-section player-section">
-                <p>Statut inscription : ${registrationStatus}</p>
-            </div>
-        `;
-    },
-
-    renderVisitorSection() {
-        return `
-            <div class="user-section visitor-section">
-                <p>Inscrivez-vous pour participer</p>
-            </div>
-        `;
-    },
-
-    renderOrganizerSection(event) {
-        return `
-            <div class="user-section organizer-section">
-                <h3>👑 Espace organisateur</h3>
-                <button class="btn-primary" onclick="Router.go('/admin/events/${event.id}')">
-                    <i class="fas fa-cog"></i>
-                    Gérer l'événement
-                </button>
-            </div>
-        `;
-    },
-
-    // =====================================================
-    // 🎨 EVENT STATUS BADGE
-    // =====================================================
-    renderEventStatusBadge(event) {
-        const config = this.getStatusConfig(event.status);
-        
-        return `
-            <span class="event-status-badge" style="
-                background: ${config.bg};
-                color: ${config.color};
-                padding: 6px 12px;
-                border-radius: 12px;
-                font-weight: 700;
-                font-size: 0.85em;
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-            ">
-                ${config.icon} ${config.label}
-            </span>
         `;
     }
-};
+    if (status === 'PUBLISHED' || status === 'REGISTRATION_CLOSED') {
+        return `<div class="hero-status-badge upcoming"><i class="fas fa-calendar"></i> À venir</div>`;
+    }
+    if (status === 'COMPLETED') {
+        return `<div class="hero-status-badge completed"><i class="fas fa-check-circle"></i> Terminé</div>`;
+    }
+    return '';
+}
 
-// Export par défaut
-export default EventDetailComponents;
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/* ============================================================================
+   QUICK INFO CARDS
+   ============================================================================ */
+export function renderQuickInfo(event) {
+    const isClubEvent = event.registrationType === "CLUB_ONLY";
+    
+    return `
+        <div class="quick-stats-scroll">
+            <div class="stat-card-scroll accent">
+                <div class="stat-icon-scroll">
+                    <i class="fas ${isClubEvent ? 'fa-shield-alt' : 'fa-users'}"></i>
+                </div>
+                <div class="stat-info-scroll">
+                    <div class="stat-value-scroll">
+                        ${isClubEvent ? (event.teamsRegisteredByMyClub ?? 0) : (event.acceptedParticipants ?? 0)} 
+                        / ${isClubEvent ? (event.maxTeamsPerClub ?? '∞') : (event.maxParticipants ?? '∞')}
+                    </div>
+                    <div class="stat-label-scroll">
+                        ${isClubEvent ? 'Équipes' : 'Participants'}
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card-scroll success">
+                <div class="stat-icon-scroll">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <div class="stat-info-scroll">
+                    <div class="stat-value-scroll">${escapeHtml(event.category || 'Standard')}</div>
+                    <div class="stat-label-scroll">Catégorie</div>
+                </div>
+            </div>
+
+            <div class="stat-card-scroll warning">
+                <div class="stat-icon-scroll">
+                    <i class="fas fa-futbol"></i>
+                </div>
+                <div class="stat-info-scroll">
+                    <div class="stat-value-scroll">${getFormatLabel(event)}</div>
+                    <div class="stat-label-scroll">Format</div>
+                </div>
+            </div>
+
+            <div class="stat-card-scroll danger">
+                <div class="stat-icon-scroll">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info-scroll">
+                    <div class="stat-value-scroll">${getDuration(event)}</div>
+                    <div class="stat-label-scroll">Durée</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getFormatLabel(event) {
+    if (event.format === 'SINGLE_MATCH') return 'Match unique';
+    if (event.teamSize) return `${event.teamSize} vs ${event.teamSize}`;
+    return 'Standard';
+}
+
+function getDuration(event) {
+    if (!event.startDate || !event.endDate) return '1 jour';
+    const start = new Date(event.startDate);
+    const end = new Date(event.endDate);
+    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    return `${days} jour${days > 1 ? 's' : ''}`;
+}
+
+/* ============================================================================
+   DESCRIPTION
+   ============================================================================ */
+export function renderDescription(description, isSingleMatch) {
+    if (!description) return '';
+    
+    return `
+        <div class="description">
+            <h2 class="section-title">
+                <i class="fas fa-align-left"></i>
+                À propos ${isSingleMatch ? 'du match' : 'du tournoi'}
+            </h2>
+            <div class="description-text">${escapeHtml(description)}</div>
+        </div>
+    `;
+}
+
+/* ============================================================================
+   STATS GRID
+   ============================================================================ */
+export function renderStats(event) {
+    return `
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-value">${event.totalMatches ?? '-'}</div>
+                <div class="stat-label">Matchs</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">${event.groupCount ?? '-'}</div>
+                <div class="stat-label">Poules</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">${event.registrationFee ? '€' + event.registrationFee : 'Gratuit'}</div>
+                <div class="stat-label">Inscription</div>
+            </div>
+        </div>
+    `;
+}
+
+/* ============================================================================
+   TABS NAVIGATION
+   ============================================================================ */
+export function renderTabs(isSingleMatch, isOrganizer) {
+    const tabs = isSingleMatch ? [
+        { id: 'live', icon: 'fa-video', label: 'Live' },
+        { id: 'feed', icon: 'fa-newspaper', label: 'Actualités' },
+        { id: 'infos', icon: 'fa-info-circle', label: 'Infos' },
+    ] : [
+        { id: 'live', icon: 'fa-video', label: 'Live' },
+        { id: 'matches', icon: 'fa-futbol', label: 'Matchs' },
+        { id: 'rankings', icon: 'fa-list-ol', label: 'Classements' },
+        { id: 'bracket', icon: 'fa-trophy', label: 'Phase finale' },
+        { id: 'feed', icon: 'fa-newspaper', label: 'Actualités' },
+        { id: 'planning', icon: 'fa-calendar-day', label: 'Planning' },
+        { id: 'gallery', icon: 'fa-images', label: 'Galerie' },
+        { id: 'infos', icon: 'fa-info-circle', label: 'Infos pratiques' },
+    ];
+    
+    if (isOrganizer) {
+        tabs.push({ id: 'admin', icon: 'fa-crown', label: 'Gestion' });
+    }
+    
+    return `
+        <div class="tabs-sticky-container">
+            <div class="tabs-sticky-pro">
+                ${tabs.map((tab, index) => `
+                    <button class="tab-pill tournament-tab ${index === 0 ? 'active' : ''}" data-tab="${tab.id}">
+                        <i class="fas ${tab.icon}"></i>
+                        <span>${tab.label}</span>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+/* ============================================================================
+   TAB CONTENT CONTAINERS
+   ============================================================================ */
+export function renderTabContents(isSingleMatch, isOrganizer) {
+    const tabs = isSingleMatch ? ['live', 'feed', 'infos'] : 
+        ['live', 'matches', 'rankings', 'bracket', 'feed', 'planning', 'gallery', 'infos'];
+    
+    if (isOrganizer) tabs.push('admin');
+    
+    return tabs.map((tab, index) => `
+        <div id="tab-${tab}" class="tab-content-pro tournament-tab-content ${index === 0 ? 'active' : ''}"></div>
+    `).join('');
+}
+
+/* ============================================================================
+   LIVE VIDEO PLACEHOLDER
+   ============================================================================ */
+export function renderLiveVideo(match) {
+    return `
+        <div class="live-video-container">
+            <div class="video-placeholder">
+                <span class="live-badge-video">
+                    <span class="pulse-dot"></span>
+                    DIRECT
+                </span>
+                <i class="fas fa-video"></i>
+                <p style="color: var(--text-secondary); font-size: 14px;">
+                    ${match ? `${escapeHtml(match.teamA)} vs ${escapeHtml(match.teamB)}` : 'Stream en direct'}
+                </p>
+            </div>
+            <div class="video-info">
+                <div class="video-title">🔴 Match en direct</div>
+                <div class="video-meta">
+                    <span><i class="fas fa-eye"></i> Spectateurs</span>
+                    <span><i class="fas fa-clock"></i> En cours</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/* ============================================================================
+   MATCH CARD
+   ============================================================================ */
+export function renderMatchCard(match) {
+    const isLive = match.status === 'IN_PROGRESS' || match.status === 'ONGOING';
+    const isFinished = match.status === 'FINISHED' || match.status === 'COMPLETED';
+    
+    return `
+        <div class="match-card ${isLive ? 'live' : ''} ${isFinished ? 'finished' : ''}">
+            ${isLive ? `<div class="live-badge">🔴 ${match.elapsedMinutes ?? 0}'</div>` : ''}
+            <div class="match-row-grid">
+                <div class="finished-team-name">${escapeHtml(match.teamA?.name || match.teamA || 'Équipe A')}</div>
+                <div class="match-score">${match.scoreTeamA ?? '-'} - ${match.scoreTeamB ?? '-'}</div>
+                <div class="finished-team-name">${escapeHtml(match.teamB?.name || match.teamB || 'Équipe B')}</div>
+            </div>
+            ${match.scheduledStartTime || match.location || match.round ? `
+                <div class="match-details">
+                    ${match.round ? `<div class="match-detail"><i class="fas fa-trophy"></i> ${escapeHtml(match.round)}</div>` : ''}
+                    ${match.scheduledStartTime ? `<div class="match-detail"><i class="fas fa-clock"></i> ${formatMatchTime(match)}</div>` : ''}
+                    ${match.location ? `<div class="match-detail"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(match.location)}</div>` : ''}
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function formatMatchTime(match) {
+    if (!match.scheduledStartTime) return 'À définir';
+    const date = new Date(match.scheduledStartTime);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+/* ============================================================================
+   RANKING TABLE
+   ============================================================================ */
+export function renderRankingTable(groupName, teams) {
+    return `
+        <div class="ranking-group">
+            <div class="ranking-group-header">🏆 ${escapeHtml(groupName)}</div>
+            <table class="ranking-table">
+                <thead>
+                    <tr>
+                        <th class="ranking-position">#</th>
+                        <th>Équipe</th>
+                        <th>Pts</th>
+                        <th>J</th>
+                        <th>+/-</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${teams.map((team, index) => `
+                        <tr>
+                            <td class="ranking-position ${index < 2 ? 'qualified' : ''}">${index + 1}</td>
+                            <td class="ranking-team-name">${escapeHtml(team.teamName || team.name)}</td>
+                            <td class="ranking-points">${team.points ?? 0}</td>
+                            <td>${team.played ?? 0}</td>
+                            <td style="color: ${(team.goalDifference ?? 0) >= 0 ? 'var(--primary)' : '#ef4444'};">
+                                ${(team.goalDifference ?? 0) > 0 ? '+' : ''}${team.goalDifference ?? 0}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+/* ============================================================================
+   BRACKET
+   ============================================================================ */
+export function renderBracket(rounds) {
+    return `
+        <div class="bracket-tree">
+            ${rounds.map(round => `
+                <div class="bracket-column">
+                    <div class="bracket-round-title">${escapeHtml(round.name)}</div>
+                    ${round.matches.map(match => renderBracketMatch(match)).join('')}
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderBracketMatch(match) {
+    const teamAWins = match.status === 'FINISHED' && (match.scoreTeamA ?? 0) > (match.scoreTeamB ?? 0);
+    const teamBWins = match.status === 'FINISHED' && (match.scoreTeamB ?? 0) > (match.scoreTeamA ?? 0);
+    const isLive = match.status === 'IN_PROGRESS' || match.status === 'ONGOING';
+    
+    return `
+        <div class="bracket-match ${isLive ? 'live' : ''}">
+            ${isLive ? '<div class="live-badge">DIRECT</div>' : ''}
+            <div class="bracket-team ${teamAWins ? 'winner' : ''}">
+                <span class="bracket-team-name">${escapeHtml(match.teamA?.name || match.teamA || 'TBD')}</span>
+                <span class="bracket-score">${match.scoreTeamA ?? '-'}</span>
+            </div>
+            <div class="bracket-divider"></div>
+            <div class="bracket-team ${teamBWins ? 'winner' : ''}">
+                <span class="bracket-team-name">${escapeHtml(match.teamB?.name || match.teamB || 'TBD')}</span>
+                <span class="bracket-score">${match.scoreTeamB ?? '-'}</span>
+            </div>
+        </div>
+    `;
+}
+
+/* ============================================================================
+   FEED ITEM
+   ============================================================================ */
+export function renderFeedItem(item) {
+    const icon = item.type === 'GOAL' ? 'fa-futbol' :
+                 item.type === 'CARD' ? 'fa-square' :
+                 item.type === 'MATCH_START' ? 'fa-play-circle' :
+                 item.type === 'MATCH_END' ? 'fa-flag-checkered' :
+                 'fa-newspaper';
+    
+    return `
+        <div class="feed-item">
+            <div class="feed-icon">
+                <i class="fas ${icon}"></i>
+            </div>
+            <div class="feed-content">
+                <div class="feed-text">${escapeHtml(item.description || item.title)}</div>
+                <div class="feed-meta">
+                    <span class="feed-time">${getTimeAgo(item.timestamp)}</span>
+                    ${item.matchName ? `<span class="feed-match">${escapeHtml(item.matchName)}</span>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getTimeAgo(timestamp) {
+    if (!timestamp) return '';
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diff = Math.floor((now - time) / 1000);
+    
+    if (diff < 60) return 'À l\'instant';
+    if (diff < 3600) return `Il y a ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)}h`;
+    return `Il y a ${Math.floor(diff / 86400)}j`;
+}
+
+/* ============================================================================
+   PRACTICAL INFO SECTIONS
+   ============================================================================ */
+export function renderPracticalInfo(event) {
+    return `
+        <div class="info-section">
+            <div class="info-section-title">
+                <i class="fas fa-map-marker-alt"></i>
+                Accès & Localisation
+            </div>
+            <div class="info-row">
+                <i class="fas fa-location-arrow"></i>
+                <div>
+                    <strong>Adresse</strong><br>
+                    ${escapeHtml(event.location || 'Non défini')}<br>
+                    ${event.address ? escapeHtml(event.address) : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/* ============================================================================
+   ADMIN SECTION
+   ============================================================================ */
+export function renderAdminSection(event) {
+    return `
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">
+            <i class="fas fa-crown"></i> Actions rapides
+        </h3>
+        <div class="admin-actions">
+            <button onclick="location.href='/admin/events/${event.id}'">Dashboard</button>
+        </div>
+    `;
+}
+
+/* ============================================================================
+   FLOATING CTA
+   ============================================================================ */
+export function renderFloatingCTA(event, isAuthenticated, isOrganizer, registrationInfo, hasClub) {
+    if (!isAuthenticated || isOrganizer) return '';
+    
+    const isClubEvent = event.registrationType === "CLUB_ONLY";
+    
+    // Cas 1 : Inscrit avec différents statuts
+    if (registrationInfo) {
+        const status = registrationInfo.status;
+        const isPaid = registrationInfo.paymentStatus === 'PAID';
+        
+        // Statut PENDING (en attente validation)
+        if (status === 'PENDING') {
+            return `
+                <div class="sticky-cta-pro disabled">
+                    <div class="cta-icon-pro">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                    <div class="cta-text-pro">
+                        <div class="cta-title-pro">⏳ En attente de validation</div>
+                        <div class="cta-subtitle-pro">L'organisateur va traiter votre demande</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+      // Statut ACCEPTED mais non payé
+if (status === 'ACCEPTED' && !isPaid && event.registrationFeeCents > 0) {
+            return `
+                <div class="sticky-cta-pro active" id="payRegistrationBtn">
+                    <div class="cta-icon-pro">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div class="cta-text-pro">
+                        <div class="cta-title-pro">💳 Payer mon inscription</div>
+                        <div class="cta-subtitle-pro">${event.registrationFee}€</div>
+                    </div>
+                    <div class="cta-arrow-pro">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            `;
+        }
+        
+      // Statut ACCEPTED et payé (ou gratuit)
+if (status === 'ACCEPTED' && (isPaid || event.registrationFeeCents === 0)) {
+            return `
+                <div class="sticky-cta-pro disabled success">
+                    <div class="cta-icon-pro">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="cta-text-pro">
+                        <div class="cta-title-pro">✅ Inscription confirmée</div>
+                        <div class="cta-subtitle-pro">Vous êtes inscrit !</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    // Cas 2 : Inscriptions fermées ou complet
+    if (event.registrationClosed || event.isFull) {
+        return `
+            <div class="sticky-cta-pro disabled">
+                <div class="cta-icon-pro">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <div class="cta-text-pro">
+                    <div class="cta-title-pro">${event.registrationClosed ? 'Inscriptions fermées' : 'Événement complet'}</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Cas 3 : Non inscrit - Événement CLUB_ONLY
+    if (isClubEvent && hasClub) {
+        return `
+            <div class="sticky-cta-pro active" id="registerClubBtn">
+                <div class="cta-icon-pro">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="cta-text-pro">
+                    <div class="cta-title-pro">Inscrire mon équipe</div>
+                    <div class="cta-subtitle-pro">Places disponibles</div>
+                </div>
+                <div class="cta-arrow-pro">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Cas 4 : Non inscrit - Inscription individuelle
+    if (!isClubEvent) {
+        return `
+            <div class="sticky-cta-pro active" id="registerBtn">
+                <div class="cta-icon-pro">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div class="cta-text-pro">
+                    <div class="cta-title-pro">S'inscrire</div>
+                    <div class="cta-subtitle-pro">Places disponibles</div>
+                </div>
+                <div class="cta-arrow-pro">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+        `;
+    }
+    
+    return '';
+}
+
+/* ============================================================================
+   EMPTY STATE
+   ============================================================================ */
+export function renderEmptyState(icon, text, subtext) {
+    return `
+        <div class="empty-state">
+            <i class="fas ${icon}"></i>
+            <p>${escapeHtml(text)}</p>
+            ${subtext ? `<small>${escapeHtml(subtext)}</small>` : ''}
+        </div>
+    `;
+}
+
+/* ============================================================================
+   EXPORTS
+   ============================================================================ */
+export default {
+    escapeHtml,
+    renderHeader,
+    renderHero,
+    renderQuickInfo,
+    renderDescription,
+    renderStats,
+    renderTabs,
+    renderTabContents,
+    renderLiveVideo,
+    renderMatchCard,
+    renderRankingTable,
+    renderBracket,
+    renderFeedItem,
+    renderPracticalInfo,
+    renderAdminSection,
+    renderFloatingCTA,
+    renderEmptyState
+};
