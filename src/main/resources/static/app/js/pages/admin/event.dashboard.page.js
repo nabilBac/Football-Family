@@ -4,6 +4,7 @@
 
 import { Router } from "../../router.js";
 import { ScoreUpdater } from "../../components/ScoreUpdater.js";
+import { AdminNav } from '../../components/admin-nav.js';
 
 const ROUND_LABELS = {
     BARRAGE: "⚔️ Barrages", 
@@ -86,10 +87,11 @@ if (myTeamsSection) {
     // ================================
     // 🧱 RENDER
     // ================================
-    async render() {
-        return `
-            <div class="admin-main" style="padding: 20px; margin-top: 60px;">
-         <h1 id="event-dashboard-title" class="admin-title">⚽ Gestion de l'événement</h1>
+ async render() {
+    return `
+        ${AdminNav.render('events')}
+        <div class="admin-main" style="padding: 20px; margin-top: 60px;">
+     <h1 id="event-dashboard-title" class="admin-title">⚽ Gestion de l'événement</h1>
 
 
                 <p id="event-global-message" class="admin-message"></p>
@@ -896,6 +898,17 @@ if (event2.format !== "SINGLE_MATCH") {
         this.initActionButtons(eventId, token);
         this.initPlanningForm(eventId, token);
         this.initEditMatchSchedule(eventId, token);
+
+        // 🔥 Attacher les liens de navigation AdminNav AVEC RECHARGEMENT
+document.querySelectorAll('a[data-link]').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const href = link.getAttribute('href');
+        
+        // 🔥 Forcer rechargement complet de la page
+        window.location.href = href;
+    });
+});
         
     },
 

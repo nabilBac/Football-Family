@@ -1,7 +1,15 @@
 // /static/app/js/pages/admin/events.page.js
+import { AdminNav } from '../../components/admin-nav.js';
 
 export const AdminEventsPage = {
- async render() {
+async render() {
+    if (!document.querySelector('link[href="/css/admin-nav.css"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/css/admin-nav.css';
+        document.head.appendChild(link);
+    }
+    
     if (!document.querySelector('link[href="/css/admin-tabs.css"]')) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -10,6 +18,7 @@ export const AdminEventsPage = {
     }
 
     return `
+        ${AdminNav.render('events')}
         <div class="admin-main">
 
             <div style="display: flex; justify-content: space-between; align-items: center;">

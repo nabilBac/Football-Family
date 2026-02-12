@@ -42,6 +42,7 @@ routes: {
     /* --- ADMIN --- */
     "/club-admin": "/app/js/pages/admin/dashboard.page.js",
     "/admin": "/app/js/pages/admin/dashboard.page.js",
+      "/admin/dashboard": "/app/js/pages/admin/dashboard.page.js",
     "/admin/teams": "/app/js/pages/admin/teams.page.js",
     "/admin/events": "/app/js/pages/admin/events.page.js",
     "/admin/events/deleted": "/app/js/pages/admin/events-deleted.page.js", 

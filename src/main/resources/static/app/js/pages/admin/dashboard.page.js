@@ -1,21 +1,28 @@
 // /app/js/pages/admin/dashboard.page.js
 // ✅ VERSION AMÉLIORÉE - Dashboard professionnel avec personnalisation
+import { AdminNav } from '../../components/admin-nav.js';
 
 export const AdminDashboardPage = {
 
-  async render() {
-  return `
-    <div class="admin-main" style="padding: 20px; margin-top: 40px;">
-      <div id="admin-dashboard-content"></div>
-    </div>
-  `;
+async render() {
+    return `
+        ${AdminNav.render('dashboard')}
+        <div class="admin-main" style="padding: 20px; margin-top: 40px;">
+            <div id="admin-dashboard-content"></div>
+        </div>
+    `;
 },
 
 
-    async init() {
-        const container = document.getElementById("admin-dashboard-content");
-
-        if (!container) return;
+  async init() {
+    // ⏳ Attendre que le DOM soit mis à jour
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    
+    const container = document.getElementById("admin-dashboard-content");
+    if (!container) {
+        console.error("❌ Container #admin-dashboard-content introuvable");
+        return;
+    }
 
 
                     // ✅ Anti-flash loader (affiché seulement si > 200ms)
@@ -245,7 +252,15 @@ const pastEvents = events.filter(e => {
                 </div>
             `;
         }
-    },
+       // 🔥 NOUVEAU : Attacher les liens de navigation AdminNav
+    document.querySelectorAll('a[data-link]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const href = link.getAttribute('href');
+            window.location.href = href;
+        });
+    });
+}, 
 
     // =====================================================
     // 🎨 RENDU ACTIVITÉ RÉCENTE
