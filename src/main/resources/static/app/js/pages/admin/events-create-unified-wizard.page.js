@@ -10,6 +10,7 @@ export const UnifiedEventWizardPage = {
     formData: {},
     userType: null, // 'CLUB' ou 'PUBLIC'
     autoSaveKey: 'ff_event_draft',
+        isCreating: false, 
 
     async render() {
         // Détection automatique du type d'utilisateur
@@ -1198,6 +1199,8 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
     // CRÉATION ÉVÉNEMENT
     // ===================================
   async createEvent() {
+        // 🔥 BLOQUER L'AUTO-SAVE IMMÉDIATEMENT
+     this.isCreating = true;
     // 🔥 CRUCIAL : SAUVEGARDER L'ÉTAPE 6 AVANT DE CRÉER
     this.saveStepData(this.currentStep);
     
@@ -1440,17 +1443,23 @@ console.log('✅ Draft supprimé et auto-save arrêté');
     // ===================================
     // AUTO-SAVE
     // ===================================
-    saveDraft() {
-        try {
-            localStorage.setItem(this.autoSaveKey, JSON.stringify({
-                step: this.currentStep,
-                data: this.formData,
-                timestamp: Date.now()
-            }));
-        } catch (e) {
-            console.warn('Impossible de sauvegarder le brouillon:', e);
-        }
-    },
+   saveDraft() {
+    // 🔥 NE PAS SAUVEGARDER SI EN TRAIN DE CRÉER
+    if (this.isCreating) {
+        console.log('⚠️ Sauvegarde ignorée (création en cours)');
+        return;
+    }
+    
+    try {
+        localStorage.setItem(this.autoSaveKey, JSON.stringify({
+            step: this.currentStep,
+            data: this.formData,
+            timestamp: Date.now()
+        }));
+    } catch (e) {
+        console.warn('Impossible de sauvegarder le brouillon:', e);
+    }
+},
 
   loadDraft() {
     try {
