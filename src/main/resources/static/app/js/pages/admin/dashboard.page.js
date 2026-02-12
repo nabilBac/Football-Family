@@ -76,14 +76,22 @@ const [clubInfo, events, teams] = await Promise.all([
             // =============================
             // 📈 CALCULS
             // =============================
-          const today = new Date().setHours(0, 0, 0, 0);
+const today = new Date().setHours(0, 0, 0, 0);
+
+// 🔥 Événements à venir = DATE future ET STATUS actif
 const upcomingEvents = events.filter(e => {
     const eventDate = new Date(e.date).setHours(0, 0, 0, 0);
-    return eventDate >= today;
+    const isFuture = eventDate >= today;
+    const isActive = ['DRAFT', 'PUBLISHED', 'ONGOING'].includes(e.status);
+    return isFuture && isActive;
 });
+
+// 🔥 Événements passés = DATE passée OU STATUS terminé
 const pastEvents = events.filter(e => {
     const eventDate = new Date(e.date).setHours(0, 0, 0, 0);
-    return eventDate < today;
+    const isPast = eventDate < today;
+    const isCompleted = e.status === 'COMPLETED';
+    return isPast || isCompleted;
 });
 
             // Prochain événement
