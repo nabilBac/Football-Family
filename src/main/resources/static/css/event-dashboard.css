@@ -1,4 +1,131 @@
 /* ═══════════════════════════════════════════════════════════
+   🎨 NAVIGATION PAR ONGLETS (ex-injectCSS du JS)
+   ═══════════════════════════════════════════════════════════ */
+
+.dashboard-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #e0e0e0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
+}
+
+.dashboard-tabs::-webkit-scrollbar {
+    height: 4px;
+}
+
+.dashboard-tabs::-webkit-scrollbar-thumb {
+    background: #bdc3c7;
+    border-radius: 4px;
+}
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #7f8c8d;
+    font-weight: 600;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    position: relative;
+}
+
+.tab-btn:hover {
+    background: #f8f9fa;
+    color: #2c3e50;
+}
+
+.tab-btn.active {
+    color: #3498db;
+    border-bottom-color: #3498db;
+    background: rgba(52, 152, 219, 0.05);
+}
+
+.tab-btn i {
+    font-size: 1.1em;
+}
+
+.dashboard-content {
+    position: relative;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ================================
+   📱 RESPONSIVE MOBILE - ONGLETS
+   ================================ */
+
+@media (max-width: 768px) {
+    .dashboard-tabs {
+        gap: 4px;
+        padding: 0 10px;
+    }
+
+    .tab-btn {
+        padding: 10px 12px;
+        font-size: 0.85em;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 70px;
+    }
+
+    .tab-btn span {
+        font-size: 0.75em;
+    }
+
+    .tab-btn i {
+        font-size: 1.3em;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-tabs {
+        gap: 2px;
+    }
+
+    .tab-btn {
+        padding: 8px 10px;
+        min-width: 60px;
+    }
+
+    .tab-btn span {
+        display: none;
+    }
+
+    .tab-btn i {
+        font-size: 1.5em;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
    📱 EVENT DASHBOARD - CSS FINAL CONSOLIDÉ
    Version mobile-first avec tous les fixes
    ═══════════════════════════════════════════════════════════ */
@@ -779,4 +906,132 @@
 .admin-btn:disabled{
   opacity: .6;
   cursor: not-allowed;
+}
+/* ================================
+   📱 RESPONSIVE ONGLET PLANNING
+   ================================ */
+
+/* Cartes durée tournoi */
+@media (max-width: 768px) {
+    .duration-option {
+        padding: 12px !important;
+    }
+    
+    .duration-option > div:first-child {
+        font-size: 1.8em !important;
+    }
+    
+    .duration-option > div:nth-child(2) {
+        font-size: 0.9em !important;
+    }
+    
+    .duration-option > div:last-child {
+        font-size: 0.75em !important;
+        line-height: 1.2 !important;
+    }
+}
+
+/* Formulaires planning */
+@media (max-width: 768px) {
+    #planning-unified-form .form-row {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    
+    #planning-mode-1-day > div {
+        padding: 15px !important;
+    }
+    
+    #planning-mode-1-day input,
+    #planning-mode-1-day select {
+        font-size: 14px !important;
+    }
+}
+
+/* Boutons planning */
+@media (max-width: 768px) {
+    #btn-planning-poules,
+    #btn-planning-finales,
+    button[type="submit"] {
+        padding: 12px !important;
+        font-size: 0.95em !important;
+    }
+}
+
+/* Aperçu planning */
+@media (max-width: 768px) {
+    #planning-preview {
+        padding: 15px !important;
+    }
+    
+    #preview-content {
+        font-size: 0.85em !important;
+    }
+}
+
+/* Affichage matchs planifiés */
+@media (max-width: 768px) {
+    #planning-matches-container > div {
+        padding: 10px 0 !important;
+    }
+    
+    #planning-matches-container h3 {
+        font-size: 0.95em !important;
+        padding: 10px !important;
+    }
+    
+    /* Cartes matchs */
+    #planning-matches-container > div > div > div {
+        padding: 12px !important;
+        font-size: 0.85em !important;
+    }
+    
+    /* Bouton modifier */
+    .btn-edit-match-schedule {
+        padding: 6px 12px !important;
+        font-size: 0.8em !important;
+    }
+}
+
+/* Modal édition horaire */
+@media (max-width: 768px) {
+    #edit-match-schedule-modal > div {
+        margin: 20px auto !important;
+        padding: 20px !important;
+        max-width: 95% !important;
+    }
+    
+    #edit-match-schedule-modal input {
+        font-size: 14px !important;
+    }
+}
+
+/* Grilles 2 colonnes → 1 colonne sur mobile */
+@media (max-width: 768px) {
+    [style*="display: grid"][style*="grid-template-columns: repeat(2"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    [style*="display: grid"][style*="grid-template-columns: repeat(3"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Forcer le wrap sur les flex */
+@media (max-width: 768px) {
+    [style*="display: flex"]:not(.dashboard-tabs) {
+        flex-wrap: wrap !important;
+    }
+}
+
+/* Section reset planning */
+@media (max-width: 768px) {
+    .admin-card[style*="background: #fff3cd"] > div {
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+    
+    #btn-reset-planning {
+        width: 100% !important;
+    }
 }
