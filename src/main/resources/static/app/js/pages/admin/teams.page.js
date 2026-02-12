@@ -64,14 +64,7 @@ export const AdminTeamsPage = {
         container.innerHTML = `<p>Erreur lors du chargement des équipes.</p>`;
     }
     
-    // 🔥 Attacher les liens de navigation AdminNav
-    document.querySelectorAll('a[data-link]').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const href = link.getAttribute('href');
-            window.location.href = href;
-        });
-    });
+  
 }
 };
 

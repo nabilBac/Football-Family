@@ -899,16 +899,7 @@ if (event2.format !== "SINGLE_MATCH") {
         this.initPlanningForm(eventId, token);
         this.initEditMatchSchedule(eventId, token);
 
-        // 🔥 Attacher les liens de navigation AdminNav AVEC RECHARGEMENT
-document.querySelectorAll('a[data-link]').forEach(link => {
-    link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const href = link.getAttribute('href');
-        
-        // 🔥 Forcer rechargement complet de la page
-        window.location.href = href;
-    });
-});
+
         
     },
 

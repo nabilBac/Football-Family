@@ -252,14 +252,7 @@ const pastEvents = events.filter(e => {
                 </div>
             `;
         }
-       // 🔥 NOUVEAU : Attacher les liens de navigation AdminNav
-    document.querySelectorAll('a[data-link]').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const href = link.getAttribute('href');
-            window.location.href = href;
-        });
-    });
+ 
 }, 
 
     // =====================================================

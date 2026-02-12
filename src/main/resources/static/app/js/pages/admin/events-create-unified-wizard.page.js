@@ -168,16 +168,44 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
                     </div>
 
                     <!-- Niveau -->
-                    <div class="form-group">
-                        <label class="required">Niveau</label>
-                        <select id="level" class="form-control">
-                            <option value="">-- Sélectionner --</option>
-                            <option value="LOISIR" ${this.formData.level === 'LOISIR' ? 'selected' : ''}>🎯 Loisir / Détente</option>
-                            <option value="AMATEUR" ${this.formData.level === 'AMATEUR' ? 'selected' : ''}>⚽ Amateur / Club</option>
-                            <option value="COMPETITION" ${this.formData.level === 'COMPETITION' ? 'selected' : ''}>🏆 Compétition</option>
-                            <option value="ELITE" ${this.formData.level === 'ELITE' ? 'selected' : ''}>⭐ Élite / Haut niveau</option>
-                        </select>
-                    </div>
+                   <!-- Niveau -->
+<div class="form-group">
+    <label class="required">Niveau de compétition</label>
+    <select id="level" class="form-control">
+        <option value="">-- Sélectionner --</option>
+        
+        <optgroup label="🏆 National (Semi-pro)">
+            <option value="NATIONAL_1" ${this.formData.level === 'NATIONAL_1' ? 'selected' : ''}>National 1 (N1)</option>
+            <option value="NATIONAL_2" ${this.formData.level === 'NATIONAL_2' ? 'selected' : ''}>National 2 (N2)</option>
+            <option value="NATIONAL_3" ${this.formData.level === 'NATIONAL_3' ? 'selected' : ''}>National 3 (N3)</option>
+        </optgroup>
+        
+        <optgroup label="🌍 Régional">
+            <option value="REGIONAL_1" ${this.formData.level === 'REGIONAL_1' ? 'selected' : ''}>Régional 1 (R1)</option>
+            <option value="REGIONAL_2" ${this.formData.level === 'REGIONAL_2' ? 'selected' : ''}>Régional 2 (R2)</option>
+            <option value="REGIONAL_3" ${this.formData.level === 'REGIONAL_3' ? 'selected' : ''}>Régional 3 (R3)</option>
+        </optgroup>
+        
+        <optgroup label="📍 Départemental">
+            <option value="DEPARTEMENTAL_1" ${this.formData.level === 'DEPARTEMENTAL_1' ? 'selected' : ''}>Départemental 1 (D1)</option>
+            <option value="DEPARTEMENTAL_2" ${this.formData.level === 'DEPARTEMENTAL_2' ? 'selected' : ''}>Départemental 2 (D2)</option>
+            <option value="DEPARTEMENTAL_3" ${this.formData.level === 'DEPARTEMENTAL_3' ? 'selected' : ''}>Départemental 3 (D3)</option>
+            <option value="DEPARTEMENTAL_4" ${this.formData.level === 'DEPARTEMENTAL_4' ? 'selected' : ''}>Départemental 4 (D4)</option>
+        </optgroup>
+        
+        <optgroup label="🏘️ District">
+            <option value="DISTRICT_1" ${this.formData.level === 'DISTRICT_1' ? 'selected' : ''}>District 1</option>
+            <option value="DISTRICT_2" ${this.formData.level === 'DISTRICT_2' ? 'selected' : ''}>District 2</option>
+            <option value="DISTRICT_3" ${this.formData.level === 'DISTRICT_3' ? 'selected' : ''}>District 3</option>
+        </optgroup>
+        
+        <optgroup label="🎯 Loisir / Autres">
+            <option value="LOISIR" ${this.formData.level === 'LOISIR' ? 'selected' : ''}>Loisir / Détente</option>
+            <option value="FUTSAL" ${this.formData.level === 'FUTSAL' ? 'selected' : ''}>Futsal</option>
+            <option value="BEACH" ${this.formData.level === 'BEACH' ? 'selected' : ''}>Beach Soccer</option>
+        </optgroup>
+    </select>
+</div>
 
                     <!-- Format -->
                     <div class="form-group">
