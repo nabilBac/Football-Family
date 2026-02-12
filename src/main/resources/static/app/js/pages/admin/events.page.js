@@ -1,54 +1,50 @@
 // /static/app/js/pages/admin/events.page.js
 
 export const AdminEventsPage = {
-    async render() {
-
-             if (!document.querySelector('link[href="/css/admin-tabs.css"]')) {
+ async render() {
+    if (!document.querySelector('link[href="/css/admin-tabs.css"]')) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = '/css/admin-tabs.css';
         document.head.appendChild(link);
     }
 
+    return `
+        <div class="admin-main">
 
-        return `
-            <div class="admin-main">
-
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1 class="admin-title">Mes events</h1>
-                    <a href="/admin/matches/deleted" data-link
-                       class="admin-btn admin-btn-danger">
-                        🗑️ Matchs supprimés
-                    </a>
-                </div>
-
-                <div class="tabs-container" style="margin-bottom: 20px;">
-                    <button class="tab-btn active" data-tab="actifs">
-                        🟢 Actifs
-                    </button>
-                    <button class="tab-btn" data-tab="termines">
-                        ✅ Terminés
-                    </button>
-                    <button class="tab-btn" data-tab="archives">
-                        📦 Archivés
-                    </button>
-                </div>
-
-                <div id="admin-events-content" class="admin-dashboard-grid">
-                   <div id="admin-events-content" class="admin-dashboard-grid"></div>
-
-                </div>
-
-                <div style="margin-top:25px;">
-                    <a href="/admin/events/create" data-link 
-                       class="admin-btn admin-btn-primary admin-btn-full">
-                        ➕ Créer un event
-                    </a>
-                </div>
-
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 class="admin-title">Mes events</h1>
+                <a href="/admin/matches/deleted" data-link
+                   class="admin-btn admin-btn-danger">
+                    🗑️ Matchs supprimés
+                </a>
             </div>
-        `;
-    },
+
+            <div class="tabs-container" style="margin-bottom: 20px;">
+                <button class="tab-btn active" data-tab="actifs">
+                    🟢 Actifs
+                </button>
+                <button class="tab-btn" data-tab="termines">
+                    ✅ Terminés
+                </button>
+                <button class="tab-btn" data-tab="archives">
+                    📦 Archivés
+                </button>
+            </div>
+
+            <!-- ✅ UN SEUL CONTENEUR -->
+            <div id="admin-events-content" class="admin-dashboard-grid"></div>
+
+            <div style="margin-top:25px;">
+                <a href="/admin/events/create" data-link 
+                   class="admin-btn admin-btn-primary admin-btn-full">
+                    ➕ Créer un event
+                </a>
+            </div>
+
+        </div>
+    `;
+},
 
     async init() {
         this.setupTabs();
