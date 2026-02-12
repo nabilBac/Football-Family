@@ -176,9 +176,8 @@ async navigate(url) {
     try {
         // 🟣 START TRANSITION (fade-out)
         this.root.classList.add("fade-out");
-        
-        // ⏳ Attendre que le fade-out soit visible (150ms)
-        await new Promise(resolve => setTimeout(resolve, 150));
+  // ⏳ Attendre que le fade-out soit visible (100ms)
+await new Promise(resolve => setTimeout(resolve, 100));
 
             if (this.currentModule && this.currentModule.cleanup) {
                 this.currentModule.cleanup();
@@ -314,17 +313,16 @@ const module = await import(moduleUrl);
             if (navbar) navbar.removeAttribute("style");
 
           // Retirer fade-out immédiatement après render
+// Retirer fade-out immédiatement après render
 this.root.classList.remove("fade-out");
 
-// Ajouter fade-in après un micro-délai
+// Ajouter fade-in IMMÉDIATEMENT (sans délai)
+this.root.classList.add("fade-in");
+
+// Retirer fade-in après l'animation (150ms au lieu de 300ms)
 setTimeout(() => {
-    this.root.classList.add("fade-in");
-    
-    // Retirer fade-in après l'animation
-    setTimeout(() => {
-        this.root.classList.remove("fade-in");
-    }, 300);
-}, 50);
+    this.root.classList.remove("fade-in");
+}, 150);
 
             // Re-apply classes AFTER html reset
             if (url === "/hub") this.root.classList.add("is-hub-page");
