@@ -1266,11 +1266,33 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
 
     const location = `${this.formData.city}${this.formData.address ? ', ' + this.formData.address : ''}`.trim();
 
+            // 🔥 MAPPING DES NIVEAUX VERS VALEURS BACKEND
+const levelMapping = {
+    'NATIONAL_1': 'ELITE',
+    'NATIONAL_2': 'ELITE',
+    'NATIONAL_3': 'ELITE',
+    'REGIONAL_1': 'COMPETITION',
+    'REGIONAL_2': 'COMPETITION',
+    'REGIONAL_3': 'COMPETITION',
+    'DEPARTEMENTAL_1': 'AMATEUR',
+    'DEPARTEMENTAL_2': 'AMATEUR',
+    'DEPARTEMENTAL_3': 'AMATEUR',
+    'DEPARTEMENTAL_4': 'AMATEUR',
+    'DISTRICT_1': 'LOISIR',
+    'DISTRICT_2': 'LOISIR',
+    'DISTRICT_3': 'LOISIR',
+    'LOISIR': 'LOISIR',
+    'FUTSAL': 'LOISIR',
+    'BEACH': 'LOISIR'
+};
+
+const mappedLevel = levelMapping[this.formData.level] || 'AMATEUR';
+
     const payload = {
         name: this.formData.name,
         description: this.formData.description || '',
         category: this.formData.category,
-        level: this.formData.level,
+        level: mappedLevel,
         format: this.formData.format,
         
         type: 'CLUB_EVENT',
