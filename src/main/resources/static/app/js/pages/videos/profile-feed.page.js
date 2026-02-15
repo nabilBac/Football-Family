@@ -150,16 +150,18 @@ export function init(params) {
         playVisibleVideo();
     }, 20);
 
-    function playVisibleVideo() {
-        videos.forEach((v, idx) => {
-            if (idx === currentIndex) {
-                v.muted = false;
-                v.play().catch(() => {});
-            } else {
-                v.pause();
-            }
-        });
-    }
+  function playVisibleVideo() {
+    videos.forEach((v, idx) => {
+        if (idx === currentIndex) {
+            v.muted = false;
+            v.play().catch(() => {});
+        } else {
+            v.pause();
+            v.currentTime = 0;  // ← AJOUTE ÇA : réinitialise la vidéo
+            v.muted = true;     // ← AJOUTE ÇA : coupe le son !
+        }
+    });
+}
 
     // === Auto-Replay ===
     videos.forEach((video, index) => {
@@ -213,13 +215,23 @@ export function init(params) {
     // ----------------------------
     // 3️⃣ Bouton fermer
     // ----------------------------
-    if (closeBtn) {
-        closeBtn.addEventListener("click", () => {
-            document.body.classList.remove("feed-active");
-            feed.style.display = "none";
-            history.back();
+   // ----------------------------
+// 3️⃣ Bouton fermer
+// ----------------------------
+if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+        // ✅ STOPPE TOUTES les vidéos avant de fermer
+        videos.forEach(v => {
+            v.pause();
+            v.currentTime = 0;
+            v.muted = true;
         });
-    }
+        
+        document.body.classList.remove("feed-active");
+        feed.style.display = "none";
+        history.back();
+    });
+}
 
     // ----------------------------
     // 4️⃣ Gestion SON
