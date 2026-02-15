@@ -131,8 +131,18 @@ render() {
     `;
 },
 async init() {
+    // 🔥 ANTI-DOUBLON : Empêche les initialisations multiples
+    if (this._initialized) {
+        console.warn('⚠️ UploadPage déjà initialisé, skip');
+        return;
+    }
+    this._initialized = true;
+
     const ok = await Auth.requireAuth();
-    if (!ok) return;
+    if (!ok) {
+        this._initialized = false; // Reset si auth échoue
+        return;
+    }
 
     const form = document.getElementById("uploadForm");
     const fileInput = document.getElementById("fileInput");
@@ -164,9 +174,16 @@ async init() {
         });
     }
 
-    // Click to select file
-    btnSelectFile.addEventListener('click', () => fileInput.click());
+    // 🔥 FIX : stopPropagation pour éviter le double déclenchement
+    btnSelectFile.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.click();
+    });
+    
     dropZone.addEventListener('click', (e) => {
+        // Ignorer si click sur un bouton
+        if (e.target.closest('button')) return;
+        
         if (e.target === dropZone || e.target === dropPlaceholder || e.target.closest('.drop-placeholder')) {
             fileInput.click();
         }
@@ -199,12 +216,13 @@ async init() {
         }
     });
 
-    // Change video
-    btnChangeVideo.addEventListener('click', () => {
+    // 🔥 FIX : stopPropagation aussi ici
+    btnChangeVideo.addEventListener('click', (e) => {
+        e.stopPropagation();
         fileInput.value = '';
         dropPlaceholder.style.display = 'flex';
         videoPreview.style.display = 'none';
-        btnUpload.disabled = true;
+        btnUpload.disabled = false;
     });
 
     function handleFileSelect(file) {
