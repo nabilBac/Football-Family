@@ -190,6 +190,19 @@ function setupEventListeners(isOrganizer) {
     if (registerClubBtn) {
         registerClubBtn.addEventListener('click', () => handleClubRegistration());
     }
+
+    // 🆕 BOUTON PAIEMENT (CTA flottant)
+    const payRegistrationBtn = document.getElementById('payRegistrationBtn');
+    if (payRegistrationBtn) {
+        payRegistrationBtn.addEventListener('click', async () => {
+            const registrationInfo = await getRegistrationInfoForEvent(currentEvent.id);
+            if (registrationInfo) {
+                await handlePaymentForRegistration(registrationInfo);
+            } else {
+                alert('❌ Aucune inscription trouvée');
+            }
+        });
+    }
 }
 
 /* ============================================================================
