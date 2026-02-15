@@ -8,10 +8,12 @@ import com.footballdemo.football_family.exception.DuplicateResourceException;
 import com.footballdemo.football_family.exception.ResourceNotFoundException;
 import com.footballdemo.football_family.model.Event;
 import com.footballdemo.football_family.model.EventType;
+import com.footballdemo.football_family.model.RegistrationStatus;
 import com.footballdemo.football_family.model.EventRegistration;
 import com.footballdemo.football_family.model.User;
 import com.footballdemo.football_family.service.EventService;
 import com.footballdemo.football_family.service.UserService;
+
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -228,10 +230,20 @@ public ResponseEntity<ApiResponse<EventRegistrationDTO>> registerTeam(
 @PreAuthorize("isAuthenticated()")
 public ResponseEntity<ApiResponse<List<EventRegistrationDTO>>> getClubRegistrations(
         @PathVariable Long eventId,
-        @PathVariable Long clubId) {
+        @PathVariable Long clubId,
+        Principal principal
+) {
+    User currentUser = getCurrentUser(principal);
 
-    List<EventRegistration> registrations = 
-        eventService.getRegistrationsByEventAndClub(eventId, clubId);
+    // ✅ Sécurité MVP : seul le club lui-même peut lire ses inscriptions
+    Long userClubId = userService.getPrimaryClubId(currentUser.getId());
+    if (userClubId == null || !userClubId.equals(clubId)) {
+        return ResponseEntity.status(403)
+                .body(new ApiResponse<>(false, "Accès refusé (club)", null));
+    }
+
+    List<EventRegistration> registrations =
+            eventService.getRegistrationsByEventAndClub(eventId, clubId);
 
     List<EventRegistrationDTO> dtos = registrations.stream()
             .map(EventRegistrationDTO::from)
@@ -240,4 +252,124 @@ public ResponseEntity<ApiResponse<List<EventRegistrationDTO>>> getClubRegistrati
     return ResponseEntity.ok(
             new ApiResponse<>(true, "Inscriptions du club", dtos));
 }
+// ============================================================
+    // 💳 MARQUER UNE INSCRIPTION COMME PAYÉE (SIMULATION)
+    // ============================================================
+
+   @Operation(summary = "Marquer une inscription comme payée")
+@PostMapping("/{eventId}/mark-as-paid")
+@PreAuthorize("isAuthenticated()")
+public ResponseEntity<ApiResponse<EventRegistrationDTO>> markAsPaid(
+        @PathVariable Long eventId,
+        Principal principal) {
+
+    try {
+        User currentUser = getCurrentUser(principal);
+
+        List<EventRegistration> registrations = eventService.getRegistrationsForUser(currentUser.getId());
+
+        List<EventRegistration> eventRegs = registrations.stream()
+                .filter(r -> r.getEvent() != null && r.getEvent().getId().equals(eventId))
+                .toList();
+
+        if (eventRegs.isEmpty()) {
+            throw new ResourceNotFoundException("Aucune inscription trouvée pour cet événement");
+        }
+
+        // 1) Priorité à ACCEPTED (et la plus récente)
+        EventRegistration registration = eventRegs.stream()
+           .filter(r -> r.getStatus() != null && r.getStatus() == RegistrationStatus.ACCEPTED)
+
+
+                .max(java.util.Comparator.comparing(EventRegistration::getId))
+                .orElseGet(() ->
+                        // 2) Sinon la plus récente tout court (pour renvoyer un 403 propre)
+                        eventRegs.stream()
+                                .max(java.util.Comparator.comparing(EventRegistration::getId))
+                                .orElseThrow(() -> new ResourceNotFoundException("Aucune inscription trouvée pour cet événement"))
+                );
+
+       if (registration.getStatus() != RegistrationStatus.ACCEPTED){
+            return ResponseEntity.status(403)
+                    .body(new ApiResponse<>(false, "Votre inscription doit d'abord être acceptée", null));
+        }
+
+        registration.setPaymentStatus("PAID");
+        eventService.saveRegistration(registration);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Paiement enregistré avec succès", EventRegistrationDTO.from(registration))
+        );
+
+    } catch (ResourceNotFoundException e) {
+        return ResponseEntity.status(404)
+                .body(new ApiResponse<>(false, e.getMessage(), null));
+    } catch (Exception e) {
+        return ResponseEntity.status(500)
+                .body(new ApiResponse<>(false, "Erreur lors de l'enregistrement du paiement", null));
+    }
+}
+
+/**
+ * 💳 PAIEMENT FRAIS DE PLATEFORME (5€ PAR ÉQUIPE)
+ * 
+ * Modèle économique FootballFamily :
+ * - Chaque équipe ACCEPTED paie 5€ à FootballFamily (frais de plateforme)
+ * - Les frais du tournoi (organisateur) se règlent hors plateforme
+ * 
+ * Workflow :
+ * 1. Club inscrit équipe → PENDING
+ * 2. Organisateur accepte → ACCEPTED
+ * 3. Club paie 5€ par équipe → PAID
+ * 4. Équipe peut jouer
+ */
+@Operation(summary = "Payer les frais de plateforme (5€ par équipe) - Simulation")
+@PostMapping("/{eventId}/registrations/{registrationId}/pay")
+@PreAuthorize("isAuthenticated()")
+public ResponseEntity<ApiResponse<EventRegistrationDTO>> payRegistration(
+        @PathVariable Long eventId,
+        @PathVariable Long registrationId,
+        Principal principal
+) {
+    User currentUser = getCurrentUser(principal);
+
+    EventRegistration reg = eventService.getRegistrationById(registrationId);
+    
+    if (reg.getEvent() == null || !reg.getEvent().getId().equals(eventId)) {
+        return ResponseEntity.status(404)
+                .body(new ApiResponse<>(false, "Inscription introuvable pour cet événement", null));
+    }
+
+    if (reg.getStatus() == null || reg.getStatus() != RegistrationStatus.ACCEPTED) {
+        return ResponseEntity.status(403)
+                .body(new ApiResponse<>(false, "L'inscription doit être ACCEPTED", null));
+    }
+
+    // Sécurité : vérifier que le payeur est du même club que l'équipe
+    if (reg.getTeam() == null || reg.getTeam().getClub() == null) {
+        return ResponseEntity.status(403)
+                .body(new ApiResponse<>(false, "Paiement réservé aux inscriptions d'équipe", null));
+    }
+    
+    Long userClubId = userService.getPrimaryClubId(currentUser.getId());
+    if (userClubId == null || !reg.getTeam().getClub().getId().equals(userClubId)) {
+        return ResponseEntity.status(403)
+                .body(new ApiResponse<>(false, "Vous ne pouvez pas payer pour ce club", null));
+    }
+
+    if ("PAID".equalsIgnoreCase(reg.getPaymentStatus())) {
+        return ResponseEntity.ok(new ApiResponse<>(true, "Déjà payé", EventRegistrationDTO.from(reg)));
+    }
+
+    // 💳 SIMULATION : Marquer comme payé (5€ à FootballFamily)
+  
+    reg.setPaymentStatus("PAID");
+    eventService.saveRegistration(reg);
+
+    return ResponseEntity.ok(
+        new ApiResponse<>(true, "Frais de plateforme payés (5€)", EventRegistrationDTO.from(reg))
+    );
+}
+
+
 }

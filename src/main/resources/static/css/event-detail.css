@@ -1635,3 +1635,7 @@ button, a, .stat-card-scroll, .tab-pill {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+.btn-pay-reg:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}

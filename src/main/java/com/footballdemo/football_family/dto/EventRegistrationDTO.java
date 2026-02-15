@@ -29,6 +29,10 @@ public class EventRegistrationDTO {
     // ========== Status ==========
     private String status;
 
+    // ========== Payment ==========
+private String paymentStatus;
+
+
     // ========== Date ==========
     private LocalDate registrationDate;  // ✅ APRÈS ✅ NOUVEAU
 
@@ -54,6 +58,8 @@ public class EventRegistrationDTO {
                         : null)  // ✅ NOUVEAU
 
                 .status(reg.getStatus() != null ? reg.getStatus().name() : null)
+                .paymentStatus(reg.getPaymentStatus())
+
 
                 // ✅ NOUVEAU - Date d'inscription
                // ✅ NOUVEAU - Date d'inscription

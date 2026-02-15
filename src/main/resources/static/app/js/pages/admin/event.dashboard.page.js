@@ -538,35 +538,7 @@ Les matchs terminés (COMPLETED) ne sont pas modifiés.
             </div>
         </div>
         
-        <!-- Créneaux 1 jour (matin/aprem) -->
-        <div id="planning-day1-slots" style="display:none; margin-top:10px;">
-            <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
-                <div>
-                    <label style="font-weight:600;">Matin - Début</label>
-                    <input id="planning-morning-start" type="time" value="09:00"
-                           style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-                </div>
-                <div>
-                    <label style="font-weight:600;">Matin - Fin</label>
-                    <input id="planning-morning-end" type="time" value="12:45"
-                           style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-                </div>
-                <div>
-                    <label style="font-weight:600;">Après-midi - Début</label>
-                    <input id="planning-afternoon-start" type="time" value="14:00"
-                           style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-                </div>
-                <div>
-                    <label style="font-weight:600;">Après-midi - Fin</label>
-                    <input id="planning-afternoon-end" type="time" value="18:30"
-                           style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-                </div>
-            </div>
-
-            <div style="margin-top:8px; font-size:.9em; color:#1976d2;">
-                ℹ️ En mode 1 jour : Poules le matin, Finales l'après-midi.
-            </div>
-        </div>
+   
     </div>
             
     <!-- CONFIGURATION MATCHS -->
@@ -1061,97 +1033,118 @@ initPlanningForm(eventId, token) {
     // ========================
     // 📊 APERÇU EN TEMPS RÉEL
     // ========================
-    const updatePreview = () => {
-        const dateDebut = document.getElementById('planning-date-debut')?.value;
-        const startTime = document.getElementById('planning-start-time')?.value;
-        const endTime = document.getElementById('planning-end-time')?.value;
-        const morningStart = document.getElementById('planning-morning-start')?.value;
-        const morningEnd = document.getElementById('planning-morning-end')?.value;
-        const afternoonStart = document.getElementById('planning-afternoon-start')?.value;
-        const afternoonEnd = document.getElementById('planning-afternoon-end')?.value;
-        const matchDuration = parseInt(document.getElementById('planning-match-duration')?.value || "0", 10) || 0;
-        const breakDuration = parseInt(document.getElementById('planning-break-duration')?.value || "0", 10) || 0;
-        const fieldsCount = parseInt(document.getElementById('planning-fields-count')?.value || "0", 10) || 0;
-        const phase = document.getElementById('planning-phase')?.value || 'POULES';
-        const overwrite = !!document.getElementById('planning-overwrite')?.checked;
-        const restBetweenRoundsMinutes = parseInt(document.getElementById('planning-rest-between-rounds')?.value || "10", 10);
+   const updatePreview = () => {
+  const isOneDay = selectedDays === 1;
 
-        const isOneDay = selectedDays === 1;
-        const hasClassicTimes = !!startTime && !!endTime;
-        const hasDay1Slots = !!morningStart && !!morningEnd && !!afternoonStart && !!afternoonEnd;
+  const dateDebut = isOneDay
+    ? document.getElementById('planning-date-1day')?.value
+    : document.getElementById('planning-date-debut')?.value;
 
-        if (!dateDebut || !matchDuration || !fieldsCount || (!isOneDay && !hasClassicTimes) || (isOneDay && !hasDay1Slots)) {
-            previewContainer.style.display = 'none';
-            return;
-        }
+  const startTime = document.getElementById('planning-start-time')?.value;
+  const endTime = document.getElementById('planning-end-time')?.value;
 
-        previewContainer.style.display = 'block';
+  const morningStart = isOneDay ? document.getElementById('planning-morning-start-1day')?.value : null;
+  const morningEnd   = isOneDay ? document.getElementById('planning-morning-end-1day')?.value : null;
+  const afternoonStart = isOneDay ? document.getElementById('planning-afternoon-start-1day')?.value : null;
+  const afternoonEnd   = isOneDay ? document.getElementById('planning-afternoon-end-1day')?.value : null;
 
-        const creneauDuration = matchDuration + breakDuration;
-        const dates = [];
+  const matchDuration = parseInt(
+    (isOneDay
+      ? document.getElementById('planning-match-duration-1day')?.value
+      : document.getElementById('planning-match-duration')?.value) || "0",
+    10
+  ) || 0;
 
-        for (let i = 0; i < selectedDays; i++) {
-            const date = new Date(dateDebut);
-            date.setDate(date.getDate() + i);
-            dates.push(date.toLocaleDateString('fr-FR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long'
-            }));
-        }
+  const breakDuration = parseInt(
+    (isOneDay
+      ? document.getElementById('planning-break-duration-1day')?.value
+      : document.getElementById('planning-break-duration')?.value) || "0",
+    10
+  ) || 0;
 
-        let preview = '';
+  const fieldsCount = parseInt(
+    (isOneDay
+      ? document.getElementById('planning-fields-count-1day')?.value
+      : document.getElementById('planning-fields-count')?.value) || "0",
+    10
+  ) || 0;
 
-        if (selectedDays === 1) {
-            preview = `
-                <div><strong>📅 ${dates[0]}</strong></div>
-                <div>🌤️ Matin (Poules) : ${morningStart} → ${morningEnd}</div>
-                <div>🌇 Après-midi (Finales) : ${afternoonStart} → ${afternoonEnd}</div>
-                <div>🏟️ ${fieldsCount} terrain(x) disponible(s)</div>
-                <div>⚽ Durée par créneau : ${creneauDuration} min (${matchDuration} min de match + ${breakDuration} min de pause)</div>
-            `;
-        } else if (selectedDays === 2) {
-            preview = `
-                <div style="margin-bottom: 12px;">
-                    <strong>📅 Jour 1 - ${dates[0]}</strong><br>
-                    <div style="margin-left: 15px; margin-top: 5px;">→ Phase de poules</div>
-                </div>
-                <div>
-                    <strong>📅 Jour 2 - ${dates[1]}</strong><br>
-                    <div style="margin-left: 15px; margin-top: 5px;">→ Phase finale complète</div>
-                </div>
-                <div style="margin-top:10px;">
-                    <div>⏰ Créneau : ${startTime} → ${endTime}</div>
-                    <div>🏟️ ${fieldsCount} terrain(x)</div>
-                    <div>⚽ ${creneauDuration} min / créneau</div>
-                    <div>🎛️ Phase: ${phase} | overwrite: ${overwrite ? 'oui' : 'non'} | repos rounds: ${restBetweenRoundsMinutes} min</div>
-                </div>
-            `;
-        } else {
-            preview = `
-                <div style="margin-bottom: 10px;">
-                    <strong>📅 Jour 1 - ${dates[0]}</strong><br>
-                    <div style="margin-left: 15px; margin-top: 5px;">→ Phase de poules</div>
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <strong>📅 Jour 2 - ${dates[1]}</strong><br>
-                    <div style="margin-left: 15px; margin-top: 5px;">→ Bracket principal</div>
-                </div>
-                <div>
-                    <strong>📅 Jour 3 - ${dates[2]}</strong><br>
-                    <div style="margin-left: 15px; margin-top: 5px;">→ Consolante</div>
-                </div>
-                <div style="margin-top:10px;">
-                    <div>⏰ Créneau : ${startTime} → ${endTime}</div>
-                    <div>🏟️ ${fieldsCount} terrain(x)</div>
-                    <div>⚽ ${creneauDuration} min / créneau</div>
-                    <div>🎛️ Phase: ${phase} | overwrite: ${overwrite ? 'oui' : 'non'} | repos rounds: ${restBetweenRoundsMinutes} min</div>
-                </div>
-            `;
-        }
+  const phase = document.getElementById('planning-phase')?.value || 'POULES';
+  const overwrite = !!document.getElementById('planning-overwrite')?.checked;
+  const restBetweenRoundsMinutes = parseInt(document.getElementById('planning-rest-between-rounds')?.value || "10", 10);
 
-        previewContent.innerHTML = preview;
-    };
+  const hasClassicTimes = !!startTime && !!endTime;
+  const hasDay1Slots = !!morningStart && !!morningEnd && !!afternoonStart && !!afternoonEnd;
+
+  if (!dateDebut || !matchDuration || !fieldsCount || (!isOneDay && !hasClassicTimes) || (isOneDay && !hasDay1Slots)) {
+    previewContainer.style.display = 'none';
+    return;
+  }
+
+  previewContainer.style.display = 'block';
+
+  const creneauDuration = matchDuration + breakDuration;
+  const dates = [];
+
+  for (let i = 0; i < selectedDays; i++) {
+    const date = new Date(dateDebut);
+    date.setDate(date.getDate() + i);
+    dates.push(date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
+  }
+
+  let preview = '';
+
+  if (selectedDays === 1) {
+    preview = `
+      <div><strong>📅 ${dates[0]}</strong></div>
+      <div>🌤️ Matin (Poules) : ${morningStart} → ${morningEnd}</div>
+      <div>🌇 Après-midi (Finales) : ${afternoonStart} → ${afternoonEnd}</div>
+      <div>🏟️ ${fieldsCount} terrain(x) disponible(s)</div>
+      <div>⚽ Durée par créneau : ${creneauDuration} min (${matchDuration} min de match + ${breakDuration} min de pause)</div>
+    `;
+  } else if (selectedDays === 2) {
+    preview = `
+      <div style="margin-bottom: 12px;">
+        <strong>📅 Jour 1 - ${dates[0]}</strong><br>
+        <div style="margin-left: 15px; margin-top: 5px;">→ Phase de poules</div>
+      </div>
+      <div>
+        <strong>📅 Jour 2 - ${dates[1]}</strong><br>
+        <div style="margin-left: 15px; margin-top: 5px;">→ Phase finale complète</div>
+      </div>
+      <div style="margin-top:10px;">
+        <div>⏰ Créneau : ${startTime} → ${endTime}</div>
+        <div>🏟️ ${fieldsCount} terrain(x)</div>
+        <div>⚽ ${creneauDuration} min / créneau</div>
+        <div>🎛️ Phase: ${phase} | overwrite: ${overwrite ? 'oui' : 'non'} | repos rounds: ${restBetweenRoundsMinutes} min</div>
+      </div>
+    `;
+  } else {
+    preview = `
+      <div style="margin-bottom: 10px;">
+        <strong>📅 Jour 1 - ${dates[0]}</strong><br>
+        <div style="margin-left: 15px; margin-top: 5px;">→ Phase de poules</div>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <strong>📅 Jour 2 - ${dates[1]}</strong><br>
+        <div style="margin-left: 15px; margin-top: 5px;">→ Bracket principal</div>
+      </div>
+      <div>
+        <strong>📅 Jour 3 - ${dates[2]}</strong><br>
+        <div style="margin-left: 15px; margin-top: 5px;">→ Consolante</div>
+      </div>
+      <div style="margin-top:10px;">
+        <div>⏰ Créneau : ${startTime} → ${endTime}</div>
+        <div>🏟️ ${fieldsCount} terrain(x)</div>
+        <div>⚽ ${creneauDuration} min / créneau</div>
+        <div>🎛️ Phase: ${phase} | overwrite: ${overwrite ? 'oui' : 'non'} | repos rounds: ${restBetweenRoundsMinutes} min</div>
+      </div>
+    `;
+  }
+
+  previewContent.innerHTML = preview;
+};
+
 
     // ========================
     // 🔄 TOGGLE MODE 1 JOUR vs 2/3 JOURS
@@ -1170,7 +1163,7 @@ initPlanningForm(eventId, token) {
 
             // ✅ TOGGLE UI selon le mode
             const classic = document.getElementById("planning-range-classic");
-            const day1 = document.getElementById("planning-day1-slots");
+         
             const phaseSelect = document.getElementById("planning-phase");
             const mode1DayContainer = document.getElementById("planning-mode-1-day");
             const formClassic = document.getElementById("planning-unified-form");
@@ -1184,7 +1177,7 @@ if (formClassic) formClassic.style.display = isOneDay ? "none" : "grid";  // ✅
 
             // ✅ UI interne au form classique
             if (classic) classic.style.display = isOneDay ? "none" : "block";
-            if (day1) day1.style.display = isOneDay ? "block" : "none";
+        
 
             const classicStart = document.getElementById('planning-start-time');
             const classicEnd = document.getElementById('planning-end-time');
@@ -1221,52 +1214,60 @@ if (isOneDay) {
     });
 
     // ✅ Mise à jour de l'aperçu en temps réel
-    [
-        'planning-date-debut',
-        'planning-start-time', 'planning-end-time',
-        'planning-morning-start', 'planning-morning-end',
-        'planning-afternoon-start', 'planning-afternoon-end',
-        'planning-match-duration', 'planning-break-duration', 'planning-fields-count',
-        'planning-phase', 'planning-overwrite', 'planning-rest-between-rounds', 'planning-advanced-toggle'
-    ].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener('input', updatePreview);
-        el.addEventListener('change', updatePreview);
-    });
+
+[
+  // 🔵 2/3 jours
+  'planning-date-debut',
+  'planning-start-time', 'planning-end-time',
+  'planning-match-duration', 'planning-break-duration', 'planning-fields-count',
+
+  // 🟠 1 jour
+  'planning-date-1day',
+  'planning-morning-start-1day', 'planning-morning-end-1day',
+  'planning-afternoon-start-1day', 'planning-afternoon-end-1day',
+  'planning-match-duration-1day', 'planning-break-duration-1day', 'planning-fields-count-1day',
+
+  // options communes
+  'planning-phase', 'planning-overwrite', 'planning-rest-between-rounds', 'planning-advanced-toggle'
+].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', updatePreview);
+  el.addEventListener('change', updatePreview);
+});
+
 
     updatePreview();
 
     // ✅ État initial
 {
-    const classic = document.getElementById("planning-range-classic");
-    const day1 = document.getElementById("planning-day1-slots");
-    const phaseSelect = document.getElementById("planning-phase");
-    const mode1DayContainer = document.getElementById("planning-mode-1-day");
-    const formClassic = document.getElementById("planning-unified-form");
+  const mode1DayContainer = document.getElementById("planning-mode-1-day");
+  const formClassic = document.getElementById("planning-unified-form");
+  const classic = document.getElementById("planning-range-classic");
+  const phaseSelect = document.getElementById("planning-phase");
 
-    const isOneDay = selectedDays === 1;
-    
-    if (mode1DayContainer) mode1DayContainer.style.display = isOneDay ? "block" : "none";
-    if (formClassic) formClassic.style.display = "grid";  // ← TOUJOURS VISIBLE !
-        if (classic) classic.style.display = isOneDay ? "none" : "block";
-        if (day1) day1.style.display = isOneDay ? "block" : "none";
+  const isOneDay = selectedDays === 1;
 
-        const classicStart = document.getElementById('planning-start-time');
-        const classicEnd = document.getElementById('planning-end-time');
-        if (classicStart) classicStart.required = !isOneDay;
-        if (classicEnd) classicEnd.required = !isOneDay;
+  if (mode1DayContainer) mode1DayContainer.style.display = isOneDay ? "block" : "none";
+  if (formClassic) formClassic.style.display = isOneDay ? "none" : "grid";
+  if (classic) classic.style.display = isOneDay ? "none" : "block";
 
-        if (phaseSelect) {
-            phaseSelect.disabled = isOneDay;
-            if (isOneDay) phaseSelect.value = "ALL";
-        }
+  const classicStart = document.getElementById('planning-start-time');
+  const classicEnd = document.getElementById('planning-end-time');
+  if (classicStart) classicStart.required = !isOneDay;
+  if (classicEnd) classicEnd.required = !isOneDay;
 
-        if (isOneDay) {
-        this.checkBracketAndUpdateFinalesButton(eventId, token);
-        this.updatePlanningButtonsState(eventId, token);
-    }
-    }
+  if (phaseSelect) {
+    phaseSelect.disabled = isOneDay;
+    if (isOneDay) phaseSelect.value = "ALL";
+  }
+
+  if (isOneDay) {
+    this.checkBracketAndUpdateFinalesButton(eventId, token);
+    this.updatePlanningButtonsState(eventId, token);
+  }
+}
+
 
     // ========================
     // 📤 HANDLER BOUTON POULES (MODE 1 JOUR)
@@ -1373,12 +1374,13 @@ if (isOneDay) {
         return `${hh}:${mm}`;
     };
 
-    const getEndTimeInput = () => {
-        if (selectedDays === 1) {
-            return document.getElementById('planning-afternoon-end');
-        }
-        return document.getElementById('planning-end-time');
-    };
+   const getEndTimeInput = () => {
+  if (selectedDays === 1) {
+    return document.getElementById('planning-afternoon-end-1day');
+  }
+  return document.getElementById('planning-end-time');
+};
+
 
     document.getElementById('btn-suggest-more-time')?.addEventListener('click', () => {
         const end = getEndTimeInput();
@@ -1390,15 +1392,19 @@ if (isOneDay) {
         updatePreview();
     });
 
-    document.getElementById('btn-suggest-more-fields')?.addEventListener('click', () => {
-        const f = document.getElementById('planning-fields-count');
-        if (f) f.value = String((parseInt(f.value || "2", 10) + 1));
+   document.getElementById('btn-suggest-more-fields')?.addEventListener('click', () => {
+  const f = (selectedDays === 1)
+    ? document.getElementById('planning-fields-count-1day')
+    : document.getElementById('planning-fields-count');
 
-        const box = document.getElementById('planning-suggestions');
-        if (box) box.style.display = 'none';
+  if (f) f.value = String(parseInt(f.value || "2", 10) + 1);
 
-        updatePreview();
-    });
+  const box = document.getElementById('planning-suggestions');
+  if (box) box.style.display = 'none';
+
+  updatePreview();
+});
+
 
     document.getElementById('btn-suggest-rest-zero')?.addEventListener('click', () => {
         const r = document.getElementById('planning-rest-between-rounds');
@@ -1526,9 +1532,10 @@ async handlePlanningPoules(eventId, token) {
  const dateDebut = document.getElementById('planning-date-1day')?.value;
 const morningStart = document.getElementById('planning-morning-start-1day')?.value;
 const morningEnd = document.getElementById('planning-morning-end-1day')?.value;
-    const matchDuration = parseInt(document.getElementById('planning-match-duration')?.value || "0", 10);
-    const breakDuration = parseInt(document.getElementById('planning-break-duration')?.value || "0", 10);
-    const fieldsCount = parseInt(document.getElementById('planning-fields-count')?.value || "0", 10);
+const matchDuration = parseInt(document.getElementById('planning-match-duration-1day')?.value || "0", 10);
+const breakDuration = parseInt(document.getElementById('planning-break-duration-1day')?.value || "0", 10);
+const fieldsCount = parseInt(document.getElementById('planning-fields-count-1day')?.value || "0", 10);
+
     const restBetweenRoundsMinutes = parseInt(document.getElementById('planning-rest-between-rounds')?.value || "10", 10);
 
     if (!dateDebut || !morningStart || !morningEnd) {
@@ -1614,9 +1621,15 @@ async updatePlanningButtonsState(eventId, token) {
       console.log("🔒 Planning verrouillé: event COMPLETED -> stop updatePlanningButtonsState");
       return; // ✅ IMPORTANT
     }
-        console.log("🔥 Avant safeGet matches");
-        const matches = await this.safeGet(`/api/events/${eventId}/matches`, token);
-        console.log("🔥 Après safeGet matches, count:", matches?.length);
+       console.log("🔥 Avant safeGet matches");
+const matchesResp = await this.safeGet(`/api/events/${eventId}/matches`, token);
+
+const matches = Array.isArray(matchesResp?.data)
+  ? matchesResp.data
+  : (Array.isArray(matchesResp) ? matchesResp : []);
+
+console.log("🔥 Après safeGet matches, isArray:", Array.isArray(matches), "count:", matches.length);
+
         
         console.log("🔥 Recherche des boutons...");
         const btnPoules = document.getElementById('btn-planning-poules');
@@ -1683,9 +1696,14 @@ console.log("🔥 ENTRE les deux blocs if");
     let bracketExists = false;
     
     try {
-        const bracket = await this.safeGet(`/api/events/${eventId}/bracket`, token);
-        // ✅ FIX: bracket est un TABLEAU, pas un objet avec .rounds
-        bracketExists = Array.isArray(bracket) && bracket.length > 0;
+      const bracketResp = await this.safeGet(`/api/events/${eventId}/bracket`, token);
+const bracketArr = Array.isArray(bracketResp?.data)
+  ? bracketResp.data
+  : (Array.isArray(bracketResp) ? bracketResp : []);
+bracketExists = bracketArr.length > 0;
+console.log("🔥 bracketExists:", bracketExists, "bracketLen:", bracketArr.length);
+
+
     } catch (err) {
         console.log("🔥 Pas de bracket trouvé:", err);
         bracketExists = false;
@@ -1704,9 +1722,8 @@ console.log("🔥 ENTRE les deux blocs if");
                const finalesMatches = matches.filter(m => 
     m.group === null && m.round !== null
 );
-
                 
-                console.log("Finales matches trouvés:", finalesMatches.length);
+             console.log("🔥 finalesMatches:", finalesMatches.length);
                 
                 const finalesPlayed = finalesMatches.some(m => 
                     m.status === 'COMPLETED' || m.status === 'IN_PROGRESS'
@@ -1750,9 +1767,6 @@ console.log("🔥 ENTRE les deux blocs if");
 // ================================
 // 🌇 PLANIFIER LES FINALES (MODE 1 JOUR)
 // ================================
-// ================================
-// 🌇 PLANIFIER LES FINALES (MODE 1 JOUR)
-// ================================
 async handlePlanningFinales(eventId, token) {
     // 🔥 VÉRIFIER L'ÉTAT DES MATCHS DE FINALES
     try {
@@ -1790,17 +1804,41 @@ async handlePlanningFinales(eventId, token) {
             }
         }
         
-    } catch (err) {
-        console.warn("Erreur vérification matchs finales:", err);
-    }
+   } catch (err) {
+  console.warn("Erreur vérification matchs finales:", err);
+  this.setGlobalMessage("❌ Impossible de vérifier l'état des matchs finales", true);
+  return;
+}
+
+
+    // ✅ Garde-fou : bracket obligatoire
+try {
+ const bracketResp = await this.safeGet(`/api/events/${eventId}/bracket`, token);
+
+const bracket = Array.isArray(bracketResp?.data)
+  ? bracketResp.data
+  : (Array.isArray(bracketResp) ? bracketResp : []);
+
+bracketExists = bracket.length > 0;
+
+  if (!bracketExists) {
+    this.setGlobalMessage("⚠️ Générez le bracket avant de planifier les finales", true);
+    return;
+  }
+} catch (e) {
+  this.setGlobalMessage("⚠️ Générez le bracket avant de planifier les finales", true);
+  return;
+}
+
     
     // 🔄 PLANIFICATION NORMALE
  const dateDebut = document.getElementById('planning-date-1day')?.value;
 const afternoonStart = document.getElementById('planning-afternoon-start-1day')?.value;
 const afternoonEnd = document.getElementById('planning-afternoon-end-1day')?.value;
-    const matchDuration = parseInt(document.getElementById('planning-match-duration')?.value || "0", 10);
-    const breakDuration = parseInt(document.getElementById('planning-break-duration')?.value || "0", 10);
-    const fieldsCount = parseInt(document.getElementById('planning-fields-count')?.value || "0", 10);
+  const matchDuration = parseInt(document.getElementById('planning-match-duration-1day')?.value || "0", 10);
+const breakDuration = parseInt(document.getElementById('planning-break-duration-1day')?.value || "0", 10);
+const fieldsCount = parseInt(document.getElementById('planning-fields-count-1day')?.value || "0", 10);
+
     const restBetweenRoundsMinutes = parseInt(document.getElementById('planning-rest-between-rounds')?.value || "10", 10);
 
     if (!dateDebut || !afternoonStart || !afternoonEnd) {
@@ -1853,7 +1891,6 @@ const afternoonEnd = document.getElementById('planning-afternoon-end-1day')?.val
         }
     }
 },
-
 
 async loadPlanningMatches(eventId, token) {
     const container = document.getElementById('planning-matches-container');
@@ -3350,10 +3387,6 @@ async tryEnableBracketButtonsIfGroupsFinished(eventId, safeSetDisabled) {
   }
 },
 
-
-    // ================================
-    // 🔹 2. INSCRIPTIONS
-    // ================================
     // ================================
 // 🔹 2. INSCRIPTIONS
 // ================================
@@ -4696,9 +4729,6 @@ async handleGenerateBracket(eventId, token, mode = "semi") {
     btnLdc  && (btnLdc.disabled  = false);
   }
 },
-
-
-
 
    // ================================
 // 🔹 5. CONSOLANTE

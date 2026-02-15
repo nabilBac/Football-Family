@@ -52,6 +52,11 @@ public class EventRegistration {
     @Column(nullable = false)
     private RegistrationStatus status = RegistrationStatus.PENDING; // 🆕
 
+
+    @Builder.Default
+@Column(name = "payment_status", length = 20)
+private String paymentStatus = "UNPAID";
+
     /**
      * Pour INDIVIDUAL uniquement : équipe assignée après formation automatique.
      * NULL pour CLUB_ONLY (team contient déjà l'équipe).

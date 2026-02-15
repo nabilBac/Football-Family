@@ -20,6 +20,7 @@ function updateNavbarButtonVisibility() {
 export const Router = {
 
     currentModule: null,
+      navToken: 0,
 
 routes: {
     "/events": "/app/js/pages/events/events.page.js",
@@ -174,14 +175,34 @@ async go(url) {
 
 async navigate(url) {
     try {
+               const token = ++this.navToken; 
+
+                 const prev = this.currentModule;
+if (prev) {
+  try {
+    if (typeof prev.unmount === "function") await prev.unmount();
+ else if (typeof prev.cleanup === "function") await prev.cleanup();
+
+  } catch (e) {
+    console.warn("cleanup/unmount error:", e);
+  }
+}
+
+if (token !== this.navToken) return;
+
+this.root.classList.remove("is-hub-page", "is-live-page", "fade-in", "fade-out");
+
+
         // 🟣 START TRANSITION (fade-out)
         this.root.classList.add("fade-out");
+
+
   // ⏳ Attendre que le fade-out soit visible (100ms)
 await new Promise(resolve => setTimeout(resolve, 100));
 
-            if (this.currentModule && this.currentModule.cleanup) {
-                this.currentModule.cleanup();
-            }
+if (token !== this.navToken) return;
+
+
 
             // 🧹 RESET GLOBAL DES CLASSES
             document.body.classList.remove(
@@ -221,6 +242,9 @@ if (url.startsWith("/club-admin") || url.startsWith("/admin")) {
     console.log("🔥 ADMIN GUARD : Vérification accès...");
 
     await Auth.loadUser();
+
+    if (token !== this.navToken) return;
+
     const user = Auth.currentUser;
 
     if (!user) {
@@ -253,6 +277,9 @@ console.log("[Router] importing:", moduleUrl, "for url=", url);
 
 try {
   const r = await fetch(moduleUrl, { cache: "no-store" });
+
+  if (token !== this.navToken) return;
+
   const ct = (r.headers.get("content-type") || "").toLowerCase();
 
   console.log("[Router] module fetch:", moduleUrl, "status=", r.status, "ct=", ct);
@@ -262,49 +289,65 @@ try {
   }
 
   // Si Render renvoie index.html au lieu du JS => fallback SPA trop large
-  if (ct.includes("text/html")) {
-    const txt = await r.text();
-    console.error("⚠️ HTML renvoyé au lieu de JS pour", moduleUrl);
-    console.log("HTML head:", txt.slice(0, 150));
-    throw new Error(`Module ${moduleUrl} renvoie HTML (fallback SPA).`);
-  }
+if (ct.includes("text/html")) {
+  const txt = await r.text();
+  if (token !== this.navToken) return; // ✅ AJOUT ICI
+
+  console.error("⚠️ HTML renvoyé au lieu de JS pour", moduleUrl);
+  console.log("HTML head:", txt.slice(0, 150));
+  throw new Error(`Module ${moduleUrl} renvoie HTML (fallback SPA).`);
+}
+
 } catch (e) {
   console.error("❌ Précheck import échoué:", e);
   throw e;
 }
 
 const module = await import(moduleUrl);
-
-            const Page =
-                module.default ||
-                module.Page ||
-                module.ProfilePage ||
-                module.FeedPage ||
-                module.UploadPage ||
-                module.WatchPage ||
-                module.AdminEventDashboardPage ||
-                module;
-
-            this.currentModule = Page;
-
-            const hideNavbar =
-                url === "/login" ||
-                url === "/register" ||
-                url.startsWith("/videos/go-live") ||
-                url.startsWith("/videos/watch/");
-
-            const pageHtml =
-                Page.render.length > 0
-                    ? await Page.render(resolved.params)
-                    : await Page.render();
-
-            const hidePostButton = (url === "/hub");
-         const isAdminPage = url.startsWith("/club-admin") || url.startsWith("/admin");
+if (token !== this.navToken) return;
 
 
-            this.root.innerHTML = (hideNavbar || isAdminPage)
-                ? pageHtml
-                : `${pageHtml}${Navbar({ hidePostButton })}`;
+      const Page =
+  module.default ||
+  module.Page ||
+  module.ProfilePage ||
+  module.FeedPage ||
+  module.UploadPage ||
+  module.WatchPage ||
+  module.AdminEventDashboardPage ||
+  module;
+
+this.currentModule = Page;
+
+const hideNavbar =
+  url === "/login" ||
+  url === "/register" ||
+  url.startsWith("/videos/go-live") ||
+  url.startsWith("/videos/watch/");
+
+const hidePostButton = (url === "/hub");
+const isAdminPage = url.startsWith("/club-admin") || url.startsWith("/admin");
+
+const pageHtml =
+  Page.render.length > 0
+    ? await Page.render(resolved.params)
+    : await Page.render();
+
+if (token !== this.navToken) return; // ✅ F
+
+this.root.innerHTML = (hideNavbar || isAdminPage)
+  ? pageHtml
+  : `${pageHtml}${Navbar({ hidePostButton })}`;
+
+if (token !== this.navToken) return; // ✅ G
+
+// ... tes animations/classes etc. (tu peux laisser comme tu as)
+
+if (Page.init) await Page.init(resolved.params);
+
+if (token !== this.navToken) return; // ✅ H
+
+
 
             // 🔥 FIX du bouton + qui devient ovale après quitter un live
             document.body.classList.remove("is-live-page");
@@ -312,7 +355,7 @@ const module = await import(moduleUrl);
             const navbar = document.querySelector(".mobile-navbar");
             if (navbar) navbar.removeAttribute("style");
 
-          // Retirer fade-out immédiatement après render
+         
 // Retirer fade-out immédiatement après render
 this.root.classList.remove("fade-out");
 
@@ -324,20 +367,10 @@ setTimeout(() => {
     this.root.classList.remove("fade-in");
 }, 150);
 
-            // Re-apply classes AFTER html reset
-            if (url === "/hub") this.root.classList.add("is-hub-page");
-            if (url === "/videos/go-live" || url.startsWith("/videos/watch/"))
-                this.root.classList.add("is-live-page");
-
-                    if (url === "/live/matches") this.root.classList.add("is-live-page");
-
-
             // Reload post buttons only if not admin
             if (!isAdminPage) {
                 updateNavbarButtonVisibility();
             }
-
-            if (Page.init) Page.init(resolved.params);
 
         } catch (err) {
             console.error("Router error:", err);

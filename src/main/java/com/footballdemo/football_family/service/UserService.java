@@ -15,7 +15,6 @@ import com.footballdemo.football_family.repository.ClubRepository;
 import com.footballdemo.football_family.repository.ClubUserRepository;
 import com.footballdemo.football_family.repository.FollowRepository;
 import com.footballdemo.football_family.repository.UserRepository;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -321,4 +320,13 @@ public class UserService {
         Page<User> following = followRepository.findFollowingByUserId(userId, pageable);
         return following.map(userMapper::toDTO);
     }
+
+    @Transactional(readOnly = true)
+public Long getPrimaryClubId(Long userId) {
+    return clubUserRepository.findFirstByUserIdOrderByIdAsc(userId)
+
+            .map(cu -> cu.getClub().getId())
+            .orElse(null);
+}
+
 }

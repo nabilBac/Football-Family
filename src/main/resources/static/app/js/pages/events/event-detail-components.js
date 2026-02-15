@@ -479,6 +479,11 @@ export function renderAdminSection(event) {
 export function renderFloatingCTA(event, isAuthenticated, isOrganizer, registrationInfo, hasClub) {
     if (!isAuthenticated || isOrganizer) return '';
     
+    // 🔥 CALCUL DU PRIX UNE SEULE FOIS
+    const price = event.registrationFeeCents 
+        ? (event.registrationFeeCents / 100).toFixed(2).replace('.00', '')
+        : '0';
+    
     const isClubEvent = event.registrationType === "CLUB_ONLY";
     
     // Cas 1 : Inscrit avec différents statuts
@@ -501,23 +506,23 @@ export function renderFloatingCTA(event, isAuthenticated, isOrganizer, registrat
             `;
         }
         
-      // Statut ACCEPTED mais non payé
-if (status === 'ACCEPTED' && !isPaid && event.registrationFeeCents > 0) {
-            return `
-                <div class="sticky-cta-pro active" id="payRegistrationBtn">
-                    <div class="cta-icon-pro">
-                        <i class="fas fa-credit-card"></i>
-                    </div>
-                    <div class="cta-text-pro">
-                        <div class="cta-title-pro">💳 Payer mon inscription</div>
-                        <div class="cta-subtitle-pro">${event.registrationFee}€</div>
-                    </div>
-                    <div class="cta-arrow-pro">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </div>
-            `;
-        }
+// Statut ACCEPTED mais non payé
+if (status === 'ACCEPTED' && !isPaid) {
+    return `
+        <div class="sticky-cta-pro active" id="payRegistrationBtn">
+            <div class="cta-icon-pro">
+                <i class="fas fa-credit-card"></i>
+            </div>
+            <div class="cta-text-pro">
+                <div class="cta-title-pro">💳 Payer les frais de plateforme</div>
+                <div class="cta-subtitle-pro">5€ par équipe - FootballFamily</div>
+            </div>
+            <div class="cta-arrow-pro">
+                <i class="fas fa-arrow-right"></i>
+            </div>
+        </div>
+    `;
+}
         
       // Statut ACCEPTED et payé (ou gratuit)
 if (status === 'ACCEPTED' && (isPaid || event.registrationFeeCents === 0)) {

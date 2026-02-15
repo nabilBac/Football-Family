@@ -22,6 +22,9 @@ export const AdminTeamsPage = {
     `;
 },
 
+
+
+
   async init() {
     // ⏳ Attendre que le DOM soit prêt
     await new Promise(resolve => requestAnimationFrame(resolve));

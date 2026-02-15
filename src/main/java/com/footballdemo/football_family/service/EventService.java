@@ -1623,4 +1623,14 @@ public List<EventRegistration> getRegistrationsByEventAndClub(Long eventId, Long
     return registrationRepo.findByEventIdAndTeam_Club_Id(eventId, clubId);
 }
 
+public EventRegistration saveRegistration(EventRegistration registration) {
+    return registrationRepo.save(registration);  // ✅ CORRECT
+}
+
+@Transactional(readOnly = true)
+public EventRegistration getRegistrationById(Long id) {
+    return registrationRepo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Inscription", id));
+}
+
 }

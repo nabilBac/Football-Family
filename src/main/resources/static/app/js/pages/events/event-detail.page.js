@@ -105,7 +105,9 @@ export async function init() {
         
         console.log('Événement chargé:', currentEvent.name || currentEvent.title || 'Sans nom');
 
-        const isOrganizer = currentUser && currentEvent.organizer?.id === currentUser.id;
+      const isOrganizer = !!currentUser && Number(currentEvent.organizerId) === Number(currentUser.id);
+                    console.log("isOrganizer?", isOrganizer, "organizerId", currentEvent.organizerId, "userId", currentUser?.id);
+
      const registrationInfo = currentUser ? await getRegistrationInfoForEvent(eventId) : null;
         const hasClub = currentUser && currentUser.clubId;
         const isSingleMatch = currentEvent.format === 'SINGLE_MATCH';
@@ -152,6 +154,11 @@ function renderComponents(event, isOrganizer, registrationInfo, hasClub, isSingl
     hasClub
 );
     }
+    if (!isOrganizer && hasClub) {
+ injectMyClubRegistrationsSection(event.id);
+
+}
+
 }
 
 /* ============================================================================
@@ -506,6 +513,18 @@ async function getRegistrationInfoForEvent(eventId) {
     return regs.find(r => Number(r.eventId) === id && (r.teamId || r.playerId || r.assignedTeamId)) || null;
 }
 
+async function loadMyClubRegistrationsForEvent(eventId) {
+  if (!currentUser?.clubId) return [];
+  try {
+    const regs = await apiGet(`/api/events/registration/${eventId}/registrations/club/${currentUser.clubId}`);
+    return Array.isArray(regs) ? regs : [];
+  } catch (e) {
+    console.warn("loadMyClubRegistrationsForEvent error", e);
+    return [];
+  }
+}
+
+
 async function loadLiveMatches() {
     try {
         if (!currentEvent || !currentEvent.id) {
@@ -536,6 +555,71 @@ async function handleClubRegistration() {
     const modal = new RegistrationModal();
     await modal.show(currentEvent.id, currentUser.clubId);
 }
+
+async function handlePaymentForRegistration(registration) {
+  if (!currentEvent || !currentUser) {
+    alert('Erreur : données manquantes');
+    return;
+  }
+  if (!registration?.id) {
+    alert("Erreur : inscription invalide");
+    return;
+  }
+
+  // ✅ garde-fous
+  if ((registration.paymentStatus || "").toUpperCase() === "PAID") {
+    alert("✅ Déjà payé");
+    return;
+  }
+  if ((registration.status || "").toUpperCase() !== "ACCEPTED") {
+    alert("⛔ L'inscription doit être ACCEPTED");
+    return;
+  }
+
+  // 🆕 PRIX FIXE : 5€ PAR ÉQUIPE pour FootballFamily
+  const platformFee = "5.00";
+  const teamLabel = registration.teamName || 'Votre équipe';
+
+  const confirmPay = confirm(
+    `💳 FRAIS DE PLATEFORME FOOTBALLFAMILY\n\n` +
+    `Équipe : ${teamLabel}\n` +
+    `Événement : ${currentEvent.name}\n\n` +
+    `Montant : ${platformFee}€ par équipe\n\n` +
+    `ℹ️ Ces frais permettent d'utiliser FootballFamily.\n` +
+    `Les frais du tournoi (si applicable) se règlent\n` +
+    `directement avec l'organisateur.\n\n` +
+    `Confirmer le paiement ?\n` +
+    `(Simulation - Stripe Connect prochainement)`
+  );
+
+  if (!confirmPay) return;
+
+  try {
+    const token = localStorage.getItem('accessToken');
+
+    const res = await fetch(
+      `/api/events/registration/${currentEvent.id}/registrations/${registration.id}/pay`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.message || 'Erreur lors du paiement');
+
+    alert(`✅ PAIEMENT VALIDÉ !\n\nÉquipe : ${teamLabel}\nFrais de plateforme : 5€ payés`);
+    location.reload();
+
+  } catch (error) {
+    console.error('Erreur paiement:', error);
+    alert('❌ Erreur\n\n' + error.message);
+  }
+}
+
 
 /* ============================================================================
    UTILITIES
@@ -568,6 +652,82 @@ function showError(message) {
         container.innerHTML = components.renderEmptyState('fa-exclamation-triangle', message, '');
     }
 }
+
+async function injectMyClubRegistrationsSection(eventId) {
+  const host = document.getElementById('eventDescription') || document.getElementById('eventQuickInfo');
+  if (!host) return;
+
+
+  // évite doublons
+host.querySelector('.my-registrations')?.remove();
+
+
+  const regs = await loadMyClubRegistrationsForEvent(eventId);
+  if (!regs.length) return;
+
+  const html = `
+    <div class="my-registrations" style="margin:12px 16px; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.08);">
+      <div style="font-weight:800; margin-bottom:8px;">🏟️ Mes équipes inscrites</div>
+      ${regs.map(r => {
+        const canPay = r.status === "ACCEPTED" && r.paymentStatus === "UNPAID";
+        const paid = r.paymentStatus === "PAID";
+        return `
+          <div class="reg-row" data-reg-id="${r.id}" style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid rgba(255,255,255,.06);">
+            <div style="display:flex; flex-direction:column;">
+              <div style="font-weight:700;">${r.teamName || 'Équipe'}</div>
+              <div style="opacity:.85; font-size:12px;">
+                Statut: <b>${r.status}</b> • Paiement: <b>${r.paymentStatus || 'UNPAID'}</b>
+              </div>
+            </div>
+            <div>
+              ${paid ? `<span style="font-weight:800;">✅ PAYÉ</span>` : ""}
+             ${canPay ? `<button class="btn-pay-reg" data-reg-id="${r.id}" style="padding:8px 10px; border-radius:10px; font-weight:800;">Payer 5€</button>` : ""}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+host.insertAdjacentHTML('beforeend', html);
+
+// bind pay buttons (anti double-clic + UX pro)
+host.querySelectorAll('.btn-pay-reg').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const regId = Number(btn.dataset.regId);
+
+    // ✅ anti double clic
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Paiement...";
+
+    try {
+      const regs2 = await loadMyClubRegistrationsForEvent(eventId); // reload safe
+      const reg = regs2.find(x => Number(x.id) === regId);
+
+      if (!reg) {
+        alert("Inscription introuvable");
+        return;
+      }
+
+      await handlePaymentForRegistration(reg);
+
+      // handlePaymentForRegistration fait location.reload()
+      // donc normalement tu ne reviens pas ici.
+    } catch (e) {
+      console.error("pay click error", e);
+      alert("❌ Erreur paiement");
+    } finally {
+      // ✅ si jamais pas de reload (erreur / annulation confirm)
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
+});
+
+}
+
 
 /* ============================================================================
    CLEANUP
