@@ -13,6 +13,41 @@ let intersectionObserver;
 let scrollListener;
 let videoObserver;
 
+// ✅ Single active video (évite audio fantôme)
+let activeVideo = null;
+
+function stopVideo(video) {
+  if (!video) return;
+  try { video.pause(); } catch (_) {}
+  try { video.muted = true; } catch (_) {}
+  try { video.currentTime = 0; } catch (_) {}
+  // optionnel mais utile sur iOS/Android
+  try { video.load(); } catch (_) {}
+}
+
+
+async function playVideo(video) {
+  if (!video) return;
+  try { video.muted = false; } catch (_) {}
+  try { await video.play(); } catch (e) {}
+}
+
+
+function setActiveVideo(video) {
+    if (!video || video === activeVideo) return;
+
+    // stop l'ancienne
+    if (activeVideo) stopVideo(activeVideo);
+
+    // stop toutes les autres (sécurité)
+    const all = videoContainer?.querySelectorAll("video") || [];
+    all.forEach(v => { if (v !== video) stopVideo(v); });
+
+
+    activeVideo = video;
+}
+
+
 // Flags
 let isLoadingMore = false;
 let hasMoreVideos = true;
@@ -73,38 +108,49 @@ export async function initFeed() {
  * ✅ NOUVEAU : OBSERVER POUR AUTOPLAY/PAUSE VIDÉOS
  */
 function setupVideoAutoplayObserver() {
-    // Cleanup ancien observer
-    if (videoObserver) {
-        videoObserver.disconnect();
-    }
+    if (videoObserver) videoObserver.disconnect();
 
     videoObserver = new IntersectionObserver(
-        (entries) => {
+        async (entries) => {
+            // on cherche la vidéo la plus visible
+            let bestEntry = null;
+
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+                if (!bestEntry || entry.intersectionRatio > bestEntry.intersectionRatio) {
+                    bestEntry = entry;
+                }
+            }
+
+            // 1) Pause toutes celles qui sortent de l’écran
             entries.forEach(entry => {
                 const video = entry.target;
-                
-                if (entry.isIntersecting) {
-                    // ✅ Vidéo visible → Play
-                    if (entry.intersectionRatio >= 0.5) {  // Au moins 50% visible
-                        video.play().catch(e => {
-                            // Ignore les erreurs de play (normal sur mobile)
-                        });
-                    }
-                } else {
-                    // ❌ Vidéo hors écran → Pause
-                    video.pause();
-                }
+               if (!entry.isIntersecting) {
+  stopVideo(video);
+}
+
             });
+
+            // 2) Si une vidéo est clairement dominante → elle devient active
+            if (bestEntry && bestEntry.intersectionRatio >= 0.6) {
+                const video = bestEntry.target;
+
+                setActiveVideo(video);
+                video.muted = false;
+
+                await playVideo(video);
+            }
         },
         {
             root: scrollContainer,
-            threshold: [0, 0.5, 1.0]  // Détecte à 0%, 50%, 100% de visibilité
+            // seuils plus fins = plus stable pendant le scroll/snap
+            threshold: [0, 0.25, 0.5, 0.6, 0.75, 1.0]
         }
     );
 
-    // ✅ Observer toutes les vidéos existantes
     observeAllVideos();
 }
+
 
 /**
  * ✅ HELPER : Observer toutes les vidéos
@@ -263,8 +309,12 @@ function removeOldestVideos(countToAdd) {
         // ✅ Pause vidéo avant suppression
         const video = oldVideo.querySelector("video");
         if (video) {
-            video.pause();
-            video.src = ""; // Libère mémoire
+      stopVideo(video);
+      if (video === activeVideo) activeVideo = null;
+
+video.removeAttribute("src");
+video.load(); // force à couper le flux audio sur certains navigateurs
+
         }
 
         oldVideo.remove();
@@ -324,8 +374,6 @@ function showLoader(show) {
     loader.style.display = "none";
   }
 }
-
-
 
 function setupMenu() {
     const burgerBtn = document.getElementById("burger-btn");
@@ -402,11 +450,16 @@ if (videoObserver) {
     // ✅ Pause toutes les vidéos
     const videos = videoContainer?.querySelectorAll("video");
     videos?.forEach(video => {
-        video.pause();
-        video.src = "";
+       stopVideo(video);
+video.removeAttribute("src");
+video.load();
+
     });
 
     isLoadingMore = false;
     hasMoreVideos = true;
     totalVideosLoaded = 0;
+
+    activeVideo = null;
+
 }

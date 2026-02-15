@@ -36,19 +36,19 @@ export function render() {
       <h1>🎥 Espace Live</h1>
 
       <div class="grid">
-        <a href="/videos" class="card" data-link>
+       <a href="/videos" class="hub-card" data-link>
           <i class="fa-solid fa-eye"></i>
           <h2>Voir les lives en cours</h2>
           <p>Découvre les diffusions en direct</p>
         </a>
 
-        <a href="/videos/go-live" class="card" data-link>
+<a href="/videos/go-live" class="hub-card" data-link>
           <i class="fa-solid fa-video"></i>
           <h2>Démarrer un live</h2>
           <p>Lance ton propre stream</p>
         </a>
 
-        <a href="/videos/archives" class="card" data-link>
+      <a href="/videos/archives" class="hub-card" data-link>
           <i class="fa-solid fa-film"></i>
           <h2>Replays</h2>
           <p>Regarde les lives passés</p>

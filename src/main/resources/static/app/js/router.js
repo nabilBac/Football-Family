@@ -225,10 +225,15 @@ if (token !== this.navToken) return;
                 document.body.classList.add("is-feed-page");
             }
 
-            // Route flags BEFORE render
-            if (url === "/hub") this.root.classList.add("is-hub-page");
-            if (url === "/videos/go-live" || url.startsWith("/videos/watch/"))
-                this.root.classList.add("is-live-page");
+  // Route flags BEFORE render
+if (url === "/hub") {
+    this.root.classList.add("is-hub-page");
+    document.body.classList.add("is-live-page");
+}
+if (url === "/videos/go-live" || url.startsWith("/videos/watch/")) {
+    this.root.classList.add("is-live-page");
+    document.body.classList.add("is-live-page");
+}
 
                     if (url === "/live/matches") this.root.classList.add("is-live-page");
 
@@ -349,8 +354,10 @@ if (token !== this.navToken) return; // ✅ H
 
 
 
-            // 🔥 FIX du bouton + qui devient ovale après quitter un live
-            document.body.classList.remove("is-live-page");
+         // 🔥 FIX du bouton + qui devient ovale après quitter un live
+if (url !== "/hub") {
+    document.body.classList.remove("is-live-page");
+}
 
             const navbar = document.querySelector(".mobile-navbar");
             if (navbar) navbar.removeAttribute("style");

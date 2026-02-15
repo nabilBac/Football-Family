@@ -99,7 +99,7 @@ body.is-live-page .grid{
 }
 
 /* CARTES */
-body.is-live-page .card{
+body.is-live-page .hub-card{
   display: block;
   padding: 22px;
   border-radius: 20px;
@@ -111,21 +111,21 @@ body.is-live-page .card{
   transition: transform 0.25s, background 0.25s;
   box-shadow: 0 8px 25px rgba(0,0,0,0.35);
 }
-body.is-live-page .card:hover{
+body.is-live-page .hub-card:hover{
   transform: translateY(-6px);
   background: rgba(0,255,120,0.25);
   box-shadow: 0 10px 30px rgba(0,255,120,0.3);
 }
-body.is-live-page .card i{
+body.is-live-page .hub-card i{
   font-size: 2.6rem;
   margin-bottom: 10px;
 }
-body.is-live-page .card h2{
+body.is-live-page .hub-card h2{
   font-size: 1.35rem;
   margin: 0;
   font-weight: 700;
 }
-body.is-live-page .card p{
+body.is-live-page .hub-card p{
   margin-top: 5px;
   font-size: 0.95rem;
   opacity: 0.75;

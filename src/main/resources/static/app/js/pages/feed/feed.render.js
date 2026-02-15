@@ -37,13 +37,15 @@ export const FeedRender = {
         card.dataset.videoId = id;
 
         card.innerHTML = `
-            <video class="video-element"
-                src="${videoUrl}"
-                playsinline
-                muted
-                loop
-                preload="auto">
-            </video>
+          <video class="video-element"
+    src="${videoUrl}"
+    playsinline
+    webkit-playsinline
+    muted
+    loop
+    preload="metadata">
+</video>
+
 
             <div class="overlay">
                 <div class="video-info">
@@ -83,6 +85,13 @@ export const FeedRender = {
                 </div>
             </div>
         `;
+        const v = card.querySelector("video");
+  if (v) {
+    v.playsInline = true;
+    v.setAttribute("playsinline", "");
+    v.setAttribute("webkit-playsinline", "");
+    v.preload = "metadata";
+  }
 
         // WebSocket
         this.subscribeToLikeUpdates(id);
