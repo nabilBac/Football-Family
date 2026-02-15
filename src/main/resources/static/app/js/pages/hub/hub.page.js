@@ -111,8 +111,8 @@ export function init() {
 
 export function cleanup() {
         console.log("[HUB] cleanup");
-  document.getElementById("app")?.classList.remove("is-live-page");
-  document.body.classList.remove("is-live-page");
+
+
 
   // remove listeners
   const burgerBtn = document.getElementById("burger-btn");
