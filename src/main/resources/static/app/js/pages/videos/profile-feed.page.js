@@ -46,54 +46,46 @@ export async function render({ id }) {
     <div class="feed-modal-overlay" id="profileFeed" data-start-index="${startIndex}">
         <button id="closeFeedButton">✕</button>
 
-        ${videos
-            .map(
-                (v) => `
-                <div class="feed-item" data-video-id="${v.id}">
-                    <video 
-                        class="feed-video-player"
-                        src="/videos/${v.filename}"
-                        playsinline
-                        preload="metadata"
-                    ></video>
+    ${videos.map((v) => `
+  <div class="feed-item" data-video-id="${v.id}">
+    <video 
+      class="feed-video-player"
+      src="/videos/${v.filename}"
+      playsinline
+      muted
+      loop
+      preload="metadata"
+    ></video>
 
-                    <!-- ✅ NOUVELLE colonne d'actions avec RÉACTIONS -->
-                    <div class="feed-actions-floating">
-                        
-                        <!-- ❤️ Bouton Réactions -->
-                        <button class="feed-reaction-btn" data-id="${v.id}">
-                            <i class="fas fa-heart"></i>
-                            <span class="reaction-count">0</span>
-                        </button>
+    <div class="feed-actions-floating">
+      <button class="feed-reaction-btn" data-id="${v.id}">
+        <i class="fas fa-heart"></i>
+        <span class="reaction-count">0</span>
+      </button>
 
-                        <!-- 💬 Commentaires -->
-                        <button class="feed-comment-btn" data-id="${v.id}">
-                            <i class="fas fa-comment"></i>
-                            <span class="comment-count">${v.commentsCount ?? 0}</span>
-                        </button>
+      <button class="feed-comment-btn" data-id="${v.id}">
+        <i class="fas fa-comment"></i>
+        <span class="comment-count">${v.commentsCount ?? 0}</span>
+      </button>
 
-                        <!-- 🔊 Son -->
-                        <button class="feed-sound-btn">
-                            <i class="fas fa-volume-xmark"></i>
-                        </button>
-                    </div>
+      <button class="feed-sound-btn">
+        <i class="fas fa-volume-xmark"></i>
+      </button>
+    </div>
 
-                    <!-- 🔥 MENU RADIAL DES RÉACTIONS -->
-                    <div class="reaction-menu" style="display: none;">
-                        <button class="reaction-option" data-emoji="❤️">❤️</button>
-                        <button class="reaction-option" data-emoji="😂">😂</button>
-                        <button class="reaction-option" data-emoji="🔥">🔥</button>
-                        <button class="reaction-option" data-emoji="👏">👏</button>
-                        <button class="reaction-option" data-emoji="⚽">⚽</button>
-                        <button class="reaction-option" data-emoji="🤯">🤯</button>
-                    </div>
+    <div class="reaction-menu" style="display: none;">
+      <button class="reaction-option" data-emoji="❤️">❤️</button>
+      <button class="reaction-option" data-emoji="😂">😂</button>
+      <button class="reaction-option" data-emoji="🔥">🔥</button>
+      <button class="reaction-option" data-emoji="👏">👏</button>
+      <button class="reaction-option" data-emoji="⚽">⚽</button>
+      <button class="reaction-option" data-emoji="🤯">🤯</button>
+    </div>
 
-                    <!-- 📊 Résumé réactions -->
-                    <div class="reactions-summary" style="display: none;"></div>
-                </div>
-                `
-            )
-            .join("")}
+    <div class="reactions-summary" style="display: none;"></div>
+  </div>
+`).join("")}
+
     </div>
     
     <!-- ✅ NAVBAR -->
@@ -139,125 +131,154 @@ export function init(params) {
     const startIndex = parseInt(feed.dataset.startIndex || "0", 10);
     let currentIndex = isNaN(startIndex) ? 0 : startIndex;
 
+    let activeVideo = null;
+let videoObserver = null;
+let soundEnabled = false; // son autorisé seulement après action user
+
+
+            function syncSoundIcons() {
+  document.querySelectorAll(".feed-sound-btn i").forEach(icon => {
+    if (!soundEnabled) {
+      icon.classList.remove("fa-volume-high");
+      icon.classList.add("fa-volume-xmark");
+    } else {
+      icon.classList.remove("fa-volume-xmark");
+      icon.classList.add("fa-volume-high");
+    }
+  });
+}
+
+function stopVideo(video) {
+  if (!video) return;
+  try { video.pause(); } catch (_) {}
+  try { video.muted = true; } catch (_) {}
+  try { video.currentTime = 0; } catch (_) {}
+  try { video.load(); } catch (_) {} // 🔥 coupe audio fantôme mobile
+}
+
+async function playVideo(video) {
+  if (!video) return;
+  video.muted = !soundEnabled; // ✅ autoplay mobile safe
+  try { await video.play(); } catch (_) {}
+}
+
+function setActiveVideo(video) {
+  if (!video || video === activeVideo) return;
+
+  if (activeVideo) stopVideo(activeVideo);
+
+  videos.forEach(v => { if (v !== video) stopVideo(v); });
+
+  activeVideo = video;
+}
+
+async function playVisibleVideo() {
+  const v = videos[currentIndex];
+  if (!v) return;
+  setActiveVideo(v);
+  await playVideo(v);
+}
     // ----------------------------
     // 1️⃣ Positionner sur la bonne vidéo
     // ----------------------------
-    setTimeout(() => {
-        feed.scrollTo({
-            top: window.innerHeight * currentIndex,
-            behavior: "instant",
-        });
-        playVisibleVideo();
-    }, 20);
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    const pageH =
+      feed.querySelector(".feed-item")?.clientHeight || feed.clientHeight;
 
-  function playVisibleVideo() {
-    videos.forEach((v, idx) => {
-        if (idx === currentIndex) {
-            v.muted = false;
-            v.play().catch(() => {});
-        } else {
-            v.pause();
-            v.currentTime = 0;  // ← AJOUTE ÇA : réinitialise la vidéo
-            v.muted = true;     // ← AJOUTE ÇA : coupe le son !
-        }
-    });
+    feed.scrollTo({ top: pageH * currentIndex, behavior: "auto" });
+
+    syncSoundIcons();
+    playVisibleVideo();
+  });
+});
+function setupVideoObserver() {
+  if (videoObserver) videoObserver.disconnect();
+
+  videoObserver = new IntersectionObserver(async (entries) => {
+    let best = null;
+
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      if (!best || entry.intersectionRatio > best.intersectionRatio) best = entry;
+    }
+
+    // ✅ stop TOUTES les vidéos sauf la dominante
+    if (best) {
+      videos.forEach(v => {
+        if (v !== best.target) stopVideo(v);
+      });
+    } else {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) stopVideo(entry.target);
+      });
+    }
+
+    if (best && best.intersectionRatio >= 0.6) {
+      const video = best.target;
+
+      if (video === activeVideo) return;
+
+      const idx = Array.from(videos).indexOf(video);
+      if (idx >= 0) currentIndex = idx;
+
+      setActiveVideo(video);
+      await playVideo(video);
+    }
+  }, {
+    root: feed,
+    threshold: [0.3, 0.6, 0.9]
+  });
+
+  videos.forEach(v => videoObserver.observe(v));
 }
 
-    // === Auto-Replay ===
-    videos.forEach((video, index) => {
-        video.addEventListener("ended", () => {
-            if (index === currentIndex) {
-                video.currentTime = 0;
-                video.play().catch(() => {});
-            }
-        });
-    });
 
-    // ----------------------------
-    // 2️⃣ ✅ SCROLL VERTICAL AVEC DEBOUNCE (FIX SCROLL RAPIDE)
-    // ----------------------------
-    let scrollTimeout = null;
-    let isScrolling = false;
+setupVideoObserver();
 
-    feed.addEventListener("wheel", (e) => {
-        e.preventDefault();
-        
-        // Ignore si déjà en train de scroller
-        if (isScrolling) return;
-        
-        isScrolling = true;
-
-        // Déterminer la direction
-        if (e.deltaY > 0 && currentIndex < videos.length - 1) {
-            currentIndex++;
-        } else if (e.deltaY < 0 && currentIndex > 0) {
-            currentIndex--;
-        } else {
-            isScrolling = false;
-            return;
-        }
-
-        // Scroll vers la nouvelle vidéo
-        feed.scrollTo({
-            top: window.innerHeight * currentIndex,
-            behavior: "smooth",
-        });
-
-        playVisibleVideo();
-
-        // Réactiver le scroll après 800ms
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-            isScrolling = false;
-        }, 800);
-    });
-
-    // ----------------------------
-    // 3️⃣ Bouton fermer
-    // ----------------------------
    // ----------------------------
 // 3️⃣ Bouton fermer
 // ----------------------------
 if (closeBtn) {
-    closeBtn.addEventListener("click", () => {
-        // ✅ STOPPE TOUTES les vidéos avant de fermer
-        videos.forEach(v => {
-            v.pause();
-            v.currentTime = 0;
-            v.muted = true;
-        });
-        
-        document.body.classList.remove("feed-active");
-        feed.style.display = "none";
-        history.back();
-    });
+  closeBtn.addEventListener("click", () => {
+
+    // ✅ 1) couper l'observer (évite callbacks après fermeture)
+    if (videoObserver) {
+      videoObserver.disconnect();
+      videoObserver = null;
+    }
+
+    // ✅ 2) stop propre (anti audio fantôme)
+    videos.forEach(v => stopVideo(v));
+    activeVideo = null;
+
+    document.body.classList.remove("feed-active");
+    feed.style.display = "none";
+    history.back();
+  });
 }
+
 
     // ----------------------------
     // 4️⃣ Gestion SON
     // ----------------------------
-    document.querySelectorAll(".feed-sound-btn").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
+   document.querySelectorAll(".feed-sound-btn").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
 
-            const item = btn.closest(".feed-item");
-            if (!item) return;
+    soundEnabled = !soundEnabled;
 
-            const video = item.querySelector(".feed-video-player");
-            if (!video) return;
+    const v = videos[currentIndex];
+    if (v) {
+      v.muted = !soundEnabled;
+      v.play().catch(() => {});
+    }
 
-            video.muted = !video.muted;
+    syncSoundIcons();
+  });
+});
 
-            const icon = btn.querySelector("i");
-            if (video.muted) {
-                icon.classList.remove("fa-volume-high");
-                icon.classList.add("fa-volume-xmark");
-            } else {
-                icon.classList.remove("fa-volume-xmark");
-                icon.classList.add("fa-volume-high");
-            }
-        });
-    });
+ 
 
     // ----------------------------
     // 5️⃣ 🔥 Gestion RÉACTIONS
