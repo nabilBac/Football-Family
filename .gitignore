@@ -16,10 +16,11 @@ data/
 # Uploads & media (runtime only)
 ####################################
 uploads/
-videos/
-videos/**
-videos/thumbnails/
-videos/temp_*
+/uploads/videos/
+/videos/
+/videos/**
+/videos/thumbnails/
+/videos/temp_*
 
 videos_temp_test/
 
