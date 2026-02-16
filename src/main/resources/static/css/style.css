@@ -265,11 +265,16 @@ html, body {
 }
 
 /* ==================== LOADER ==================== */
-#loader {
-    color: #aaa;
-    padding: 12px;
-    text-align: center;
+#loader.loader{
+  position: static !important;
+  width: 100%;
+  margin: 18px 0;
+  display: none;          /* caché par défaut */
+  text-align: center;
+  padding: 12px;
+  color: #aaa;
 }
+
 
 /* ==================== MODAL COMMENTAIRES ==================== */
 
@@ -594,21 +599,7 @@ html, body {
   pointer-events: auto !important;
 }
 
-/* ✅ FIX FEED: le sentinel #loader ne doit JAMAIS être en absolute/top-left */
-#loader{
-  position: static !important;
-  top: auto !important;
-  left: auto !important;
-  right: auto !important;
-  bottom: auto !important;
 
-  width: 100%;
-  margin: 18px 0;
-  display: none;
-  text-align: center;
-  padding: 12px;
-  color: #aaa;
-}
 
 
 

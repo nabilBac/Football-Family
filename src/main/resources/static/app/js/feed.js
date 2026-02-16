@@ -16,6 +16,12 @@ let videoObserver;
 // ✅ Single active video (évite audio fantôme)
 let activeVideo = null;
 
+
+// ✅ mémoire globale du choix son (persiste pendant la session)
+window.__ffSoundEnabled = window.__ffSoundEnabled ?? false;
+
+
+
 function stopVideo(video) {
   if (!video) return;
   try { video.pause(); } catch (_) {}
@@ -23,12 +29,11 @@ function stopVideo(video) {
 
 
 
-
 async function playVideo(video) {
   if (!video) return;
-  try { video.muted = true; } catch (_) {}   // ✅ iOS autoplay OK
   try { await video.play(); } catch (e) {}
 }
+
 
 function activateVideoSource(video) {
   if (!video) return;
@@ -186,13 +191,17 @@ function setupVideoAutoplayObserver() {
             });
 
             // 2) Si une vidéo est clairement dominante → elle devient active
-          if (bestEntry && bestEntry.intersectionRatio >= 0.6) {
-    const video = bestEntry.target;
-    setActiveVideo(video);
-    // ✅ Garde muted=true pour iOS autoplay
-    video.muted = true;
-    await playVideo(video);
+if (bestEntry && bestEntry.intersectionRatio >= 0.6) {
+  const video = bestEntry.target;
+
+  setActiveVideo(video);
+
+  // ✅ applique le choix utilisateur : son ON => muted=false
+  video.muted = !(window.__ffSoundEnabled === true);
+
+  await playVideo(video);
 }
+
         },
         {
             root: scrollContainer,

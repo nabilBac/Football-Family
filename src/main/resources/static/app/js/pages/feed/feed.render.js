@@ -37,13 +37,13 @@ export const FeedRender = {
         card.dataset.videoId = id;
 
         card.innerHTML = `
-          <video class="video-element"
-    src="${videoUrl}"
-    playsinline
-    webkit-playsinline
-    muted
-    loop
-    preload="metadata">
+ <video class="video-element"
+  data-src="${videoUrl}"
+  playsinline
+  webkit-playsinline
+  muted
+  loop
+  preload="none">
 </video>
 
 
@@ -85,13 +85,15 @@ export const FeedRender = {
                 </div>
             </div>
         `;
-        const v = card.querySelector("video");
-  if (v) {
-    v.playsInline = true;
-    v.setAttribute("playsinline", "");
-    v.setAttribute("webkit-playsinline", "");
-    v.preload = "metadata";
-  }
+
+            const v = card.querySelector("video");
+if (v) {
+  v.playsInline = true;
+  v.setAttribute("playsinline", "");
+  v.setAttribute("webkit-playsinline", "");
+  v.preload = "none"; // ✅ ne charge rien tant qu’elle n’est pas active
+}
+
 
         // WebSocket
         this.subscribeToLikeUpdates(id);
@@ -208,21 +210,30 @@ export const FeedRender = {
         });
     },
 
-    toggleMute(btn, videoId) {
-        const card = document.querySelector(`[data-video-id="${videoId}"]`);
-        const video = card.querySelector("video");
+  toggleMute(btn, videoId) {
+  const card = document.querySelector(`[data-video-id="${videoId}"]`);
+  if (!card) return;
 
-        video.muted = !video.muted;
+  const video = card.querySelector("video");
+  if (!video) return;
 
-        const icon = btn.querySelector("i");
-        if (video.muted) {
-            icon.classList.remove("fa-volume-high");
-            icon.classList.add("fa-volume-xmark");
-        } else {
-            icon.classList.remove("fa-volume-xmark");
-            icon.classList.add("fa-volume-high");
-        }
-    },
+  video.muted = !video.muted;
+
+  // ✅ MÉMORISE LE CHOIX UTILISATEUR (utilisé par feed.js quand il active une nouvelle vidéo)
+  window.__ffSoundEnabled = !video.muted;
+
+  console.log("TOGGLE MUTE OK", { muted: video.muted, ff: window.__ffSoundEnabled });
+
+  const icon = btn.querySelector("i");
+  if (video.muted) {
+    icon.classList.remove("fa-volume-high");
+    icon.classList.add("fa-volume-xmark");
+  } else {
+    icon.classList.remove("fa-volume-xmark");
+    icon.classList.add("fa-volume-high");
+  }
+},
+
 
     cleanup() {
         console.log("🧹 Cleanup feed render");
