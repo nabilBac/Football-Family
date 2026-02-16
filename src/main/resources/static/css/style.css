@@ -147,8 +147,9 @@ html, body {
 }
 
 .video-card.comments-open video {
-    height: calc(100vh - var(--comments-visible-height));
+    height: calc(100dvh - var(--comments-visible-height));
 }
+
 
 /* ==================== OVERLAY ==================== */
 .overlay {
@@ -561,37 +562,6 @@ html, body {
     }
 }
 
-/* ✅ FIX CLICK MODAL COMMENTAIRES (colle en bas) */
-#comments-modal{
-  position: fixed !important;
-  inset: 0 !important;
-  display: none !important;
-  z-index: 20000 !important;
-}
-#comments-modal.open{
-  display: flex !important;
-  justify-content: flex-end !important;
-  align-items: flex-end !important;
-}
-
-/* backdrop en dessous */
-#comments-modal .comments-backdrop{
-  z-index: 0 !important;
-}
-
-/* panel au-dessus */
-#comments-modal .comments-panel{
-  z-index: 1 !important;
-  pointer-events: auto !important;
-}
-
-/* boutons toujours cliquables */
-#comments-close-btn,
-#comments-send-btn{
-  position: relative !important;
-  z-index: 2 !important;
-  pointer-events: auto !important;
-}
 /* ✅ BASE STABLE MODAL COMMENTAIRES */
 #comments-modal{
   position: fixed !important;
@@ -625,7 +595,7 @@ html, body {
 }
 
 /* ✅ FIX FEED: le sentinel #loader ne doit JAMAIS être en absolute/top-left */
-#loader.loader {
+#loader{
   position: static !important;
   top: auto !important;
   left: auto !important;
@@ -634,11 +604,12 @@ html, body {
 
   width: 100%;
   margin: 18px 0;
-  display: none;            /* caché par défaut */
+  display: none;
   text-align: center;
   padding: 12px;
   color: #aaa;
 }
+
 
 
 
