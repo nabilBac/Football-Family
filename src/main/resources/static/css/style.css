@@ -104,7 +104,7 @@ html, body {
 /* ==================== FEED IMMERSIF ==================== */
 .main-content-scrollable {
     position: relative;
-    height: calc(100vh - var(--navbar-height));
+    height: calc(100dvh - var(--navbar-height));
     overflow-y: scroll;
     scroll-snap-type: y mandatory;
     -webkit-overflow-scrolling: touch;
@@ -124,18 +124,20 @@ html, body {
 
 .video-card {
     width: 100%;
-    height: calc(100vh - var(--navbar-height)) !important;
+    height: calc(100dvh - var(--navbar-height)) !important;
     position: relative;
     scroll-snap-align: start;
     overflow: hidden;
     background: #000 !important;
     margin: 0 !important;
     padding: 0 !important;
+    scroll-snap-stop: always;
+
 }
 
 .video-card video {
     width: 100%;
-    height: calc(100vh - var(--navbar-height)) !important;
+    height: 100% !important;
     object-fit: cover;
 }
 
@@ -155,7 +157,7 @@ html, body {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    padding: 12px 12px 20px 12px !important;
+    padding: 12px !important;
     padding-bottom: calc(var(--navbar-height) + 10px) !important;
     background: none !important;
     z-index: 50;
