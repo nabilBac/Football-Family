@@ -153,7 +153,7 @@ function stopVideo(video) {
   try { video.pause(); } catch (_) {}
   try { video.muted = true; } catch (_) {}
   try { video.currentTime = 0; } catch (_) {}
-  try { video.load(); } catch (_) {} // 🔥 coupe audio fantôme mobile
+
 }
 
 async function playVideo(video) {
@@ -192,47 +192,101 @@ requestAnimationFrame(() => {
     playVisibleVideo();
   });
 });
+
+
 function setupVideoObserver() {
   if (videoObserver) videoObserver.disconnect();
+
+  const items = Array.from(feed.querySelectorAll(".feed-item"));
 
   videoObserver = new IntersectionObserver(async (entries) => {
     let best = null;
 
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      if (!best || entry.intersectionRatio > best.intersectionRatio) best = entry;
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
     }
 
-    // ✅ stop TOUTES les vidéos sauf la dominante
-    if (best) {
-      videos.forEach(v => {
-        if (v !== best.target) stopVideo(v);
-      });
-    } else {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) stopVideo(entry.target);
-      });
-    }
+// stop uniquement si on change réellement de vidéo
+if (best && best.intersectionRatio >= 0.7) {
+  const item = best.target;
+  const video = item.querySelector(".feed-video-player");
+  if (!video) return;
 
-    if (best && best.intersectionRatio >= 0.6) {
-      const video = best.target;
+  if (video === activeVideo) return; // ✅ important
 
-      if (video === activeVideo) return;
+  videos.forEach(v => { if (v !== video) stopVideo(v); });
 
-      const idx = Array.from(videos).indexOf(video);
-      if (idx >= 0) currentIndex = idx;
+  const idx = items.indexOf(item);
+  if (idx >= 0) currentIndex = idx;
 
-      setActiveVideo(video);
-      await playVideo(video);
-    }
-  }, {
-    root: feed,
-    threshold: [0.3, 0.6, 0.9]
-  });
-
-  videos.forEach(v => videoObserver.observe(v));
+  setActiveVideo(video);
+  await playVideo(video);
 }
 
+
+    // pas assez dominant → on ne joue rien
+    if (!best || best.intersectionRatio < 0.7) return;
+
+    const item = best.target;
+    const video = item.querySelector(".feed-video-player");
+    if (!video) return;
+
+    const idx = items.indexOf(item);
+    if (idx >= 0) currentIndex = idx;
+
+    setActiveVideo(video);
+    await playVideo(video);
+
+  }, {
+    root: feed,
+    threshold: [0, 0.25, 0.5, 0.7, 1.0]
+  });
+
+  items.forEach(it => videoObserver.observe(it));
+}
+
+// ✅ SUPPORT TACTILE MOBILE
+let touchStartY = 0;
+let touchEndY = 0;
+let isSwiping = false;
+
+feed.addEventListener("touchstart", (e) => {
+    touchStartY = e.touches[0].clientY;
+    isSwiping = false;
+});
+
+feed.addEventListener("touchmove", (e) => {
+    isSwiping = true;
+});
+
+feed.addEventListener("touchend", (e) => {
+    if (!isSwiping) return;
+    
+    touchEndY = e.changedTouches[0].clientY;
+    const swipeDistance = touchStartY - touchEndY;
+    
+    if (Math.abs(swipeDistance) < 50) return; // Swipe trop court
+    
+    if (swipeDistance > 0 && currentIndex < videos.length - 1) {
+        // Swipe up = vidéo suivante
+        currentIndex++;
+    } else if (swipeDistance < 0 && currentIndex > 0) {
+        // Swipe down = vidéo précédente
+        currentIndex--;
+    } else {
+        return;
+    }
+    
+    const pageH = feed.querySelector(".feed-item")?.clientHeight || feed.clientHeight;
+    
+    feed.scrollTo({
+        top: pageH * currentIndex,
+        behavior: "smooth",
+    });
+    
+    // L'IntersectionObserver va s'occuper du play/pause
+});
 
 setupVideoObserver();
 
@@ -242,21 +296,27 @@ setupVideoObserver();
 if (closeBtn) {
   closeBtn.addEventListener("click", () => {
 
-    // ✅ 1) couper l'observer (évite callbacks après fermeture)
     if (videoObserver) {
       videoObserver.disconnect();
       videoObserver = null;
     }
 
-    // ✅ 2) stop propre (anti audio fantôme)
+    // stop “normal”
     videos.forEach(v => stopVideo(v));
     activeVideo = null;
+
+    // ✅ double sécurité Android (juste avant history.back)
+    videos.forEach(v => {
+      try { v.pause(); } catch(e) {}
+      try { v.muted = true; } catch(e) {}
+    });
 
     document.body.classList.remove("feed-active");
     feed.style.display = "none";
     history.back();
   });
 }
+
 
 
     // ----------------------------
