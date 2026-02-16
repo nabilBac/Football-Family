@@ -21,16 +21,17 @@ function stopVideo(video) {
   try { video.pause(); } catch (_) {}
   try { video.muted = true; } catch (_) {}
   try { video.currentTime = 0; } catch (_) {}
-  // optionnel mais utile sur iOS/Android
-  try { video.load(); } catch (_) {}
+  // ❌ pas de video.load() ici
 }
+
 
 
 async function playVideo(video) {
   if (!video) return;
-  try { video.muted = false; } catch (_) {}
+  try { video.muted = true; } catch (_) {}   // ✅ iOS autoplay OK
   try { await video.play(); } catch (e) {}
 }
+
 
 
 function setActiveVideo(video) {
@@ -70,6 +71,27 @@ export async function initFeed() {
         console.error("Feed: conteneurs manquants");
         return;
     }
+
+    // ✅ iOS: unlock autoplay after first user gesture (important for Safari)
+let iosUnlocked = false;
+
+function unlockIOSOnce() {
+  if (iosUnlocked) return;
+  iosUnlocked = true;
+
+  const v = videoContainer?.querySelector("video");
+  if (!v) return;
+
+  v.muted = true;
+  const p = v.play();
+  if (p && p.catch) p.catch(() => {});
+  v.pause();
+  v.currentTime = 0;
+}
+
+scrollContainer.addEventListener("touchstart", unlockIOSOnce, { once: true, passive: true });
+scrollContainer.addEventListener("click", unlockIOSOnce, { once: true });
+
 
     setupMenu();
     setupNavActiveState();
