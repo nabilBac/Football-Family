@@ -132,14 +132,13 @@ function setupVideoAutoplayObserver() {
             });
 
             // 2) Si une vidéo est clairement dominante → elle devient active
-            if (bestEntry && bestEntry.intersectionRatio >= 0.6) {
-                const video = bestEntry.target;
-
-                setActiveVideo(video);
-                video.muted = false;
-
-                await playVideo(video);
-            }
+          if (bestEntry && bestEntry.intersectionRatio >= 0.6) {
+    const video = bestEntry.target;
+    setActiveVideo(video);
+    // ✅ Garde muted=true pour iOS autoplay
+    video.muted = true;
+    await playVideo(video);
+}
         },
         {
             root: scrollContainer,
