@@ -19,10 +19,8 @@ let activeVideo = null;
 function stopVideo(video) {
   if (!video) return;
   try { video.pause(); } catch (_) {}
-  try { video.muted = true; } catch (_) {}
-  try { video.currentTime = 0; } catch (_) {}
-  // ❌ pas de video.load() ici
 }
+
 
 
 
@@ -32,21 +30,44 @@ async function playVideo(video) {
   try { await video.play(); } catch (e) {}
 }
 
+function activateVideoSource(video) {
+  if (!video) return;
+  // lazy src: on n’assigne src que quand la vidéo devient active
+  if (!video.getAttribute("src")) {
+    const url = video.dataset?.src;
+    if (url) video.setAttribute("src", url);
+  }
+  video.preload = "metadata";
+}
+
+function deactivateVideoSource(video) {
+  if (!video) return;
+  try { video.pause(); } catch (_) {}
+  // libère mémoire / décodeur (mobile)
+  try { video.removeAttribute("src"); } catch (_) {}
+  try { video.load(); } catch (_) {} // ✅ ici OK (pas dans stopVideo)
+}
+
 
 
 function setActiveVideo(video) {
-    if (!video || video === activeVideo) return;
+  if (!video || video === activeVideo) return;
 
-    // stop l'ancienne
-    if (activeVideo) stopVideo(activeVideo);
+  // 1) Désactive l’ancienne (libère ressources mobile)
+  if (activeVideo) {
+    deactivateVideoSource(activeVideo);
+  }
 
-    // stop toutes les autres (sécurité)
-    const all = videoContainer?.querySelectorAll("video") || [];
-    all.forEach(v => { if (v !== video) stopVideo(v); });
+  // 2) Désactive toutes les autres (sécurité)
+  const all = videoContainer?.querySelectorAll("video") || [];
+  all.forEach(v => { if (v !== video) deactivateVideoSource(v); });
 
+  // 3) Active la nouvelle (src lazy)
+  activateVideoSource(video);
 
-    activeVideo = video;
+  activeVideo = video;
 }
+
 
 
 // Flags
@@ -82,12 +103,23 @@ function unlockIOSOnce() {
   const v = videoContainer?.querySelector("video");
   if (!v) return;
 
+  // ✅ active une source juste pour “déverrouiller”
+  if (!v.getAttribute("src")) {
+    const url = v.dataset?.src;
+    if (url) v.setAttribute("src", url);
+  }
+
   v.muted = true;
   const p = v.play();
   if (p && p.catch) p.catch(() => {});
   v.pause();
   v.currentTime = 0;
+
+  // option: on relâche la source pour rester en lazy
+  v.removeAttribute("src");
+  v.load();
 }
+
 
 scrollContainer.addEventListener("touchstart", unlockIOSOnce, { once: true, passive: true });
 scrollContainer.addEventListener("click", unlockIOSOnce, { once: true });
@@ -321,7 +353,7 @@ console.log(`📹 ${videos.length} vidéos ajoutées (total: ${totalVideosLoaded
  * ✅ SUPPRIME LES VIDÉOS LES PLUS ANCIENNES (virtualization basique)
  */
 function removeOldestVideos(countToAdd) {
-    const videoItems = videoContainer.querySelectorAll(".video-item");
+   const videoItems = videoContainer.querySelectorAll(".video-card");
     const toRemove = Math.min(countToAdd, videoItems.length);
 
     for (let i = 0; i < toRemove; i++) {
