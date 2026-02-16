@@ -25,13 +25,32 @@ public class VideoOptimizationService {
 
     @Async
     public void optimizeVideoForMobile(Long videoId, String filename) {
-        System.out.println("🔄 Optimisation : " + filename);
+        System.out.println("🔄 Optimisation iOS : " + filename);
 
         Path originalPath = Paths.get(uploadDir, filename);
 
         try {
-            // ✅ DÉTECTION RÉSOLUTION
-            ProcessBuilder probeBuilder = new ProcessBuilder(
+            // ✅ 1. DÉTECTION CODEC
+            ProcessBuilder codecProbe = new ProcessBuilder(
+                    "ffprobe",
+                    "-v", "error",
+                    "-select_streams", "v:0",
+                    "-show_entries", "stream=codec_name",
+                    "-of", "default=noprint_wrappers=1:nokey=1",
+                    originalPath.toString()
+            );
+
+            Process codecProcess = codecProbe.start();
+            if (!codecProcess.waitFor(30, TimeUnit.SECONDS)) {
+                codecProcess.destroy();
+                throw new RuntimeException("FFprobe codec timeout");
+            }
+
+            BufferedReader codecReader = new BufferedReader(new InputStreamReader(codecProcess.getInputStream()));
+            String codec = codecReader.readLine();
+            
+            // ✅ 2. DÉTECTION RÉSOLUTION
+            ProcessBuilder resProbe = new ProcessBuilder(
                     "ffprobe",
                     "-v", "error",
                     "-select_streams", "v:0",
@@ -40,37 +59,46 @@ public class VideoOptimizationService {
                     originalPath.toString()
             );
 
-            Process probe = probeBuilder.start();
-            
-            // ✅ TIMEOUT 30 SECONDES
-            if (!probe.waitFor(30, TimeUnit.SECONDS)) {
-                probe.destroy();
-                throw new RuntimeException("FFprobe timeout");
+            Process resProcess = resProbe.start();
+            if (!resProcess.waitFor(30, TimeUnit.SECONDS)) {
+                resProcess.destroy();
+                throw new RuntimeException("FFprobe resolution timeout");
             }
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(probe.getInputStream()));
-            String dimensions = reader.readLine();
+            BufferedReader resReader = new BufferedReader(new InputStreamReader(resProcess.getInputStream()));
+            String dimensions = resReader.readLine();
 
+            boolean needsTranscode = false;
+            
+            // ✅ TRANSCODE SI codec ≠ h264
+            if (codec != null && !codec.equalsIgnoreCase("h264")) {
+                System.out.println("⚠️ Codec " + codec + " détecté, transcodage nécessaire pour iOS");
+                needsTranscode = true;
+            }
+            
+            // ✅ TRANSCODE SI > 1080p
             if (dimensions != null) {
                 String[] parts = dimensions.split(",");
                 int width = Integer.parseInt(parts[0]);
                 int height = Integer.parseInt(parts[1]);
 
-                // ✅ SI ≤ 1080p, SKIP
-                if (width <= 1920 && height <= 1080) {
-                    System.out.println("✅ Déjà 1080p, skip");
-
-                    videoRepository.findById(videoId).ifPresent(video -> {
-                        video.setStatus(VideoStatus.READY);
-                        videoRepository.save(video);
-                    });
-                    return;
+                if (width > 1920 || height > 1080) {
+                    System.out.println("⚠️ Résolution " + width + "x" + height + " détectée, downscale vers 1080p");
+                    needsTranscode = true;
                 }
-
-                System.out.println("🔄 4K détectée, optimisation...");
             }
 
-            // ✅ OPTIMISATION 4K → 1080p
+            // ✅ SKIP si déjà H.264 ≤ 1080p
+            if (!needsTranscode) {
+                System.out.println("✅ Déjà H.264 ≤ 1080p, skip");
+                videoRepository.findById(videoId).ifPresent(video -> {
+                    video.setStatus(VideoStatus.READY);
+                    videoRepository.save(video);
+                });
+                return;
+            }
+
+            // ✅ 3. TRANSCODAGE H.264 BASELINE (iOS COMPATIBLE)
             Path tempPath = Paths.get(uploadDir, "temp_" + filename);
 
             ProcessBuilder pb = new ProcessBuilder(
@@ -118,7 +146,7 @@ public class VideoOptimizationService {
                 videoRepository.findById(videoId).ifPresent(video -> {
                     video.setStatus(VideoStatus.READY);
                     videoRepository.save(video);
-                    System.out.println("✅ Vidéo #" + videoId + " READY");
+                    System.out.println("✅ Vidéo #" + videoId + " transcodée H.264 READY");
                 });
 
             } else {
