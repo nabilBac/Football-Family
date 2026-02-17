@@ -118,28 +118,10 @@ routes: {
     },
 
 async go(url) {
-  // ✅ Empêche l'admin de "flasher" vers l'accueil/feed
-  const fromAdmin =
-    location.pathname.startsWith("/admin") ||
-    location.pathname.startsWith("/club-admin");
-
-  const toHomeLike = (url === "/feed" || url === "/" || url === "/index.html");
-
-  if (fromAdmin && toHomeLike) {
-    console.error("🚫 REDIRECT BLOQUÉ depuis admin ->", url);
-    console.trace("STACK REDIRECT");
-    // Stocke la stack même si la console se nettoie
-    localStorage.setItem("FF_LAST_REDIRECT_URL", url);
-    localStorage.setItem("FF_LAST_REDIRECT_STACK", new Error("redirect").stack);
-    return; // <-- on bloque la redirection
-  }
-
   console.trace("[Router.go] ->", url);
   history.pushState(null, "", url);
   await this.navigate(url);
 },
-
-
 
 
     resolveRoute(url) {
