@@ -6,13 +6,7 @@ render() {
 
         // ✅ Reset le flag à chaque nouveau rendu de la page
     this._initialized = false;
-    // Charger CSS proprement
-    if (!document.querySelector('link[href="/css/upload.css"]')) {
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = "/css/upload.css";
-        document.head.appendChild(link);
-    }
+  
 
     return `
         <div class="upload-page-modern">
