@@ -359,17 +359,12 @@ if (url !== "/hub") {
             if (navbar) navbar.removeAttribute("style");
 
          
-// APRÈS - double requestAnimationFrame = attend que le browser applique les styles
 this.root.classList.remove("fade-out");
-requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-        this.root.classList.add("ready");
-    });
-});
 
+setTimeout(() => {
+    this.root.classList.add("ready");
+}, 50);
 
-
-// Retirer fade-in après l'animation (150ms au lieu de 300ms)
 setTimeout(() => {
     this.root.classList.remove("fade-in");
 }, 150);
