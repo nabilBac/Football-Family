@@ -193,12 +193,25 @@ function setupVideoAutoplayObserver() {
             // 2) Si une vidéo est clairement dominante → elle devient active
 if (bestEntry && bestEntry.intersectionRatio >= 0.6) {
   const video = bestEntry.target;
-
   setActiveVideo(video);
-
-  // ✅ applique le choix utilisateur : son ON => muted=false
+  
   video.muted = !(window.__ffSoundEnabled === true);
-
+  
+  // ✅ SYNC ICÔNE
+  const card = video.closest('.video-card');
+  if (card) {
+    const muteBtn = card.querySelector('.mute-btn i');
+    if (muteBtn) {
+      if (video.muted) {
+        muteBtn.classList.remove('fa-volume-high');
+        muteBtn.classList.add('fa-volume-xmark');
+      } else {
+        muteBtn.classList.remove('fa-volume-xmark');
+        muteBtn.classList.add('fa-volume-high');
+      }
+    }
+  }
+  
   await playVideo(video);
 }
 

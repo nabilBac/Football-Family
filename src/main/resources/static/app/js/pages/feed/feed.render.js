@@ -77,11 +77,12 @@ export const FeedRender = {
                         <i class="fa-solid fa-share"></i>
                     </button>
 
-                    <button class="mute-btn" 
-                            data-video-id="${id}"
-                            data-action="mute">
-                        <i class="fa-solid fa-volume-xmark"></i>
-                    </button>
+                 
+<button class="mute-btn" 
+        data-video-id="${id}"
+        data-action="mute">
+    <i class="fa-solid ${window.__ffSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'}"></i>
+</button>
                 </div>
             </div>
         `;
