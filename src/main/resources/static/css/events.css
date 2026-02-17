@@ -826,3 +826,9 @@ body.is-events-page .content-sections {
   height: calc(100vh - 200px);
   overflow-y: auto;
 }
+@media (max-width: 767px) {
+    .filters-section {
+        margin-top: 16px;
+        margin-bottom: 20px;
+    }
+}
