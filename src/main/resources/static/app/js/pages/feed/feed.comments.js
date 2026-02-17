@@ -116,6 +116,17 @@ export const Comments = {
         };
 
         await this.loadPage(0);
+        await this.loadPage(0);
+list.scrollTop = list.scrollHeight;
+
+// ✅ AJOUT : Mettre à jour le compteur sur la carte
+const card = document.querySelector(`[data-video-id="${this.state.videoId}"]`);
+if (card) {
+    const countEl = card.querySelector(".comment-count");
+    if (countEl) {
+        countEl.textContent = parseInt(countEl.textContent || 0) + 1;
+    }
+}
         list.scrollTop = list.scrollHeight;
     },
 

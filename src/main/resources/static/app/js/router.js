@@ -352,8 +352,6 @@ if (Page.init) await Page.init(resolved.params);
 
 if (token !== this.navToken) return; // ✅ H
 
-
-
          // 🔥 FIX du bouton + qui devient ovale après quitter un live
 if (url !== "/hub") {
     document.body.classList.remove("is-live-page");
@@ -366,8 +364,9 @@ if (url !== "/hub") {
 // Retirer fade-out immédiatement après render
 this.root.classList.remove("fade-out");
 
-// Ajouter fade-in IMMÉDIATEMENT (sans délai)
-this.root.classList.add("fade-in");
+this.root.classList.add("ready");
+
+
 
 // Retirer fade-in après l'animation (150ms au lieu de 300ms)
 setTimeout(() => {
