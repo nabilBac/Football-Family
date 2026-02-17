@@ -87,7 +87,7 @@ export const Comments = {
         if (!text) return;
 
         const res = await Auth.secureFetch(
-            `/api/videos/${this.state.videoId}/comments`,
+            `/api/comments/video/${this.state.videoId}`,
             {
                 method: "POST",
                 headers: {
