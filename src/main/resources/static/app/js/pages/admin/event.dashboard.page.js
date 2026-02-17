@@ -2277,10 +2277,15 @@ initEditMatchSchedule(eventId, token) {
     },
 
     extractErrorMessage(error) {
-        if (typeof error === 'string') return error;
-        if (error?.message) return error.message;
-        if (error?.error) return error.error;
-        return "Une erreur est survenue";
+      if (typeof error === 'string') return error;
+let msg = error?.payload?.message || error?.message || error?.error || "Une erreur est survenue";
+// Nettoyer le préfixe "Erreur serveur:"
+msg = msg.replace(/^Erreur (serveur|création)\s*:\s*/i, '');
+// Message quota plus lisible
+if (msg.toLowerCase().includes('quota')) {
+    return `⚠️ Quota atteint : ${msg}`;
+}
+return msg;
     },
 
     escapeHtml(text) {
