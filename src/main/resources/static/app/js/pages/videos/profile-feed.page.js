@@ -615,7 +615,7 @@ if (closeBtn) {
 
         // Charger commentaires
         try {
-            const res = await fetch(`/api/comments/video/${videoId}?page=0&size=20`, {
+            const res = await fetch(`/api/videos/${videoId}/comments?page=0&size=20`, {
                 headers: { "Authorization": Auth.getAuthHeader() }
             });
 
@@ -661,7 +661,7 @@ if (closeBtn) {
             if (!content) return;
 
             try {
-                const res = await fetch(`/api/comments/video/${videoId}`, {
+                const res = await fetch(`/api/videos/${videoId}/comments`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
