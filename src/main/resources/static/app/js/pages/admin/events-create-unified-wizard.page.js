@@ -1300,8 +1300,8 @@ const mappedLevel = levelMapping[this.formData.level] || 'AMATEUR';
         visibility: this.formData.visibility || 'PUBLIC',
         
         date: this.formData.date,
-        startTime: this.formData.startTime ? `${this.formData.date}T${this.formData.startTime}:00` : null,
-        endTime: this.formData.endTime ? `${this.formData.date}T${this.formData.endTime}:00` : null,
+        startTime: `${this.formData.date}T${this.formData.startTime || '09:00'}:00`,
+        endTime: `${this.formData.date}T${this.formData.endTime || '18:00'}:00`,
         
         city: this.formData.city,
         address: this.formData.address || '',
