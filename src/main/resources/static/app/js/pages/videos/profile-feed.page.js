@@ -193,100 +193,29 @@ requestAnimationFrame(() => {
   });
 });
 
-
 function setupVideoObserver() {
-  if (videoObserver) videoObserver.disconnect();
+    if (videoObserver) videoObserver.disconnect();
+    const items = Array.from(feed.querySelectorAll(".feed-item"));
 
-  const items = Array.from(feed.querySelectorAll(".feed-item"));
-
-  videoObserver = new IntersectionObserver(async (entries) => {
-    let best = null;
-
-    for (const e of entries) {
-      if (!e.isIntersecting) continue;
-      if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
-    }
-
-// stop uniquement si on change réellement de vidéo
-if (best && best.intersectionRatio >= 0.7) {
-  const item = best.target;
-  const video = item.querySelector(".feed-video-player");
-  if (!video) return;
-
-  if (video === activeVideo) return; // ✅ important
-
-  videos.forEach(v => { if (v !== video) stopVideo(v); });
-
-  const idx = items.indexOf(item);
-  if (idx >= 0) currentIndex = idx;
-
-  setActiveVideo(video);
-  await playVideo(video);
-}
-
-
-    // pas assez dominant → on ne joue rien
-    if (!best || best.intersectionRatio < 0.7) return;
-
-    const item = best.target;
-    const video = item.querySelector(".feed-video-player");
-    if (!video) return;
-
-    const idx = items.indexOf(item);
-    if (idx >= 0) currentIndex = idx;
-
-    setActiveVideo(video);
-    await playVideo(video);
-
-  }, {
-    root: feed,
-    threshold: [0, 0.25, 0.5, 0.7, 1.0]
-  });
-
-  items.forEach(it => videoObserver.observe(it));
-}
-
-// ✅ SUPPORT TACTILE MOBILE
-let touchStartY = 0;
-let touchEndY = 0;
-let isSwiping = false;
-
-feed.addEventListener("touchstart", (e) => {
-    touchStartY = e.touches[0].clientY;
-    isSwiping = false;
-});
-
-feed.addEventListener("touchmove", (e) => {
-    isSwiping = true;
-});
-
-feed.addEventListener("touchend", (e) => {
-    if (!isSwiping) return;
-    
-    touchEndY = e.changedTouches[0].clientY;
-    const swipeDistance = touchStartY - touchEndY;
-    
-    if (Math.abs(swipeDistance) < 50) return; // Swipe trop court
-    
-    if (swipeDistance > 0 && currentIndex < videos.length - 1) {
-        // Swipe up = vidéo suivante
-        currentIndex++;
-    } else if (swipeDistance < 0 && currentIndex > 0) {
-        // Swipe down = vidéo précédente
-        currentIndex--;
-    } else {
-        return;
-    }
-    
-    const pageH = feed.querySelector(".feed-item")?.clientHeight || feed.clientHeight;
-    
-    feed.scrollTo({
-        top: pageH * currentIndex,
-        behavior: "smooth",
+    videoObserver = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+            if (e.intersectionRatio < 0.8) continue;
+            const video = e.target.querySelector(".feed-video-player");
+            if (!video || video === activeVideo) continue;
+            const idx = items.indexOf(e.target);
+            if (idx >= 0) currentIndex = idx;
+            setActiveVideo(video);
+            playVideo(video);
+            break;
+        }
+    }, {
+        root: feed,
+        threshold: [0.8, 1.0]
     });
-    
-    // L'IntersectionObserver va s'occuper du play/pause
-});
+
+    items.forEach(it => videoObserver.observe(it));
+}
+
 
 setupVideoObserver();
 
