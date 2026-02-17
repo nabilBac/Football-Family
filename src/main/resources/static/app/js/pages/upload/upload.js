@@ -64,13 +64,12 @@ render() {
                                 <i class="fas fa-heading"></i>
                                 Titre de ton clip
                             </label>
-                            <input 
-                                type="text" 
-                                name="title" 
-                                placeholder="Décris ton meilleur moment..."
-                                maxlength="100"
-                                required
-                            >
+                          <input 
+    type="text" 
+    name="title" 
+    placeholder="Décris ton meilleur moment..."
+    maxlength="100"
+>
                             <span class="char-count">0/100</span>
                         </div>
 
@@ -244,6 +243,11 @@ async init() {
         uploadProgress.style.display = 'block';
 
         const formData = new FormData(form);
+
+// ✅ Titre par défaut si non rempli
+if (!formData.get('title') || formData.get('title').trim() === '') {
+    formData.set('title', 'Mon clip');
+}
         
         try {
             // Simuler progression
