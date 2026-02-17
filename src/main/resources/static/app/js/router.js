@@ -189,9 +189,7 @@ if (prev) {
 }
 
 if (token !== this.navToken) return;
-
-this.root.classList.remove("is-hub-page", "is-live-page", "fade-in", "fade-out");
-
+this.root.classList.remove("is-hub-page", "is-live-page", "fade-in", "fade-out", "ready");
 
         // 🟣 START TRANSITION (fade-out)
         this.root.classList.add("fade-out");
