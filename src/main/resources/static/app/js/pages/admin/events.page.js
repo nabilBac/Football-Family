@@ -2,12 +2,7 @@
 
 export const AdminEventsPage = {
 async render() {
-    if (!document.querySelector('link[href="/css/admin-nav.css"]')) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = '/css/admin-nav.css';
-        document.head.appendChild(link);
-    }
+  
     
     if (!document.querySelector('link[href="/css/admin-tabs.css"]')) {
         const link = document.createElement('link');
