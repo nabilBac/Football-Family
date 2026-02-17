@@ -4,7 +4,6 @@
 
 import { Router } from "../../router.js";
 import { ScoreUpdater } from "../../components/ScoreUpdater.js";
-import { AdminNav } from '../../components/admin-nav.js';
 
 const ROUND_LABELS = {
     BARRAGE: "⚔️ Barrages", 
@@ -89,8 +88,7 @@ if (myTeamsSection) {
     // ================================
  async render() {
     return `
-        ${AdminNav.render('events')}
-        <div class="admin-main" style="padding: 20px; margin-top: 60px;">
+<div class="admin-main" style="padding: 20px; margin-top: 60px;">
      <h1 id="event-dashboard-title" class="admin-title">⚽ Gestion de l'événement</h1>
 
 

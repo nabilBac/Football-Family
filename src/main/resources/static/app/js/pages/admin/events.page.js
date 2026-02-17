@@ -1,5 +1,4 @@
 // /static/app/js/pages/admin/events.page.js
-import { AdminNav } from '../../components/admin-nav.js';
 
 export const AdminEventsPage = {
 async render() {
@@ -18,8 +17,7 @@ async render() {
     }
 
     return `
-        ${AdminNav.render('events')}
-        <div class="admin-main">
+<div class="admin-main">
 
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h1 class="admin-title">Mes events</h1>

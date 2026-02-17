@@ -1,11 +1,9 @@
 
-import { AdminNav } from '../../components/admin-nav.js';
 
 export const AdminTeamsPage = {
   async render() {
     return `
-        ${AdminNav.render('teams')}
-        <div class="admin-main" style="padding: 20px; margin-top: 60px;">
+<div class="admin-main" style="padding: 20px; margin-top: 60px;">
             <h1 class="admin-title">Mes équipes</h1>
 
             <!-- Bouton pour créer une équipe -->

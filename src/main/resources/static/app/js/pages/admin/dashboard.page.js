@@ -1,12 +1,10 @@
 // /app/js/pages/admin/dashboard.page.js
 // ✅ VERSION AMÉLIORÉE - Dashboard professionnel avec personnalisation
-import { AdminNav } from '../../components/admin-nav.js';
+
 
 export const AdminDashboardPage = {
-
 async render() {
     return `
-        ${AdminNav.render('dashboard')}
         <div class="admin-main" style="padding: 20px; margin-top: 40px;">
             <div id="admin-dashboard-content"></div>
         </div>
