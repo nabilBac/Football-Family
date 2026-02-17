@@ -3,6 +3,9 @@ import { FeedService } from "../../services/feed.service.js";
 
 export const UploadPage = {
 render() {
+
+        // ✅ Reset le flag à chaque nouveau rendu de la page
+    this._initialized = false;
     // Charger CSS proprement
     if (!document.querySelector('link[href="/css/upload.css"]')) {
         const link = document.createElement("link");
@@ -217,13 +220,13 @@ async init() {
     });
 
     // 🔥 FIX : stopPropagation aussi ici
-    btnChangeVideo.addEventListener('click', (e) => {
-        e.stopPropagation();
-        fileInput.value = '';
-        dropPlaceholder.style.display = 'flex';
-        videoPreview.style.display = 'none';
-        btnUpload.disabled = false;
-    });
+  btnChangeVideo.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fileInput.value = '';
+    dropPlaceholder.style.display = 'flex';
+    videoPreview.style.display = 'none';
+    btnUpload.disabled = true; // ← était false, doit être true (pas de vidéo = bouton désactivé)
+});
 
     function handleFileSelect(file) {
         const url = URL.createObjectURL(file);
