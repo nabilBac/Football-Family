@@ -3,6 +3,7 @@
 
 import { Auth } from "./auth.js";
 import { Navbar } from "./components/navbar.js";
+import { AdminHeader } from './components/admin-header.js';
 
 function updateNavbarButtonVisibility() {
     const app = document.getElementById("app");
@@ -331,16 +332,28 @@ const hideNavbar =
 const hidePostButton = (url === "/hub");
 const isAdminPage = url.startsWith("/club-admin") || url.startsWith("/admin");
 
+
+// ... dans navigate()
 const pageHtml =
   Page.render.length > 0
     ? await Page.render(resolved.params)
     : await Page.render();
 
-if (token !== this.navToken) return; // ✅ F
+if (token !== this.navToken) return;
 
-this.root.innerHTML = (hideNavbar || isAdminPage)
-  ? pageHtml
-  : `${pageHtml}${Navbar({ hidePostButton })}`;
+// ✅ Injection intelligente navbar/admin
+if (isAdminPage) {
+    this.root.innerHTML = `${AdminHeader.render()}${pageHtml}`;
+} else if (hideNavbar) {
+    this.root.innerHTML = pageHtml;
+} else {
+    this.root.innerHTML = `${pageHtml}${Navbar({ hidePostButton })}`;
+}
+
+// ✅ Init admin si page admin
+if (isAdminPage && AdminHeader.init) {
+    AdminHeader.init();
+}
 
 if (token !== this.navToken) return; // ✅ G
 
