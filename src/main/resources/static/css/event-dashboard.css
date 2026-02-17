@@ -1035,3 +1035,7 @@
         width: 100% !important;
     }
 }
+/* FIX SAFE: sur le dashboard admin, texte doit être sombre */
+.admin-main { color: #111; }
+.admin-main span, .admin-main h2, .admin-main h3 { color: #111; }
+
