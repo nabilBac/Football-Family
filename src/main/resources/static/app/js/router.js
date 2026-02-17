@@ -361,10 +361,13 @@ if (url !== "/hub") {
             if (navbar) navbar.removeAttribute("style");
 
          
-// Retirer fade-out immédiatement après render
+// APRÈS - double requestAnimationFrame = attend que le browser applique les styles
 this.root.classList.remove("fade-out");
-
-this.root.classList.add("ready");
+requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+        this.root.classList.add("ready");
+    });
+});
 
 
 
