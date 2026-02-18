@@ -192,7 +192,7 @@ if (!isCurrentUser && Auth.currentUser?.id && user?.id && Number(Auth.currentUse
           <div class="video-grid" data-user-id="${user.id}">
           ${videos
   .map(
-    (v) => `
+   (v) => `
   <div class="video-item" data-id="${v.id}">
     <div class="thumbnail-wrapper">
       <img src="/videos/${v.thumbnailUrl || v.filename}"
@@ -203,14 +203,17 @@ if (!isCurrentUser && Auth.currentUser?.id && user?.id && Number(Auth.currentUse
           <div class="video-stat"><i class="fas fa-heart"></i><span>${v.likesCount ?? 0}</span></div>
           <div class="video-stat"><i class="fas fa-comment"></i><span>${v.commentsCount ?? 0}</span></div>
         </div>
-        ${isCurrentUser ? `
-          <button class="delete-video-btn" data-video-id="${v.id}" title="Supprimer">
-            <i class="fas fa-trash"></i>
-          </button>
-        ` : ""}
       </div>
+
+      ${isCurrentUser ? `
+        <button class="delete-video-btn" data-video-id="${v.id}" title="Supprimer">
+          <i class="fas fa-trash"></i>
+        </button>
+      ` : ""}
+
     </div>
   </div>
+
 `
   )
   .join("")}
