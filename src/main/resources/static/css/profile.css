@@ -1362,3 +1362,21 @@ body.editing-mode .btn-delete-video {
         pointer-events: auto !important;
     }
 }
+.profile-page .thumbnail-wrapper .delete-video-btn {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    position: absolute !important;
+    top: 6px !important;
+    right: 6px !important;
+    z-index: 999 !important;
+    width: 30px !important;
+    height: 30px !important;
+    background: rgba(220, 38, 38, 0.85) !important;
+    border-radius: 50% !important;
+    border: none !important;
+    color: white !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
