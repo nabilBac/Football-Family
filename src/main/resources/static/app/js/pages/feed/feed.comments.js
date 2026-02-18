@@ -82,6 +82,7 @@ export const Comments = {
     // 🔵 ENVOYER UN COMMENTAIRE - ✅ CORRIGÉ
     // -----------------------------------------------------
     async sendComment() {
+         console.log("📤 sendComment() appelé pour videoId=", this.state.videoId);
         const input = document.getElementById("comments-input-field");
         const text = input.value.trim();
         if (!text) return;

@@ -118,6 +118,7 @@ if (v) {
 
     subscribeToStatsUpdates(videoId) {
         WebSocketService.subscribeStats(videoId, (data) => {
+            console.log(`📊 STATS WS reçu videoId=${data.videoId}`, JSON.stringify(data));
             if (!data || data.videoId == null) return;
 
             const card = document.querySelector(`[data-video-id="${data.videoId}"]`);
