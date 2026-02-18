@@ -1349,3 +1349,16 @@ body.editing-mode .btn-delete-video {
 .delete-video-btn:hover {
     background: rgb(220, 38, 38);
 }
+
+/* ✅ Mobile : overlay et poubelle toujours visibles */
+@media (max-width: 768px) {
+    .profile-page .video-overlay {
+        opacity: 1 !important;
+        background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%) !important;
+    }
+
+    .profile-page .delete-video-btn {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+}
