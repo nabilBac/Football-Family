@@ -190,25 +190,30 @@ if (!isCurrentUser && Auth.currentUser?.id && user?.id && Number(Auth.currentUse
           `
             : `
           <div class="video-grid" data-user-id="${user.id}">
-            ${videos
-              .map(
-                (v) => `
-              <div class="video-item" data-id="${v.id}">
-                <div class="thumbnail-wrapper">
-                  <img src="/videos/${v.thumbnailUrl || v.filename}"
-                       onerror="this.src='https://picsum.photos/400/600?random=${v.id}'"/>
+          ${videos
+  .map(
+    (v) => `
+  <div class="video-item" data-id="${v.id}">
+    <div class="thumbnail-wrapper">
+      <img src="/videos/${v.thumbnailUrl || v.filename}"
+           onerror="this.src='https://picsum.photos/400/600?random=${v.id}'"/>
 
-                  <div class="video-overlay">
-                    <div class="video-stats">
-                      <div class="video-stat"><i class="fas fa-heart"></i><span>${v.likesCount ?? 0}</span></div>
-                      <div class="video-stat"><i class="fas fa-comment"></i><span>${v.commentsCount ?? 0}</span></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            `
-              )
-              .join("")}
+      <div class="video-overlay">
+        <div class="video-stats">
+          <div class="video-stat"><i class="fas fa-heart"></i><span>${v.likesCount ?? 0}</span></div>
+          <div class="video-stat"><i class="fas fa-comment"></i><span>${v.commentsCount ?? 0}</span></div>
+        </div>
+        ${isCurrentUser ? `
+          <button class="delete-video-btn" data-video-id="${v.id}" title="Supprimer">
+            <i class="fas fa-trash"></i>
+          </button>
+        ` : ""}
+      </div>
+    </div>
+  </div>
+`
+  )
+  .join("")}
           </div>
           `
         }
@@ -220,6 +225,31 @@ if (!isCurrentUser && Auth.currentUser?.id && user?.id && Number(Auth.currentUse
 }
 
 export function init(params) {
+
+
+  // 🗑️ SUPPRESSION VIDÉO
+document.querySelectorAll(".delete-video-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+        e.stopPropagation(); // empêche d'ouvrir la vidéo
+
+        const videoId = btn.dataset.videoId;
+        if (!confirm("Supprimer cette vidéo définitivement ?")) return;
+
+        try {
+            const res = await Auth.secureFetch(`/api/videos/${videoId}`, {
+                method: "DELETE"
+            });
+
+            if (!res.ok) throw new Error();
+
+            // Retire la carte du DOM sans recharger la page
+            btn.closest(".video-item").remove();
+
+        } catch (e) {
+            alert("Erreur lors de la suppression.");
+        }
+    });
+});
     // Navigation vers feed immersif depuis une vidéo
     document.querySelectorAll(".video-item").forEach((item) => {
         item.addEventListener("click", () => {
