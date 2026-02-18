@@ -300,25 +300,22 @@ if (Auth.accessToken && location.pathname !== "/login") {
         const username = usernameInput.value.trim();
         const password = passwordInput.value.trim();
 
-        try {
+       try {
+    // Vérifier offline
+    if (!navigator.onLine) {
+        throw new Error("Vous êtes hors-ligne");
+    }
 
-            // Vérifier offline
-            if (!navigator.onLine) {
-                throw new Error("Vous êtes hors-ligne");
-            }
+    // Appel API → Auth.login()
+    const user = await Auth.login(username, password);
 
-            // Appel API → Auth.login()
-            const user = await Auth.login(username, password);
+    // Haptics success
+    if (navigator.vibrate) navigator.vibrate([10, 10]);
 
-            // Haptics success
-            if (navigator.vibrate) navigator.vibrate([10, 10]);
+    // ✅ REDIRECTION IMMÉDIATE (iOS Safari compatible)
+    autoRedirectAfterLogin(user);
 
-            // Delay léger pour smooth UX
-            setTimeout(() => {
-                autoRedirectAfterLogin(user);
-            }, 300);
-
-        } catch (err) {
+} catch (err) {
 
             console.error("Erreur login:", err);
 
