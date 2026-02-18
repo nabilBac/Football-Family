@@ -81,55 +81,40 @@ export const Comments = {
     // -----------------------------------------------------
     // 🔵 ENVOYER UN COMMENTAIRE - ✅ CORRIGÉ
     // -----------------------------------------------------
-    async sendComment() {
-         console.log("📤 sendComment() appelé pour videoId=", this.state.videoId);
-        const input = document.getElementById("comments-input-field");
-        const text = input.value.trim();
-        if (!text) return;
+ async sendComment() {
+    const input = document.getElementById("comments-input-field");
+    const text = input.value.trim();
+    if (!text) return;
 
-        const res = await Auth.secureFetch(
-            `/api/comments/video/${this.state.videoId}`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"  // ✅ AJOUTÉ
-                },
-                body: JSON.stringify({ content: text })
-            }
-        );
-
-        if (!res.ok) {
-            alert("Erreur d'envoi");
-            return;
+    const res = await Auth.secureFetch(
+        `/api/comments/video/${this.state.videoId}`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: text })
         }
+    );
 
-      input.value = "";
-
-const list = document.getElementById("comments-list");
-list.innerHTML = "";
-
-this.state = {
-    page: 0,
-    loading: false,
-    lastPage: false,
-    videoId: this.state.videoId
-};
-
-await this.loadPage(0);        // ← une seule fois
-list.scrollTop = list.scrollHeight;
-
-// ✅ SUPPRIME le bloc +1 manuel — le WebSocket s'en charge
-
-// ✅ AJOUT : Mettre à jour le compteur sur la carte
-const card = document.querySelector(`[data-video-id="${this.state.videoId}"]`);
-if (card) {
-    const countEl = card.querySelector(".comment-count");
-    if (countEl) {
-        countEl.textContent = parseInt(countEl.textContent || 0) + 1;
+    if (!res.ok) {
+        alert("Erreur d'envoi");
+        return;
     }
-}
-        list.scrollTop = list.scrollHeight;
-    },
+
+    input.value = "";
+
+    const list = document.getElementById("comments-list");
+    list.innerHTML = "";
+
+    this.state = {
+        page: 0,
+        loading: false,
+        lastPage: false,
+        videoId: this.state.videoId
+    };
+
+    await this.loadPage(0);
+    list.scrollTop = list.scrollHeight;
+},
 
     // -----------------------------------------------------
     // 🔵 CHARGER UNE PAGE DE COMMENTAIRES
