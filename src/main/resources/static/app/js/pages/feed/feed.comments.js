@@ -102,22 +102,22 @@ export const Comments = {
             return;
         }
 
-        input.value = "";
+      input.value = "";
 
-        // Pas besoin de rafraîchir — WebSocket s'en charge ✔
-        const list = document.getElementById("comments-list");
-        list.innerHTML = "";
+const list = document.getElementById("comments-list");
+list.innerHTML = "";
 
-        this.state = {
-            page: 0,
-            loading: false,
-            lastPage: false,
-            videoId: this.state.videoId
-        };
+this.state = {
+    page: 0,
+    loading: false,
+    lastPage: false,
+    videoId: this.state.videoId
+};
 
-        await this.loadPage(0);
-        await this.loadPage(0);
+await this.loadPage(0);        // ← une seule fois
 list.scrollTop = list.scrollHeight;
+
+// ✅ SUPPRIME le bloc +1 manuel — le WebSocket s'en charge
 
 // ✅ AJOUT : Mettre à jour le compteur sur la carte
 const card = document.querySelector(`[data-video-id="${this.state.videoId}"]`);

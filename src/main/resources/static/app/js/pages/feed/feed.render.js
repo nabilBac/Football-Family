@@ -117,8 +117,7 @@ if (v) {
     },
 
     subscribeToStatsUpdates(videoId) {
-       WebSocketService.subscribeStats(videoId, (data) => {
-    console.log(`📨 Stats WS reçu pour videoId subscribed=${videoId}, data.videoId=${data.videoId}`, data);
+        WebSocketService.subscribeStats(videoId, (data) => {
             if (!data || data.videoId == null) return;
 
             const card = document.querySelector(`[data-video-id="${data.videoId}"]`);
