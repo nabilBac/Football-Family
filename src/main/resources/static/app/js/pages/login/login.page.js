@@ -5,6 +5,11 @@ export function render() {
     <div class="login-page">
         <div class="login-container">
 
+                          <!-- ✅ BOUTON DEBUG TEMPORAIRE -->
+            <button id="debugBtn" style="position:fixed;top:10px;right:10px;z-index:9999;background:red;color:white;padding:10px;border:none;border-radius:5px;">
+                🐛 Debug
+            </button>
+
             <h1 class="login-title">Login</h1>
 
             <div id="errorMsg"></div>
@@ -26,5 +31,16 @@ export function render() {
 
 export function init() {
     console.log("Page login stylisée initialisée");
-    initLogin();   // 🔥 OBLIGATOIRE !!!
+    
+    // ✅ BOUTON DEBUG
+    document.getElementById('debugBtn')?.addEventListener('click', () => {
+        const info = `
+Token: ${localStorage.getItem('accessToken') || 'null'}
+User: ${localStorage.getItem('currentUser') || 'null'}
+Navigator: ${navigator.userAgent}
+        `.trim();
+        alert(info);
+    });
+    
+    initLogin();
 }

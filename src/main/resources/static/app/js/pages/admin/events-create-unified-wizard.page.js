@@ -11,15 +11,35 @@ export const UnifiedEventWizardPage = {
     userType: null, // 'CLUB' ou 'PUBLIC'
     autoSaveKey: 'ff_event_draft',
         isCreating: false, 
+        _booted: false,
+
+                resetWizardState({ clearDraft = false } = {}) {
+  this.currentStep = 1;
+  this.formData = {};
+  this.isCreating = false;
+    this._booted = false;
+
+  // stop autosave proprement
+  if (this.autoSaveInterval) {
+    clearInterval(this.autoSaveInterval);
+    this.autoSaveInterval = null;
+  }
+
+  // option : supprimer le draft
+  if (clearDraft) {
+    localStorage.removeItem(this.autoSaveKey);
+  }
+},
+
 
     async render() {
-        // Détection automatique du type d'utilisateur
-        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
-
-        
-        // Récupération draft si existe
-        this.loadDraft();
+              if (!this._booted) {
+    this._booted = true;
+    this.loadDraft();
+  }
+  // Détection automatique du type d'utilisateur
+  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
 
         return `
         <div class="unified-wizard-page">
@@ -35,6 +55,10 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
                         ? 'Tournoi officiel pour votre club' 
                         : 'Organisez votre tournoi amateur'}
                 </p>
+                <button id="btn-new-form" class="btn-wizard btn-secondary" style="margin-top:10px;">
+  ♻️ Nouveau formulaire
+</button>
+
             </div>
 
             <div class="wizard-container">
@@ -478,170 +502,86 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
     // ===================================
     // ÉTAPE 4 : CONFIGURATION
     // ===================================
-    renderStep4() {
-        const isClub = this.userType === 'CLUB';
-        
-        return `
-            <div class="step-container">
-                <div class="step-header">
-                    <h2>⚙️ Configuration</h2>
-                    <p>Paramètres d'inscription et visibilité</p>
-                </div>
+renderStep4() {
+    console.log("✅ STEP4 VERSION: CLUB_ONLY v2026-02-19");
 
-                <div class="form-grid">
-                    <!-- Type événement -->
-                    <div class="form-group full-width">
-                        <label class="required">Type d'événement</label>
-                        <div class="radio-cards">
-                            <label class="radio-card ${isClub ? 'checked' : ''}">
-                                <input 
-                                    type="radio" 
-                                    name="event-type" 
-                                    value="CLUB_EVENT"
-                                    ${isClub ? 'checked' : ''}
-                                    ${!isClub ? 'disabled' : ''}
-                                />
-                                <div class="radio-content">
-                                    <i class="fas fa-shield-alt"></i>
-                                    <strong>Tournoi Club</strong>
-                                    <small>Réservé aux clubs avec SIRET</small>
-                                </div>
-                            </label>
-                            <label class="radio-card ${!isClub ? 'checked' : ''}">
-                                <input 
-                                    type="radio" 
-                                    name="event-type" 
-                                    value="OPEN_EVENT"
-                                    ${!isClub ? 'checked' : ''}
-                                />
-                                <div class="radio-content">
-                                    <i class="fas fa-users"></i>
-                                    <strong>Événement Ouvert</strong>
-                                    <small>Accessible à tous</small>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
+  // On force le métier
+ this.formData.registrationType = "CLUB_ONLY";
+this.formData.type = "CLUB_EVENT"; // ✅ on utilise "type" partout
 
-                    <!-- Mode inscription -->
-                    <div class="form-group full-width">
-                        <label class="required">Mode d'inscription</label>
-                        <div class="radio-cards">
-                            <label class="radio-card ${isClub ? 'checked' : ''}">
-                                <input 
-                                    type="radio" 
-                                    name="registration-type" 
-                                    value="CLUB_ONLY"
-                                    ${isClub ? 'checked' : ''}
-                                />
-                                <div class="radio-content">
-                                    <i class="fas fa-building"></i>
-                                    <strong>Clubs uniquement</strong>
-                                    <small>Inscription par équipes de clubs</small>
-                                </div>
-                            </label>
-                            <label class="radio-card ${!isClub ? 'checked' : ''}">
-                                <input 
-                                    type="radio" 
-                                    name="registration-type" 
-                                    value="INDIVIDUAL"
-                                />
-                                <div class="radio-content">
-                                    <i class="fas fa-user"></i>
-                                    <strong>Individuelle (UTF)</strong>
-                                    <small>Joueurs seuls, équipes formées auto</small>
-                                </div>
-                            </label>
-                            <label class="radio-card">
-                                <input 
-                                    type="radio" 
-                                    name="registration-type" 
-                                    value="OPEN"
-                                />
-                                <div class="radio-content">
-                                    <i class="fas fa-unlock"></i>
-                                    <strong>Ouverte</strong>
-                                    <small>Clubs ET individuels</small>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
 
-                    <!-- UTF Options (si INDIVIDUAL sélectionné) -->
-                    <div id="utf-options" style="display: none;" class="form-group full-width">
-                        <div class="subsection">
-                            <h4>⚽ Configuration UTF (Équipes automatiques)</h4>
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label>Nombre d'équipes</label>
-                                    <input 
-                                        type="number"
-                                        id="utf-num-teams"
-                                        min="2"
-                                        max="32"
-                                        value="${this.formData.utfNumTeams || 8}"
-                                        class="form-control"
-                                    />
-                                </div>
-                                <div class="form-group">
-                                    <label>Taille des équipes</label>
-                                    <select id="utf-team-size" class="form-control">
-                                        <option value="5" ${this.formData.utfTeamSize === 5 ? 'selected' : ''}>5v5</option>
-                                        <option value="7" ${this.formData.utfTeamSize === 7 ? 'selected' : ''}>7v7</option>
-                                        <option value="11" ${this.formData.utfTeamSize === 11 ? 'selected' : ''}>11v11</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+this.formData.visibility = this.formData.visibility || "PUBLIC";
+const visibility = this.formData.visibility;
 
-                    <!-- Visibilité -->
-                    <div class="form-group full-width">
-                        <label class="required">Visibilité</label>
-                        <div class="radio-cards">
-                            <label class="radio-card checked">
-                                <input 
-                                    type="radio" 
-                                    name="visibility" 
-                                    value="PUBLIC"
-                                    checked
-                                />
-                                <div class="radio-content">
-                                    <i class="fas fa-globe"></i>
-                                    <strong>Public</strong>
-                                    <small>Visible par tous</small>
-                                </div>
-                            </label>
-                            <label class="radio-card">
-                                <input 
-                                    type="radio" 
-                                    name="visibility" 
-                                    value="CLUB"
-                                />
-                                <div class="radio-content">
-                                    <i class="fas fa-lock"></i>
-                                    <strong>Clubs uniquement</strong>
-                                    <small>Réservé aux membres de clubs</small>
-                                </div>
-                            </label>
-                            <label class="radio-card">
-                                <input 
-                                    type="radio" 
-                                    name="visibility" 
-                                    value="PRIVATE"
-                                />
-                                <div class="radio-content">
-                                    <i class="fas fa-eye-slash"></i>
-                                    <strong>Privé</strong>
-                                    <small>Sur invitation uniquement</small>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+
+  return `
+
+
+    <div class="step-container">
+      <div class="step-header">
+        <h2>⚙️ Configuration</h2>
+        <p>Visibilité et règles d'inscription</p>
+      </div>
+
+      <div class="form-grid">
+
+        <!-- Inscriptions : fixe -->
+        <div class="form-group full-width">
+          <label class="required">Inscriptions</label>
+          <div class="subsection" style="padding:12px; border-radius:12px;">
+            <div style="display:flex; gap:10px; align-items:center;">
+              <i class="fas fa-building"></i>
+              <div>
+                <strong>Clubs uniquement</strong>
+                <small style="display:block; opacity:.85;">
+                  Seuls les admins de club (SIRET) peuvent inscrire leurs équipes.
+                </small>
+              </div>
             </div>
-        `;
-    },
+          </div>
+        </div>
+
+        <!-- Visibilité -->
+        <div class="form-group full-width">
+          <label class="required">Visibilité (affichage dans le feed)</label>
+          <div class="radio-cards">
+            <label class="radio-card ${visibility === 'PUBLIC' ? 'checked' : ''}">
+              <input type="radio" name="visibility" value="PUBLIC" ${visibility === 'PUBLIC' ? 'checked' : ''}/>
+              <div class="radio-content">
+                <i class="fas fa-globe"></i>
+                <strong>Public</strong>
+                <small>Visible par tous (inscription reste club-only)</small>
+              </div>
+            </label>
+
+            <label class="radio-card ${visibility === 'CLUB' ? 'checked' : ''}">
+              <input type="radio" name="visibility" value="CLUB" ${visibility === 'CLUB' ? 'checked' : ''}/>
+              <div class="radio-content">
+                <i class="fas fa-lock"></i>
+                <strong>Clubs uniquement</strong>
+                <small>Visible seulement par les membres de clubs</small>
+              </div>
+            </label>
+
+            <label class="radio-card ${visibility === 'PRIVATE' ? 'checked' : ''}">
+              <input type="radio" name="visibility" value="PRIVATE" ${visibility === 'PRIVATE' ? 'checked' : ''}/>
+              <div class="radio-content">
+                <i class="fas fa-eye-slash"></i>
+                <strong>Privé</strong>
+                <small>Sur invitation uniquement</small>
+              </div>
+            </label>
+          </div>
+
+          <div class="hint" style="margin-top:8px; opacity:.85;">
+            ℹ️ Un événement peut être <strong>PUBLIC</strong> tout en gardant les inscriptions réservées aux <strong>clubs admin</strong>.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+},
 
     // ===================================
     // ÉTAPE 5 : EXTRAS (OPTIONNEL)
@@ -902,82 +842,114 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
         `;
     },
 
+    bindStep4Listeners() {
+  // Visibilité : met à jour formData + UI
+  document.querySelectorAll('input[name="visibility"]').forEach(r => {
+    r.addEventListener('change', () => {
+      this.formData.visibility = r.value;
+
+      // Met à jour la classe checked sur les cartes
+      document.querySelectorAll('input[name="visibility"]').forEach(x => {
+        x.closest('.radio-card')?.classList.toggle('checked', x.checked);
+      });
+
+      this.saveDraft();
+    });
+  });
+    document.querySelectorAll('input[name="visibility"]').forEach(x => {
+  x.closest('.radio-card')?.classList.toggle('checked', x.checked);
+});
+},
+
+
     // ===================================
     // INITIALISATION
     // ===================================
-    async init() {
-        // Gestion photo upload
-        this.initPhotoUpload();
-        
-        // Navigation
-        const btnNext = document.getElementById('btn-next');
-        const btnPrev = document.getElementById('btn-prev');
-        const btnCreate = document.getElementById('btn-create');
-        const btnClose = document.getElementById('btn-close-wizard');
-        const btnSkip = document.getElementById('btn-skip');
+async init() {
+  // ✅ Init step-specific
+  if (this.currentStep === 1) {
+    this.initPhotoUpload();
+  }
 
-        if (btnNext) {
-            btnNext.addEventListener('click', () => this.nextStep());
-        }
+  if (this.currentStep === 4) {
+    this.bindStep4Listeners();
+  }
 
-        if (btnPrev) {
-            btnPrev.addEventListener('click', () => this.previousStep());
-        }
+  // Navigation
+  const btnNext = document.getElementById('btn-next');
+  const btnPrev = document.getElementById('btn-prev');
+  const btnCreate = document.getElementById('btn-create');
+  const btnClose = document.getElementById('btn-close-wizard');
+  const btnSkip = document.getElementById('btn-skip');
+  const btnNewForm = document.getElementById('btn-new-form');
 
-        if (btnCreate) {
-            btnCreate.addEventListener('click', () => this.createEvent());
-        }
+if (btnNewForm) {
+  btnNewForm.addEventListener('click', async () => {
+    const ok = confirm("♻️ Repartir de zéro ? Cela supprime le brouillon.");
+    if (!ok) return;
 
-       if (btnClose) {
-    btnClose.addEventListener('click', () => {
-        if (confirm('Êtes-vous sûr de vouloir quitter ? Vos modifications seront sauvegardées.')) {
-            this.saveDraft();
-            
-            // 🔥 ARRÊTER L'AUTO-SAVE
-            if (this.autoSaveInterval) {
-                clearInterval(this.autoSaveInterval);
-                this.autoSaveInterval = null;
-            }
-            
-            Router.go('/admin/events');
-        }
-    });
+    // reset + supprime draft
+    this.resetWizardState({ clearDraft: true });
+
+    // Re-render complet de la page (propre)
+    const container = document.getElementById("app");
+    if (container) {
+      container.innerHTML = await this.render();
+      await this.init();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // fallback
+      await this.refreshView();
+    }
+  });
 }
 
-        if (btnSkip) {
-            btnSkip.addEventListener('click', () => this.nextStep());
+
+  if (btnNext) btnNext.addEventListener('click', () => this.nextStep());
+  if (btnPrev) btnPrev.addEventListener('click', () => this.previousStep());
+  if (btnCreate) btnCreate.addEventListener('click', () => this.createEvent());
+
+  if (btnClose) {
+    btnClose.addEventListener('click', () => {
+      if (confirm('Êtes-vous sûr de vouloir quitter ? Vos modifications seront sauvegardées.')) {
+        this.saveDraft();
+
+        if (this.autoSaveInterval) {
+          clearInterval(this.autoSaveInterval);
+          this.autoSaveInterval = null;
         }
 
-        // Suggestions rapides
-        document.querySelectorAll('.btn-quick').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const value = e.target.dataset.value;
-                document.getElementById('max-participants').value = value;
-            });
-        });
+        Router.go('/admin/events');
+      }
+    });
+  }
 
-        // UTF options toggle
-        const registrationRadios = document.querySelectorAll('input[name="registration-type"]');
-        registrationRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                const utfOptions = document.getElementById('utf-options');
-                if (utfOptions) {
-                    utfOptions.style.display = e.target.value === 'INDIVIDUAL' ? 'block' : 'none';
-                }
-            });
-        });
+  if (btnSkip) btnSkip.addEventListener('click', () => this.nextStep());
 
-        // Focus premier champ
-        setTimeout(() => {
-            const firstInput = document.querySelector('input:not([type="radio"]):not([type="checkbox"]), select, textarea');
-            if (firstInput) firstInput.focus();
-        }, 100);
+  // Suggestions rapides (step 3)
+  if (this.currentStep === 3) {
+    document.querySelectorAll('.btn-quick').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const value = e.target.dataset.value;
+        const el = document.getElementById('max-participants');
+        if (el) el.value = value;
+      });
+    });
+  }
 
-        // Auto-save toutes les 30s
-        this.autoSaveInterval = setInterval(() => {
-            this.saveDraft();
-        }, 30000);
-    },
+
+  // Focus premier champ
+  setTimeout(() => {
+    const firstInput = document.querySelector('input:not([type="radio"]):not([type="checkbox"]), select, textarea');
+    if (firstInput) firstInput.focus();
+  }, 100);
+
+  // Auto-save toutes les 30s (⚠️ évite d'empiler des intervals)
+  if (!this.autoSaveInterval) {
+    this.autoSaveInterval = setInterval(() => this.saveDraft(), 30000);
+  }
+},
+
 
     // ===================================
     // NAVIGATION
@@ -1109,16 +1081,16 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
                 this.formData.registrationDeadline = document.getElementById('deadline')?.value;
                 break;
 
-            case 4:
-                this.formData.eventType = document.querySelector('input[name="event-type"]:checked')?.value;
-                this.formData.registrationType = document.querySelector('input[name="registration-type"]:checked')?.value;
-                this.formData.visibility = document.querySelector('input[name="visibility"]:checked')?.value;
-                
-                if (this.formData.registrationType === 'INDIVIDUAL') {
-                    this.formData.utfNumTeams = parseInt(document.getElementById('utf-num-teams')?.value, 10);
-                    this.formData.utfTeamSize = parseInt(document.getElementById('utf-team-size')?.value, 10);
-                }
-                break;
+          case 4:
+this.formData.type = "CLUB_EVENT";
+this.formData.registrationType = "CLUB_ONLY";
+
+  this.formData.visibility =
+    document.querySelector('input[name="visibility"]:checked')?.value
+    || this.formData.visibility
+    || "PUBLIC";
+  break;
+
 
             case 5:
                 this.formData.rules = document.getElementById('rules')?.value.trim();
@@ -1205,10 +1177,11 @@ this.userType = currentUser.clubId ? 'CLUB' : 'PUBLIC';
                 break;
 
             case 4:
-                if (!this.formData.eventType) {
-                    this.showAlert('Le type d\'événement est obligatoire', 'error');
-                    return false;
-                }
+              if (!this.formData.type) {
+  this.showAlert('Le type d\'événement est obligatoire', 'error');
+  return false;
+}
+
                 if (!this.formData.registrationType) {
                     this.showAlert('Le mode d\'inscription est obligatoire', 'error');
                     return false;
@@ -1295,8 +1268,10 @@ const mappedLevel = levelMapping[this.formData.level] || 'AMATEUR';
         level: mappedLevel,
         format: this.formData.format,
         
-        type: 'CLUB_EVENT',
-        registrationType: this.formData.registrationType || (this.userType === 'CLUB' ? 'CLUB_ONLY' : 'INDIVIDUAL'),
+type: this.formData.type || 'CLUB_EVENT',
+registrationType: 'CLUB_ONLY',
+
+
         visibility: this.formData.visibility || 'PUBLIC',
         
         date: this.formData.date,
@@ -1331,11 +1306,6 @@ const mappedLevel = levelMapping[this.formData.level] || 'AMATEUR';
 
     if (currentUser.clubId) {
         payload.clubId = currentUser.clubId;
-    }
-
-    if (this.formData.registrationType === 'INDIVIDUAL') {
-        payload.utfNumTeams = this.formData.utfNumTeams;
-        payload.utfTeamSize = this.formData.utfTeamSize;
     }
 
     if (this.formData.coverPhotoData) {
