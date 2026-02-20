@@ -503,24 +503,16 @@ export const UnifiedEventWizardPage = {
     // ÉTAPE 4 : CONFIGURATION
     // ===================================
 renderStep4() {
-    console.log("✅ STEP4 VERSION: CLUB_ONLY v2026-02-19");
-
-  // On force le métier
- this.formData.registrationType = "CLUB_ONLY";
-this.formData.type = "CLUB_EVENT"; // ✅ on utilise "type" partout
-
-
-this.formData.visibility = this.formData.visibility || "PUBLIC";
-const visibility = this.formData.visibility;
-
+  // ✅ Règles métier forcées (MVP)
+  this.formData.type = "CLUB_EVENT";
+  this.formData.registrationType = "CLUB_ONLY";
+  this.formData.visibility = "PUBLIC"; // ✅ PUBLIC forcé
 
   return `
-
-
     <div class="step-container">
       <div class="step-header">
         <h2>⚙️ Configuration</h2>
-        <p>Visibilité et règles d'inscription</p>
+        <p>Paramètres MVP (forcés)</p>
       </div>
 
       <div class="form-grid">
@@ -541,40 +533,24 @@ const visibility = this.formData.visibility;
           </div>
         </div>
 
-        <!-- Visibilité -->
+        <!-- Visibilité : fixe -->
         <div class="form-group full-width">
           <label class="required">Visibilité (affichage dans le feed)</label>
-          <div class="radio-cards">
-            <label class="radio-card ${visibility === 'PUBLIC' ? 'checked' : ''}">
-              <input type="radio" name="visibility" value="PUBLIC" ${visibility === 'PUBLIC' ? 'checked' : ''}/>
-              <div class="radio-content">
-                <i class="fas fa-globe"></i>
+
+          <div class="subsection" style="padding:12px; border-radius:12px;">
+            <div style="display:flex; gap:10px; align-items:center;">
+              <i class="fas fa-globe"></i>
+              <div>
                 <strong>Public</strong>
-                <small>Visible par tous (inscription reste club-only)</small>
+                <small style="display:block; opacity:.85;">
+                  Visible par tous. L’inscription reste réservée aux clubs admin.
+                </small>
               </div>
-            </label>
-
-            <label class="radio-card ${visibility === 'CLUB' ? 'checked' : ''}">
-              <input type="radio" name="visibility" value="CLUB" ${visibility === 'CLUB' ? 'checked' : ''}/>
-              <div class="radio-content">
-                <i class="fas fa-lock"></i>
-                <strong>Clubs uniquement</strong>
-                <small>Visible seulement par les membres de clubs</small>
-              </div>
-            </label>
-
-            <label class="radio-card ${visibility === 'PRIVATE' ? 'checked' : ''}">
-              <input type="radio" name="visibility" value="PRIVATE" ${visibility === 'PRIVATE' ? 'checked' : ''}/>
-              <div class="radio-content">
-                <i class="fas fa-eye-slash"></i>
-                <strong>Privé</strong>
-                <small>Sur invitation uniquement</small>
-              </div>
-            </label>
+            </div>
           </div>
 
           <div class="hint" style="margin-top:8px; opacity:.85;">
-            ℹ️ Un événement peut être <strong>PUBLIC</strong> tout en gardant les inscriptions réservées aux <strong>clubs admin</strong>.
+            ℹ️ MVP : on maximise la visibilité. Les autres modes viendront plus tard.
           </div>
         </div>
 
@@ -582,6 +558,7 @@ const visibility = this.formData.visibility;
     </div>
   `;
 },
+
 
     // ===================================
     // ÉTAPE 5 : EXTRAS (OPTIONNEL)
