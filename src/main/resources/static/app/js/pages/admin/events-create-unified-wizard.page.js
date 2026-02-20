@@ -33,8 +33,11 @@ export const UnifiedEventWizardPage = {
 
 
     async render() {
-              if (!this._booted) {
+  // 🔥 FIX: Reset propre à chaque entrée dans le wizard
+  if (!this._booted) {
     this._booted = true;
+    this.currentStep = 1;
+    this.formData = {};
     this.loadDraft();
   }
   // Détection automatique du type d'utilisateur
@@ -1045,7 +1048,7 @@ if (btnNewForm) {
 
             case 3:
                 this.formData.maxParticipants = parseInt(document.getElementById('max-participants')?.value, 10);
-                const maxTeams = document.getElementById('max-teams-per-club')?.value.trim();
+                const maxTeams = document.getElementById('max-teams-per-club')?.value?.trim();
                 this.formData.maxTeamsPerClub = maxTeams ? parseInt(maxTeams, 10) : null;
                 const priceEur = Number(document.getElementById('price')?.value || 0);
                 this.formData.registrationFeeCents = Math.max(0, Math.round(priceEur * 100));
@@ -1167,10 +1170,26 @@ this.formData.registrationType = "CLUB_ONLY";
     // CRÉATION ÉVÉNEMENT
     // ===================================
   async createEvent() {
-        // 🔥 BLOQUER L'AUTO-SAVE IMMÉDIATEMENT
-     this.isCreating = true;
+    // 🔥 BLOQUER L'AUTO-SAVE IMMÉDIATEMENT
+    this.isCreating = true;
     // 🔥 CRUCIAL : SAUVEGARDER L'ÉTAPE 6 AVANT DE CRÉER
     this.saveStepData(this.currentStep);
+
+    // 🔥 FIX MOBILE: Recharger le draft si formData est vide
+    if (!this.formData.name || !this.formData.category) {
+      console.warn("⚠️ formData vide, tentative de rechargement du draft...");
+      try {
+        const saved = localStorage.getItem(this.autoSaveKey);
+        if (saved) {
+          const draft = JSON.parse(saved);
+          if (draft.data) {
+            this.formData = { ...draft.data, ...this.formData };
+            console.log("✅ Draft rechargé:", this.formData);
+          }
+        }
+      } catch(e) { console.error("Erreur rechargement draft:", e); }
+    }
+    console.log("📋 formData AVANT payload:", JSON.stringify(this.formData));
     
     const token = localStorage.getItem('accessToken');
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
