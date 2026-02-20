@@ -174,25 +174,33 @@ export const UnifiedEventWizardPage = {
                         <small class="form-hint">Maximum 100 caractères</small>
                     </div>
 
-                    <!-- Catégorie -->
+                    <!-- Catégorie d'âge COMPLÈTE -->
                     <div class="form-group">
                         <label class="required">Catégorie d'âge</label>
                         <select id="category" class="form-control">
                             <option value="">-- Sélectionner --</option>
+                            <option value="U6" ${this.formData.category === 'U6' ? 'selected' : ''}>U6 (moins de 6 ans)</option>
                             <option value="U7" ${this.formData.category === 'U7' ? 'selected' : ''}>U7 (moins de 7 ans)</option>
+                            <option value="U8" ${this.formData.category === 'U8' ? 'selected' : ''}>U8 (moins de 8 ans)</option>
                             <option value="U9" ${this.formData.category === 'U9' ? 'selected' : ''}>U9 (moins de 9 ans)</option>
+                            <option value="U10" ${this.formData.category === 'U10' ? 'selected' : ''}>U10 (moins de 10 ans)</option>
                             <option value="U11" ${this.formData.category === 'U11' ? 'selected' : ''}>U11 (moins de 11 ans)</option>
+                            <option value="U12" ${this.formData.category === 'U12' ? 'selected' : ''}>U12 (moins de 12 ans)</option>
                             <option value="U13" ${this.formData.category === 'U13' ? 'selected' : ''}>U13 (moins de 13 ans)</option>
+                            <option value="U14" ${this.formData.category === 'U14' ? 'selected' : ''}>U14 (moins de 14 ans)</option>
                             <option value="U15" ${this.formData.category === 'U15' ? 'selected' : ''}>U15 (moins de 15 ans)</option>
+                            <option value="U16" ${this.formData.category === 'U16' ? 'selected' : ''}>U16 (moins de 16 ans)</option>
                             <option value="U17" ${this.formData.category === 'U17' ? 'selected' : ''}>U17 (moins de 17 ans)</option>
+                            <option value="U18" ${this.formData.category === 'U18' ? 'selected' : ''}>U18 (moins de 18 ans)</option>
                             <option value="U19" ${this.formData.category === 'U19' ? 'selected' : ''}>U19 (moins de 19 ans)</option>
+                            <option value="U20" ${this.formData.category === 'U20' ? 'selected' : ''}>U20 (moins de 20 ans)</option>
+                            <option value="U21" ${this.formData.category === 'U21' ? 'selected' : ''}>U21 (moins de 21 ans)</option>
                             <option value="SENIOR" ${this.formData.category === 'SENIOR' ? 'selected' : ''}>Seniors</option>
                             <option value="VETERAN" ${this.formData.category === 'VETERAN' ? 'selected' : ''}>Vétérans (+35 ans)</option>
                         </select>
                     </div>
 
                     <!-- Niveau -->
-                   <!-- Niveau -->
 <div class="form-group">
     <label class="required">Niveau de compétition</label>
     <select id="level" class="form-control">
@@ -230,16 +238,6 @@ export const UnifiedEventWizardPage = {
         </optgroup>
     </select>
 </div>
-
-                    <!-- Format -->
-                    <div class="form-group">
-                        <label class="required">Format</label>
-                        <select id="format" class="form-control">
-                            <option value="">-- Sélectionner --</option>
-                            <option value="TOURNAMENT" ${this.formData.format === 'TOURNAMENT' ? 'selected' : ''}>🏆 Tournoi complet (poules + phases finales)</option>
-                            <option value="SINGLE_MATCH" ${this.formData.format === 'SINGLE_MATCH' ? 'selected' : ''}>⚽ Match unique</option>
-                        </select>
-                    </div>
 
                     <!-- Description -->
                     <div class="form-group full-width">
@@ -385,7 +383,7 @@ export const UnifiedEventWizardPage = {
                         <select id="surface" class="form-control">
                             <option value="SYNTHETIC" ${this.formData.surface === 'SYNTHETIC' ? 'selected' : ''}>Synthétique</option>
                             <option value="NATURAL" ${this.formData.surface === 'NATURAL' ? 'selected' : ''}>Herbe naturelle</option>
-                            <option value="INDOOR" ${this.formData.surface === 'INDOOR' ? 'selected' : ''}>Salle (indoor)</option>
+                            <option value="PARQUET" ${this.formData.surface === 'PARQUET' ? 'selected' : ''}>Parquet</option>
                             <option value="BEACH" ${this.formData.surface === 'BEACH' ? 'selected' : ''}>Beach soccer</option>
                         </select>
                     </div>
@@ -491,7 +489,6 @@ export const UnifiedEventWizardPage = {
                         <ul>
                             <li><strong>8-16 équipes</strong> : Idéal pour un tournoi d'une journée</li>
                             <li><strong>2-3 équipes/club</strong> : Favorise la diversité</li>
-                            <li><strong>Prix modéré</strong> : 10-20€ couvre les frais basiques</li>
                         </ul>
                     </div>
                 </div>
@@ -543,7 +540,7 @@ renderStep4() {
               <div>
                 <strong>Public</strong>
                 <small style="display:block; opacity:.85;">
-                  Visible par tous. L’inscription reste réservée aux clubs admin.
+                  Visible par tous. L'inscription reste réservée aux clubs admin.
                 </small>
               </div>
             </div>
@@ -613,8 +610,8 @@ renderStep4() {
                             <label class="checkbox-card">
                                 <input type="checkbox" id="service-buvette" ${this.formData.hasBuvette ? 'checked' : ''}>
                                 <div class="checkbox-content">
-                                    <i class="fas fa-coffee"></i>
-                                    <span>Buvette</span>
+                                    <i class="fas fa-utensils"></i>
+                                    <span>Restauration</span>
                                 </div>
                             </label>
                             <label class="checkbox-card">
@@ -714,7 +711,7 @@ renderStep4() {
                                 <small>inscription</small>
                             </div>
                             <div class="stat">
-                                <strong>${this.formData.format === 'TOURNAMENT' ? 'Tournoi' : 'Match'}</strong>
+                                <strong>Tournoi</strong>
                                 <small>format</small>
                             </div>
                         </div>
@@ -734,9 +731,6 @@ renderStep4() {
                             
                             <dt>Niveau :</dt>
                             <dd>${this.escapeHtml(this.formData.level || '')}</dd>
-                            
-                            <dt>Format :</dt>
-                            <dd>${this.formData.format === 'TOURNAMENT' ? 'Tournoi complet' : 'Match unique'}</dd>
                             
                             ${this.formData.description ? `
                                 <dt>Description :</dt>
@@ -1034,7 +1028,7 @@ if (btnNewForm) {
                 this.formData.name = document.getElementById('name')?.value.trim();
                 this.formData.category = document.getElementById('category')?.value;
                 this.formData.level = document.getElementById('level')?.value;
-                this.formData.format = document.getElementById('format')?.value;
+                this.formData.format = 'TOURNAMENT'; // Format forcé (champ supprimé)
                 this.formData.description = document.getElementById('description')?.value.trim();
                 break;
 
@@ -1101,10 +1095,6 @@ this.formData.registrationType = "CLUB_ONLY";
                 }
                 if (!this.formData.level) {
                     this.showAlert('Le niveau est obligatoire', 'error');
-                    return false;
-                }
-                if (!this.formData.format) {
-                    this.showAlert('Le format est obligatoire', 'error');
                     return false;
                 }
                 break;
@@ -1195,7 +1185,7 @@ this.formData.registrationType = "CLUB_ONLY";
         return;
     }
 
-    // 🔥 NOUVEAU : VALIDATION FINALE AVANT ENVOI
+    // 🔥 VALIDATION FINALE AVANT ENVOI
     if (!this.formData.name) {
         this.showAlert('❌ Le nom du tournoi est manquant', 'error');
         return;
@@ -1211,7 +1201,6 @@ this.formData.registrationType = "CLUB_ONLY";
         return;
     }
     
-    // 🔥 DEBUG : AFFICHER LES DONNÉES AVANT ENVOI
     console.log('📤 DONNÉES ENVOYÉES:', this.formData);
 
     const location = `${this.formData.city}${this.formData.address ? ', ' + this.formData.address : ''}`.trim();
@@ -1243,7 +1232,7 @@ const mappedLevel = levelMapping[this.formData.level] || 'AMATEUR';
         description: this.formData.description || '',
         category: this.formData.category,
         level: mappedLevel,
-        format: this.formData.format,
+        format: 'TOURNAMENT',
         
 type: this.formData.type || 'CLUB_EVENT',
 registrationType: 'CLUB_ONLY',
@@ -1564,7 +1553,7 @@ console.log('✅ Draft supprimé et auto-save arrêté');
         if (this.formData.hasParking) services.push('Parking');
         if (this.formData.hasVestiaires) services.push('Vestiaires');
         if (this.formData.hasDouches) services.push('Douches');
-        if (this.formData.hasBuvette) services.push('Buvette');
+        if (this.formData.hasBuvette) services.push('Restauration');
         if (this.formData.hasWifi) services.push('Wi-Fi');
         if (this.formData.hasFirstAid) services.push('Secourisme');
         return services.join(', ');
