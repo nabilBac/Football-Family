@@ -7,7 +7,7 @@ export const AdminDashboardPage = {
 
 async render() {
     return `
-        <div class="admin-main" style="padding: 20px; margin-top: 40px;">
+        <div class="admin-main" style="padding: 20px; margin-top: 40px; background: #0a0e1a !important; min-height: calc(100vh - 60px);">
             <div id="admin-dashboard-content"></div>
         </div>
     `;
@@ -348,6 +348,11 @@ getStyles() {
         --adp-danger: #ef4444;
         --adp-info: #3b82f6;
         --adp-purple: #a855f7;
+    }
+
+    /* FORCE DARK BG SUR TOUTE LA PAGE */
+    body.is-admin-page {
+        background: var(--adp-bg) !important;
     }
 
     .adp-page {
