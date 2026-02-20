@@ -87,684 +87,484 @@ if (myTeamsSection) {
     // 🧱 RENDER
     // ================================
  async render() {
-    return `
-<div class="admin-main" style="padding: 20px; margin-top: 60px;">
-     <h1 id="event-dashboard-title" class="admin-title">⚽ Gestion de l'événement</h1>
+        return `
+<style>
+/* ============================================ */
+/* DARK THEME - EVENT DASHBOARD STEPPER+ACCORDION */
+/* ============================================ */
+.ed-dashboard {
+    padding: 16px;
+    margin-top: 60px;
+    background: #0f1923;
+    min-height: 100vh;
+    color: #e0e6ed;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.ed-dashboard .admin-title { color: #ffffff; font-size: 1.4em; margin: 0 0 20px 0; }
+.ed-dashboard .admin-message { border-radius: 8px; font-weight: 500; transition: all 0.3s; }
 
+/* -- STEPPER -- */
+.ed-stepper {
+    display: flex; align-items: center; gap: 4px;
+    padding: 14px 16px; background: #1a2735; border-radius: 12px;
+    margin-bottom: 16px; overflow-x: auto;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.ed-stepper::-webkit-scrollbar { display: none; }
+.stepper-step {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-radius: 8px;
+    font-size: 0.78em; font-weight: 600; white-space: nowrap;
+    cursor: pointer; transition: all 0.25s;
+    color: #5a6a7a; background: transparent;
+    border: 2px solid transparent; flex-shrink: 0;
+}
+.stepper-step:hover { background: rgba(52,152,219,0.1); color: #8899aa; }
+.stepper-step.active { background: #3498db; color: #fff; border-color: #3498db; }
+.stepper-step.completed { color: #2ecc71; }
+.stepper-step.completed .step-icon { background: #2ecc71; color: #fff; }
+.step-icon {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75em; background: #2a3a4a; color: #5a6a7a;
+    font-weight: 700; flex-shrink: 0;
+}
+.stepper-step.active .step-icon { background: rgba(255,255,255,0.25); color: #fff; }
+.stepper-connector { width: 16px; height: 2px; background: #2a3a4a; flex-shrink: 0; }
 
-                <p id="event-global-message" class="admin-message"></p>
+/* -- CTA BANNER -- */
+.ed-cta-banner {
+    background: linear-gradient(135deg, #1a5276 0%, #1a3c5e 100%);
+    border: 1px solid #2980b9; border-radius: 12px;
+    padding: 16px 20px; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+}
+.ed-cta-banner .cta-text { color: #85c1e9; font-size: 0.95em; font-weight: 600; }
+.ed-cta-banner .cta-text strong { color: #fff; }
+.ed-cta-btn {
+    padding: 10px 20px; background: #3498db; color: #fff;
+    border: none; border-radius: 8px; font-weight: 700;
+    font-size: 0.9em; cursor: pointer; white-space: nowrap; transition: background 0.2s;
+}
+.ed-cta-btn:hover { background: #2980b9; }
 
-                <!-- 🆕 NAVIGATION PAR ONGLETS -->
-                <div class="dashboard-tabs">
-                    <button class="tab-btn active" data-tab="overview">
-                        <i class="fas fa-home"></i>
-                        <span>Vue d'ensemble</span>
-                    </button>
-                     <button class="tab-btn" data-tab="progression">
-                        <i class="fas fa-tasks"></i>
-                        <span>Progression</span>
-                    </button>
-                    <button class="tab-btn" data-tab="registrations">
-                        <i class="fas fa-users"></i>
-                        <span>Inscriptions</span>
-                    </button>
-                    <button class="tab-btn" data-tab="matches">
-                        <i class="fas fa-futbol"></i>
-                        <span>Matchs</span>
-                    </button>
-                    <button class="tab-btn" data-tab="planning">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span>Planning</span>
-                    </button>
-                    <button class="tab-btn" data-tab="bracket">
-                        <i class="fas fa-trophy"></i>
-                        <span>Phase finale</span>
-                    </button>
-                    <button class="tab-btn" data-tab="rankings">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Classements</span>
-                    </button>
-                    <button class="tab-btn" data-tab="archived">
-                        <i class="fas fa-archive"></i>
-                        <span>Archivés</span>
-                    </button>
-                </div>
+/* -- ACCORDION -- */
+.ed-accordion {
+    background: #1a2735; border-radius: 12px; margin-bottom: 12px;
+    overflow: hidden; border: 1px solid #243447; transition: border-color 0.3s;
+}
+.ed-accordion:hover { border-color: #2c4a60; }
+.ed-accordion-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 20px; cursor: pointer; user-select: none;
+    transition: background 0.2s; background: transparent;
+}
+.ed-accordion-header:hover { background: rgba(52,152,219,0.05); }
+.ed-accordion-header .acc-icon {
+    width: 36px; height: 36px; background: #243447; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1em; flex-shrink: 0;
+}
+.ed-accordion-header .acc-title { flex: 1; font-weight: 700; font-size: 1em; color: #e0e6ed; }
+.ed-accordion-header .acc-badge {
+    padding: 4px 10px; border-radius: 12px; font-size: 0.75em;
+    font-weight: 600; background: #243447; color: #7f8c9a;
+}
+.ed-accordion-header .acc-chevron { color: #5a6a7a; transition: transform 0.3s; font-size: 0.9em; }
+.ed-accordion.open .acc-chevron { transform: rotate(180deg); }
+.ed-accordion-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.4s ease, padding 0.3s ease;
+    padding: 0 20px;
+}
+.ed-accordion.open .ed-accordion-body { max-height: 8000px; padding: 0 20px 20px 20px; }
 
-                <!-- 🆕 CONTENEUR DES ONGLETS -->
-                <div class="dashboard-content">
-                    
-                    <!-- ONGLET 1: VUE D'ENSEMBLE -->
-                    <div class="tab-content active" data-content="overview">
-                        
-                        <!-- Infos générales -->
-                        <section class="admin-card">
-                            <h2>📋 Informations générales</h2>
-                            <div id="event-details" class="admin-loading">
-                                <div class="loader">⏳ Chargement...</div>
-                            </div>
-                        </section>
+/* -- CARDS -- */
+.ed-card {
+    background: #0f1923; border-radius: 10px; padding: 20px;
+    margin-bottom: 15px; border: 1px solid #1e2d3d;
+}
+.ed-card h2, .ed-card h3 { color: #e0e6ed; margin: 0 0 15px 0; }
+.ed-dashboard .admin-btn { border-radius: 8px; font-weight: 600; transition: all 0.2s; }
+.ed-dashboard .admin-dashboard-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;
+}
 
-                        <!-- Actions globales -->
-                        <section class="admin-card">
-                          <h2 id="event-actions-title">🎮 Actions</h2>
+/* -- DANGER ZONE -- */
+.ed-danger-zone {
+    background: rgba(231, 76, 60, 0.08); border: 1px solid rgba(231, 76, 60, 0.25);
+    border-radius: 12px; padding: 20px; margin-top: 8px;
+}
+.ed-danger-zone h3 { color: #e74c3c; margin: 0 0 15px 0; font-size: 1em; }
 
-                            <div class="admin-dashboard-grid">
-                                <button id="btn-generate-groups" class="admin-btn admin-btn-primary">
-                                    🧩 Générer les poules
-                                </button>
-                               <div style="display: flex; gap: 10px;">
-    <button id="btn-generate-bracket-uefa" class="admin-btn admin-btn-primary" style="flex: 1;">
-        🏆 Bracket UEFA (Fixe)
-    </button>
-    <button id="btn-generate-bracket-semi" class="admin-btn" style="flex: 1; background: #9b59b6;">
-        🎲 Tirage Champions League
-    </button>
-</div>
-                                <button id="btn-generate-consolante" class="admin-btn">
-                                    ♻️ Générer la consolante
-                                </button>
-                                <button id="btn-refresh-all" class="admin-btn">
-                                    🔄 Rafraîchir
-                                </button>
-                            </div>
-                            <div id="tournament-format" style="margin-top:15px;font-weight:600;color:#2c3e50;"></div>
-                        </section>
+/* -- MISC -- */
+.ed-dashboard .loader { color: #5a6a7a; text-align: center; padding: 30px; }
+.ed-dashboard .admin-table { width: 100%; border-collapse: collapse; }
+.ed-dashboard .admin-table th { background: #1a2735; color: #8899aa; padding: 10px; text-align: left; font-size: 0.85em; }
+.ed-dashboard .admin-table td { padding: 10px; border-bottom: 1px solid #1e2d3d; color: #c0cdd8; font-size: 0.9em; }
 
-                        <!-- Mes équipes -->
-                       <section class="admin-card" id="my-teams-section">
+/* -- BRACKET -- */
+.bracket-tree { display: flex; gap: 20px; overflow-x: auto; padding: 10px 0; }
+.bracket-column { min-width: 200px; }
+.bracket-round-title { text-align: center; font-size: 0.95em; margin-bottom: 15px; padding: 8px; background: #1a2735; border-radius: 8px; }
+.bracket-matches { display: flex; flex-direction: column; gap: 15px; }
+.bracket-match { background: #1a2735; border-radius: 8px; padding: 12px; border-left: 4px solid #3498db; }
+.bracket-match.finished { opacity: 0.8; }
+.bracket-match.bye { text-align: center; padding: 15px; }
+.bracket-bye-label { color: #f39c12; font-weight: 600; }
+.bracket-team { display: flex; justify-content: space-between; padding: 6px 0; color: #c0cdd8; }
+.bracket-team.winner { color: #2ecc71; font-weight: 700; }
+.bracket-team-name { flex: 1; }
+.bracket-score { font-weight: 700; min-width: 25px; text-align: center; }
+.bracket-divider { height: 1px; background: #243447; margin: 4px 0; }
 
-                            <h2>🏟️ Mes équipes</h2>
-                            <div id="my-teams">
-                                <div class="loader">⏳ Chargement...</div>
-                            </div>
-                        </section>
+/* -- MATCH CARDS -- */
+.match-groups-wrapper { display: flex; flex-direction: column; gap: 20px; }
+.match-container { background: #0f1923; border-radius: 10px; padding: 15px; border: 1px solid #1e2d3d; }
+.match-group-title { color: #3498db; margin: 0 0 15px 0; font-size: 1.1em; padding-bottom: 10px; border-bottom: 1px solid #243447; }
+.match-card { background: #1a2735; border-radius: 10px; padding: 15px; margin-bottom: 12px; border-left: 4px solid #3498db; }
+.match-card.finished { border-left-color: #27ae60; opacity: 0.85; }
+.match-teams { margin-bottom: 12px; }
+.match-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; color: #c0cdd8; }
+.match-team-name { font-weight: 600; flex: 1; }
+.match-score { font-weight: 700; font-size: 1.1em; min-width: 30px; text-align: center; color: #fff; }
+.match-button { width: 100%; padding: 10px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; color: white; background: #3498db; font-size: 0.9em; transition: all 0.2s; margin-bottom: 4px; }
+.match-button:hover { filter: brightness(1.1); }
+.match-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-                        <!-- Gestion de l'événement -->
-                        <section class="admin-card">
-                            <h2>⚙️ Gestion de l'événement</h2>
-                            <div class="admin-dashboard-grid">
-                                <button id="btn-cancel-event" class="admin-btn" style="background: #f39c12;">
-                                    <i class="fas fa-ban"></i>
-                                    Annuler l'événement
-                                </button>
-                                <button id="btn-delete-event" class="admin-btn" style="background: #e74c3c;">
-                                    <i class="fas fa-trash"></i>
-                                    Archiver l'événement
-                                </button>
-                            </div>
-                        </section>
-                    </div>
+/* -- RESPONSIVE -- */
+@media (max-width: 768px) {
+    .ed-stepper { gap: 2px; padding: 10px 8px; }
+    .stepper-step { padding: 6px 8px; font-size: 0.7em; }
+    .stepper-step span { display: none; }
+    .step-icon { width: 28px; height: 28px; font-size: 0.85em; }
+    .stepper-connector { width: 8px; }
+    .ed-cta-banner { flex-direction: column; text-align: center; }
+    .ed-accordion-header { padding: 14px 16px; }
+    .ed-accordion-body { padding: 0 16px; }
+    .ed-accordion.open .ed-accordion-body { padding: 0 16px 16px 16px; }
+}
 
-                    <!-- ONGLET 2: PROGRESSION -->
-                            <div class="tab-content" data-content="progression">
-                            <section class="admin-card">
-                            <h2>📋 Progression du tournoi</h2>
-                            <div id="progression-checklist-container"></div>
-                            </section>
-                            </div>
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
-<!-- ONGLET 3: INSCRIPTIONS -->
-<div class="tab-content" data-content="registrations">
-    <section class="admin-card">
-        <h2>👥 Inscriptions des équipes</h2>
-                            <div id="event-registrations" class="admin-loading">
-                                <div class="loader">⏳ Chargement...</div>
-                            </div>
-                        </section>
-                    </div>
+/* Mini-collapsible Mes équipes */
+.ed-card.teams-open .teams-chevron { transform: rotate(180deg); }
+.my-teams-body { max-height: 0; }
+.ed-card.teams-open .my-teams-body { max-height: 2000px !important; padding: 0 20px 20px 20px; }
+</style>
 
-                    <!-- ONGLET 3: MATCHS -->
-                    <div class="tab-content" data-content="matches">
-                       <section class="admin-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0;">⚽ Tous les matchs</h2>
-        <button id="btn-delete-round" class="admin-btn" style="background: #e74c3c;">
-            🗑️ Supprimer un round
-        </button>
+<div class="ed-dashboard">
+    <h1 id="event-dashboard-title" class="admin-title">⚽ Gestion de l'événement</h1>
+    <p id="event-global-message" class="admin-message"></p>
+
+    <!-- STEPPER -->
+    <div class="ed-stepper" id="dashboard-stepper">
+        <div class="stepper-step active" data-step="overview"><div class="step-icon">1</div><span>Vue d'ensemble</span></div>
+        <div class="stepper-connector"></div>
+        <div class="stepper-step" data-step="progression"><div class="step-icon">2</div><span>Progression</span></div>
+        <div class="stepper-connector"></div>
+        <div class="stepper-step" data-step="registrations"><div class="step-icon">3</div><span>Inscriptions</span></div>
+        <div class="stepper-connector"></div>
+        <div class="stepper-step" data-step="matches"><div class="step-icon">4</div><span>Matchs</span></div>
+        <div class="stepper-connector"></div>
+        <div class="stepper-step" data-step="planning"><div class="step-icon">5</div><span>Planning</span></div>
+        <div class="stepper-connector"></div>
+        <div class="stepper-step" data-step="bracket"><div class="step-icon">6</div><span>Phase finale</span></div>
+        <div class="stepper-connector"></div>
+        <div class="stepper-step" data-step="rankings"><div class="step-icon">7</div><span>Classements</span></div>
     </div>
-    <div id="event-matches" class="admin-loading">
-                                <div class="loader">⏳ Chargement...</div>
-                            </div>
-                        </section>
-                    </div>
 
-                    <!-- ONGLET 4: PHASE FINALE -->
-                    <div class="tab-content" data-content="bracket">
-                        <section class="admin-card">
-                            <h2>🏆 Bracket principal</h2>
-                            <div id="event-bracket" class="admin-loading">
-                                <div class="loader">⏳ Chargement...</div>
-                            </div>
-                        </section>
+    <!-- CTA BANNER -->
+    <div class="ed-cta-banner" id="next-step-cta" style="display:none;">
+        <div class="cta-text" id="cta-text"><strong>Prochaine étape :</strong> <span id="cta-description"></span></div>
+        <button class="ed-cta-btn" id="cta-action-btn">→ Y aller</button>
+    </div>
 
-                        <section class="admin-card">
-                            <h2>♻️ Consolante</h2>
-                            <div id="event-consolante" class="admin-loading">
-                                <div class="loader">⏳ Chargement...</div>
-                            </div>
-                        </section>
+    <!-- ═══ ACCORDION: VUE D'ENSEMBLE ═══ -->
+    <div class="ed-accordion open" id="accordion-overview">
+        <div class="ed-accordion-header" data-target="overview">
+            <div class="acc-icon">📋</div>
+            <div class="acc-title">Vue d'ensemble</div>
+            <div class="acc-badge" id="badge-overview">Info</div>
+            <i class="fas fa-chevron-down acc-chevron"></i>
+        </div>
+        <div class="ed-accordion-body">
+            <div id="event-details" class="admin-loading"><div class="loader">⏳ Chargement...</div></div>
+            <div class="ed-card" id="event-actions-card">
+                <h2 id="event-actions-title">🎮 Actions</h2>
+                <div class="admin-dashboard-grid">
+                    <button id="btn-generate-groups" class="admin-btn admin-btn-primary">🧩 Générer les poules</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btn-generate-bracket-uefa" class="admin-btn admin-btn-primary" style="flex: 1;">🏆 Bracket UEFA</button>
+                        <button id="btn-generate-bracket-semi" class="admin-btn" style="flex: 1; background: #9b59b6;">🎲 Tirage LDC</button>
                     </div>
-<!-- ONGLET 4: PLANNING -->
-<div class="tab-content" data-content="planning">
-    
-    <!-- ======================== -->
-    <!-- 🎯 SECTION PRINCIPALE -->
-    <!-- ======================== -->
-    <section class="admin-card">
-        <h2>📅 Planification du tournoi</h2>
-        
-        <!-- SÉLECTEUR MODE -->
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
-            <label style="display: block; margin-bottom: 12px; font-weight: 600; color: #2c3e50; font-size: 1em;">
-                📆 Durée du tournoi
-            </label>
-            
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
-                <div class="duration-option" data-days="1" style="
-                    background: white;
-                    border: 3px solid #3498db;
-                    border-radius: 12px;
-                    padding: 20px;
-                    text-align: center;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                ">
-                    <div style="font-size: 2.5em; margin-bottom: 10px;">📅</div>
-                    <div style="font-weight: 700; font-size: 1.1em; color: #2c3e50; margin-bottom: 8px;">1 JOUR</div>
-                    <div style="font-size: 0.85em; color: #7f8c8d; line-height: 1.4;">
-                        Tout le tournoi sur une seule journée
-                    </div>
+                    <button id="btn-generate-consolante" class="admin-btn">♻️ Consolante</button>
+                    <button id="btn-refresh-all" class="admin-btn">🔄 Rafraîchir</button>
                 </div>
-                
-                <div class="duration-option" data-days="2" style="
-                    background: white;
-                    border: 3px solid #e0e0e0;
-                    border-radius: 12px;
-                    padding: 20px;
-                    text-align: center;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                ">
-                    <div style="font-size: 2.5em; margin-bottom: 10px;">📅📅</div>
-                    <div style="font-weight: 700; font-size: 1.1em; color: #2c3e50; margin-bottom: 8px;">2 JOURS</div>
-                    <div style="font-size: 0.85em; color: #7f8c8d; line-height: 1.4;">
-                        J1: Poules<br>J2: Finales
-                    </div>
+                <div id="tournament-format" style="margin-top:15px;font-weight:600;color:#8899aa;"></div>
+            </div>
+          <div class="ed-card" id="my-teams-section" style="padding: 0; overflow: hidden;">
+                <div onclick="this.parentElement.classList.toggle('teams-open')" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; cursor: pointer; user-select: none;">
+                    <h2 style="margin: 0; font-size: 1em;">🏟️ Mes équipes</h2>
+                    <span class="teams-chevron" style="color: #5a6a7a; transition: transform 0.3s;">▼</span>
                 </div>
-                
-                <div class="duration-option" data-days="3" style="
-                    background: white;
-                    border: 3px solid #e0e0e0;
-                    border-radius: 12px;
-                    padding: 20px;
-                    text-align: center;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                ">
-                    <div style="font-size: 2.5em; margin-bottom: 10px;">📅📅📅</div>
-                    <div style="font-weight: 700; font-size: 1.1em; color: #2c3e50; margin-bottom: 8px;">3 JOURS</div>
-                    <div style="font-size: 0.85em; color: #7f8c8d; line-height: 1.4;">
-                            J1: Poules<br>J2: Consolante<br>J3: Bracket
-                    </div>
+               <div id="my-teams" class="my-teams-body" style="overflow: hidden; transition: max-height 0.4s ease, padding 0.3s ease; padding: 0 20px;">
                 </div>
-            </div>
-            
-            <!-- INFOBULLE EXPLICATIVE -->
-            <div id="duration-info" style="
-                background: #e3f2fd;
-                border-left: 4px solid #3498db;
-                padding: 15px;
-                border-radius: 8px;
-            ">
-                <div style="font-weight: 600; color: #1976d2; margin-bottom: 8px;">
-                    ℹ️ Mode 1 jour sélectionné
-                </div>
-                <div style="color: #1976d2; font-size: 0.9em; line-height: 1.5;">
-                    Tous les matchs (poules et finales) seront planifiés le même jour.
-                </div>
-            </div>
-        </div>
-
-        <!-- BOUTON RESET -->
-<section class="admin-card" style="background: #fff3cd; border-left: 4px solid #f39c12;">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <h3 style="margin: 0 0 8px 0; color: #856404; font-size: 1em;">
-                ⚠️ Réinitialiser le planning
-            </h3>
-            <p style="margin: 0; color: #856404; font-size: 0.9em;">
-               Réinitialise la date/heure/terrain des matchs non joués (SCHEDULED/CREATED).
-Les matchs terminés (COMPLETED) ne sont pas modifiés.
-            </p>
-        </div>
-        <button id="btn-reset-planning" class="admin-btn" style="
-            background: #e74c3c;
-            border-color: #c0392b;
-            padding: 12px 20px;
-            white-space: nowrap;
-        ">
-            🗑️ Réinitialiser
-        </button>
-    </div>
-</section>
-        
-      <!-- FORMULAIRE PRINCIPAL -->
-
-    
-<!-- 🆕 MODE 1 JOUR : CHAMPS + 2 BOUTONS -->
-<div id="planning-mode-1-day" style="display: none;">
-    
-    <!-- CHAMPS DATE & HORAIRES (visible en mode 1 jour) -->
-    <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e0e0e0; margin-bottom: 20px;">
-        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1em;">📅 Configuration de la journée</h3>
-        
-        <div style="margin-bottom: 15px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                📅 Date du tournoi *
-            </label>
-            <input type="date" id="planning-date-1day" required
-                   style="width: 100%; padding: 12px; border: 2px solid #3498db; border-radius: 8px; font-size: 0.95em;">
-        </div>
-        
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                    🌤️ Matin - Début
-                </label>
-                <input type="time" id="planning-morning-start-1day" value="09:00"
-                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-            </div>
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                    🌤️ Matin - Fin
-                </label>
-                <input type="time" id="planning-morning-end-1day" value="12:45"
-                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-            </div>
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                    🌇 Après-midi - Début
-                </label>
-                <input type="time" id="planning-afternoon-start-1day" value="14:00"
-                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-            </div>
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                    🌇 Après-midi - Fin
-                </label>
-                <input type="time" id="planning-afternoon-end-1day" value="18:30"
-                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-            </div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                    ⚽ Durée match (min)
-                </label>
-                <input type="number" id="planning-match-duration-1day" min="10" max="120" value="40"
-                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-            </div>
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                    ⏸️ Pause (min)
-                </label>
-                <input type="number" id="planning-break-duration-1day" min="0" max="60" value="10"
-                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-            </div>
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                    🏟️ Terrains
-                </label>
-                <input type="number" id="planning-fields-count-1day" min="1" max="10" value="2"
-                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-            </div>
-        </div>
-    </div>
-    
-    <!-- ÉTAPE 1 : POULES -->
-    <div style="background: white; padding: 25px; border-radius: 12px; border: 2px solid #3498db; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-            <div style="
-                width: 40px;
-                height: 40px;
-                background: #3498db;
-                color: white;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: 700;
-                font-size: 1.2em;
-            ">1</div>
-            <h3 style="margin: 0; color: #2c3e50; font-size: 1.2em;">📋 Planifier les POULES (matin)</h3>
-        </div>
-        
-        <p style="margin: 0 0 15px 0; color: #7f8c8d; font-size: 0.95em;">
-            Créneau horaire du matin pour les matchs de poules
-        </p>
-        
-        <button 
-            type="button"
-            id="btn-planning-poules" 
-            class="admin-btn admin-btn-primary"
-            style="width: 100%; padding: 15px; font-size: 1.1em;">
-            🌤️ Planifier les POULES
-        </button>
-    </div>
-    
-    <!-- ÉTAPE 2 : FINALES -->
-    <div style="background: white; padding: 25px; border-radius: 12px; border: 2px solid #e74c3c; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-            <div style="
-                width: 40px;
-                height: 40px;
-                background: #e74c3c;
-                color: white;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: 700;
-                font-size: 1.2em;
-            ">2</div>
-            <h3 style="margin: 0; color: #2c3e50; font-size: 1.2em;">🏆 Planifier les FINALES (après-midi)</h3>
-        </div>
-        
-        <div id="finales-warning" style="
-            background: #fff3cd;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: none;
-        ">
-            <div style="color: #856404; font-size: 0.9em;">
-                ⚠️ Le bracket doit être généré avant de planifier les finales
-            </div>
-        </div>
-        
-        <p style="margin: 0 0 15px 0; color: #7f8c8d; font-size: 0.95em;">
-            Créneau horaire de l'après-midi pour les phases finales (bracket + consolante)
-        </p>
-        
-        <button 
-            type="button"
-            id="btn-planning-finales" 
-            class="admin-btn"
-            style="width: 100%; padding: 15px; font-size: 1.1em; background: #e74c3c;">
-            🌇 Planifier les FINALES
-        </button>
-    </div>
-</div>
-
-<form id="planning-unified-form" style="display: grid; gap: 20px;">
-    
-    <!-- DATE & HORAIRES -->
-    <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e0e0e0;">
-        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1em; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-calendar-alt" style="color: #3498db;"></i>
-            Date et horaires
-        </h3>
-       
-        <!-- ✅ DATE TOUJOURS VISIBLE -->
-        <div style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                📅 Date de début *
-            </label>
-            <input type="date" id="planning-date-debut" required
-                   style="width: 100%; padding: 12px; border: 2px solid #3498db; border-radius: 8px; font-size: 0.95em;">
-        </div>
-       
-        <!-- Créneaux classiques (2/3 jours) -->
-        <div id="planning-range-classic">
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                <div>
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                        ⏰ Heure de début *
-                    </label>
-                    <input type="time" id="planning-start-time" required value="09:00"
-                           style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-                </div>
-                
-                <div>
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                        🕐 Heure de fin *
-                    </label>
-                    <input type="time" id="planning-end-time" required value="18:00"
-                           style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-                </div>
-            </div>
-        </div>
-        
-   
-    </div>
-            
-    <!-- CONFIGURATION MATCHS -->
-    <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e0e0e0;">
-        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1em; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-cog" style="color: #e67e22;"></i>
-            Configuration des matchs
-        </h3>
-        
-        <div class="form-row" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                    ⚽ Durée d'un match (min) *
-                </label>
-                <input type="number" id="planning-match-duration" min="10" max="120" value="40" required
-                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-            </div>
-            
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                    ⏸️ Pause entre matchs (min) *
-                </label>
-                <input type="number" id="planning-break-duration" min="0" max="60" value="10" required
-                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
-            </div>
-            
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9em;">
-                    🏟️ Nombre de terrains *
-                </label>
-                <input type="number" id="planning-fields-count" min="1" max="10" value="2" required
-                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95em;">
             </div>
         </div>
     </div>
 
-    <!-- OPTIONS PLANNING -->
-    <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e0e0e0;">
-        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 1em; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-sliders-h" style="color: #3498db;"></i>
-            Options planning
-        </h3>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-                <label style="display:block; margin-bottom:8px; font-weight:600; color:#2c3e50; font-size:0.9em;">
-                    Phase à planifier
-                </label>
-                <select id="planning-phase" style="width:100%; padding:12px; border:2px solid #e0e0e0; border-radius:8px;">
-                    <option value="POULES">POULES (matin)</option>
-                    <option value="FINALES">FINALES (après-midi)</option>
-                    <option value="ALL">ALL (tout)</option>
-                </select>
-            </div>
-
-            <div style="display:flex; align-items:flex-end;">
-                <label style="display:flex; align-items:center; gap:8px; font-weight:600; color:#2c3e50; font-size:0.9em;">
-                    <input type="checkbox" id="planning-advanced-toggle">
-                    Avancé
-                </label>
-            </div>
+    <!-- ═══ ACCORDION: PROGRESSION ═══ -->
+    <div class="ed-accordion" id="accordion-progression">
+        <div class="ed-accordion-header" data-target="progression">
+            <div class="acc-icon">📊</div>
+            <div class="acc-title">Progression du tournoi</div>
+            <div class="acc-badge" id="badge-progression">0%</div>
+            <i class="fas fa-chevron-down acc-chevron"></i>
         </div>
+        <div class="ed-accordion-body">
+            <div id="progression-checklist-container"></div>
+        </div>
+    </div>
 
-        <div id="planning-advanced" style="display:none; margin-top:15px; padding-top:15px; border-top:1px solid #eee;">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div>
-                    <label style="display:block; margin-bottom:8px; font-weight:600; color:#2c3e50; font-size:0.9em;">
-                        Repos entre rounds (min)
-                    </label>
-                    <input type="number" id="planning-rest-between-rounds" min="0" value="10"
-                        style="width:100%; padding:12px; border:2px solid #e0e0e0; border-radius:8px; font-size:0.95em;">
-                    <div style="font-size:0.8em; color:#7f8c8d; margin-top:6px;">
-                        Option avancée : 0–10 recommandé.
+    <!-- ═══ ACCORDION: INSCRIPTIONS ═══ -->
+    <div class="ed-accordion" id="accordion-registrations">
+        <div class="ed-accordion-header" data-target="registrations">
+            <div class="acc-icon">👥</div>
+            <div class="acc-title">Inscriptions des équipes</div>
+            <div class="acc-badge" id="badge-registrations">—</div>
+            <i class="fas fa-chevron-down acc-chevron"></i>
+        </div>
+        <div class="ed-accordion-body">
+            <div id="event-registrations" class="admin-loading"><div class="loader">⏳ Chargement...</div></div>
+        </div>
+    </div>
+
+    <!-- ═══ ACCORDION: MATCHS ═══ -->
+    <div class="ed-accordion" id="accordion-matches">
+        <div class="ed-accordion-header" data-target="matches">
+            <div class="acc-icon">⚽</div>
+            <div class="acc-title">Tous les matchs</div>
+            <div class="acc-badge" id="badge-matches">—</div>
+            <i class="fas fa-chevron-down acc-chevron"></i>
+        </div>
+        <div class="ed-accordion-body">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+                <button id="btn-delete-round" class="admin-btn" style="background: #e74c3c;">🗑️ Supprimer un round</button>
+            </div>
+            <div id="event-matches" class="admin-loading"><div class="loader">⏳ Chargement...</div></div>
+        </div>
+    </div>
+
+    <!-- ═══ ACCORDION: PLANNING ═══ -->
+    <div class="ed-accordion" id="accordion-planning">
+        <div class="ed-accordion-header" data-target="planning">
+            <div class="acc-icon">📅</div>
+            <div class="acc-title">Planification du tournoi</div>
+            <div class="acc-badge" id="badge-planning">Config</div>
+            <i class="fas fa-chevron-down acc-chevron"></i>
+        </div>
+        <div class="ed-accordion-body">
+            <!-- SÉLECTEUR DURÉE -->
+            <div style="background: #0f1923; padding: 20px; border-radius: 10px; margin-bottom: 25px; border: 1px solid #1e2d3d;">
+                <label style="display: block; margin-bottom: 12px; font-weight: 600; color: #e0e6ed; font-size: 1em;">📆 Durée du tournoi</label>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
+                    <div class="duration-option" data-days="1" style="background: #1a2735; border: 3px solid #3498db; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; color: #e0e6ed;">
+                        <div style="font-size: 2.5em; margin-bottom: 10px;">📅</div>
+                        <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 8px;">1 JOUR</div>
+                        <div style="font-size: 0.85em; color: #7f8c9a; line-height: 1.4;">Tout sur une journée</div>
+                    </div>
+                    <div class="duration-option" data-days="2" style="background: #1a2735; border: 3px solid #2a3a4a; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; color: #e0e6ed;">
+                        <div style="font-size: 2.5em; margin-bottom: 10px;">📅📅</div>
+                        <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 8px;">2 JOURS</div>
+                        <div style="font-size: 0.85em; color: #7f8c9a; line-height: 1.4;">J1: Poules / J2: Finales</div>
+                    </div>
+                    <div class="duration-option" data-days="3" style="background: #1a2735; border: 3px solid #2a3a4a; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; color: #e0e6ed;">
+                        <div style="font-size: 2.5em; margin-bottom: 10px;">📅📅📅</div>
+                        <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 8px;">3 JOURS</div>
+                        <div style="font-size: 0.85em; color: #7f8c9a; line-height: 1.4;">J1: Poules / J2: Consolante / J3: Bracket</div>
                     </div>
                 </div>
-
-                <div style="display:flex; align-items:flex-end;">
-                    <label style="display:flex; align-items:center; gap:8px; font-weight:600; color:#2c3e50; font-size:0.9em;">
-                        <input type="checkbox" id="planning-overwrite">
-                        Replanifier (overwrite)
-                    </label>
+                <div id="duration-info" style="background: rgba(52,152,219,0.1); border-left: 4px solid #3498db; padding: 15px; border-radius: 8px; color: #85c1e9;">
+                    <div style="font-weight: 600; margin-bottom: 8px;">ℹ️ Mode 1 jour sélectionné</div>
+                    <div style="font-size: 0.9em; line-height: 1.5;">Tous les matchs seront planifiés le même jour.</div>
                 </div>
             </div>
-        </div>
 
-        <div id="planning-suggestions" style="display:none; margin-top:15px; padding:15px; border-radius:10px; background:#fff3cd; border:1px solid #ffeeba;">
-            <div style="font-weight:700; margin-bottom:10px;">⚠️ Ajustements proposés</div>
-            <div id="planning-suggestions-msg" style="margin-bottom:12px; color:#856404;"></div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button type="button" id="btn-suggest-more-time" class="admin-btn" style="background:#f39c12;">+30 min</button>
-                <button type="button" id="btn-suggest-more-fields" class="admin-btn" style="background:#9b59b6;">+1 terrain</button>
-                <button type="button" id="btn-suggest-rest-zero" class="admin-btn" style="background:#27ae60;">repos=0</button>
+            <!-- RESET -->
+            <div class="ed-card" style="background: rgba(243,156,18,0.08); border-color: rgba(243,156,18,0.3);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h3 style="margin: 0 0 8px 0; color: #f39c12; font-size: 1em;">⚠️ Réinitialiser le planning</h3>
+                        <p style="margin: 0; color: #d4a053; font-size: 0.9em;">Réinitialise date/heure/terrain des matchs non joués.</p>
+                    </div>
+                    <button id="btn-reset-planning" class="admin-btn" style="background: #e74c3c; padding: 12px 20px; white-space: nowrap;">🗑️ Réinitialiser</button>
+                </div>
+            </div>
+
+            <!-- MODE 1 JOUR -->
+            <div id="planning-mode-1-day" style="display: none;">
+                <div class="ed-card">
+                    <h3 style="margin: 0 0 15px 0; font-size: 1em;">📅 Configuration de la journée</h3>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">📅 Date du tournoi *</label>
+                        <input type="date" id="planning-date-1day" required style="width: 100%; padding: 12px; border: 2px solid #3498db; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;">
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                        <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">🌤️ Matin - Début</label><input type="time" id="planning-morning-start-1day" value="09:00" style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                        <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">🌤️ Matin - Fin</label><input type="time" id="planning-morning-end-1day" value="12:45" style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                        <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">🌇 Après-midi - Début</label><input type="time" id="planning-afternoon-start-1day" value="14:00" style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                        <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">🌇 Après-midi - Fin</label><input type="time" id="planning-afternoon-end-1day" value="18:30" style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
+                        <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">⚽ Durée match (min)</label><input type="number" id="planning-match-duration-1day" min="10" max="120" value="40" style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                        <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">⏸️ Pause (min)</label><input type="number" id="planning-break-duration-1day" min="0" max="60" value="10" style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                        <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">🏟️ Terrains</label><input type="number" id="planning-fields-count-1day" min="1" max="10" value="2" style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                    </div>
+                </div>
+                <div class="ed-card" style="border-color: #3498db;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <div style="width: 40px; height: 40px; background: #3498db; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2em;">1</div>
+                        <h3 style="margin: 0; font-size: 1.2em;">📋 Planifier les POULES (matin)</h3>
+                    </div>
+                    <button type="button" id="btn-planning-poules" class="admin-btn admin-btn-primary" style="width: 100%; padding: 15px; font-size: 1.1em;">🌤️ Planifier les POULES</button>
+                </div>
+                <div class="ed-card" style="border-color: #e74c3c;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <div style="width: 40px; height: 40px; background: #e74c3c; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2em;">2</div>
+                        <h3 style="margin: 0; font-size: 1.2em;">🏆 Planifier les FINALES (après-midi)</h3>
+                    </div>
+                    <div id="finales-warning" style="background: rgba(243,156,18,0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px; display: none;"><div style="color: #f39c12; font-size: 0.9em;">⚠️ Le bracket doit être généré avant de planifier les finales</div></div>
+                    <button type="button" id="btn-planning-finales" class="admin-btn" style="width: 100%; padding: 15px; font-size: 1.1em; background: #e74c3c;">🌇 Planifier les FINALES</button>
+                </div>
+            </div>
+
+            <!-- FORMULAIRE 2/3 JOURS -->
+            <form id="planning-unified-form" style="display: grid; gap: 20px;">
+                <div class="ed-card">
+                    <h3 style="margin: 0 0 15px 0; font-size: 1em;">📅 Date et horaires</h3>
+                    <div style="margin-bottom: 20px;"><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">📅 Date de début *</label><input type="date" id="planning-date-debut" required style="width: 100%; padding: 12px; border: 2px solid #3498db; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                    <div id="planning-range-classic">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                            <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">⏰ Heure début *</label><input type="time" id="planning-start-time" required value="09:00" style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                            <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">🕐 Heure fin *</label><input type="time" id="planning-end-time" required value="18:00" style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ed-card">
+                    <h3 style="margin: 0 0 15px 0; font-size: 1em;">⚙️ Configuration des matchs</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                        <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">⚽ Durée (min) *</label><input type="number" id="planning-match-duration" min="10" max="120" value="40" required style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                        <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">⏸️ Pause (min) *</label><input type="number" id="planning-break-duration" min="0" max="60" value="10" required style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                        <div><label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 0.9em;">🏟️ Terrains *</label><input type="number" id="planning-fields-count" min="1" max="10" value="2" required style="width: 100%; padding: 12px; border: 2px solid #2a3a4a; border-radius: 8px; font-size: 0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                    </div>
+                </div>
+                <div class="ed-card">
+                    <h3 style="margin: 0 0 15px 0; font-size: 1em;">🎚️ Options planning</h3>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div><label style="display:block; margin-bottom:8px; font-weight:600; font-size:0.9em;">Phase</label><select id="planning-phase" style="width:100%; padding:12px; border:2px solid #2a3a4a; border-radius:8px; background: #0f1923; color: #e0e6ed;"><option value="POULES">POULES</option><option value="FINALES">FINALES</option><option value="ALL">ALL</option></select></div>
+                        <div style="display:flex; align-items:flex-end;"><label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:0.9em;"><input type="checkbox" id="planning-advanced-toggle"> Avancé</label></div>
+                    </div>
+                    <div id="planning-advanced" style="display:none; margin-top:15px; padding-top:15px; border-top:1px solid #243447;">
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div><label style="display:block; margin-bottom:8px; font-weight:600; font-size:0.9em;">Repos entre rounds (min)</label><input type="number" id="planning-rest-between-rounds" min="0" value="10" style="width:100%; padding:12px; border:2px solid #2a3a4a; border-radius:8px; font-size:0.95em; background: #0f1923; color: #e0e6ed;"></div>
+                            <div style="display:flex; align-items:flex-end;"><label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:0.9em;"><input type="checkbox" id="planning-overwrite"> Replanifier</label></div>
+                        </div>
+                    </div>
+                    <div id="planning-suggestions" style="display:none; margin-top:15px; padding:15px; border-radius:10px; background:rgba(243,156,18,0.1); border:1px solid rgba(243,156,18,0.3);">
+                        <div style="font-weight:700; margin-bottom:10px; color:#f39c12;">⚠️ Ajustements proposés</div>
+                        <div id="planning-suggestions-msg" style="margin-bottom:12px; color:#d4a053;"></div>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <button type="button" id="btn-suggest-more-time" class="admin-btn" style="background:#f39c12;">+30 min</button>
+                            <button type="button" id="btn-suggest-more-fields" class="admin-btn" style="background:#9b59b6;">+1 terrain</button>
+                            <button type="button" id="btn-suggest-rest-zero" class="admin-btn" style="background:#27ae60;">repos=0</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="planning-preview" style="background: rgba(243,156,18,0.08); border-left: 4px solid #f39c12; padding: 20px; border-radius: 10px; display: none;">
+                    <h3 style="margin: 0 0 12px 0; color: #f39c12; font-size: 1em;">👁️ Aperçu</h3>
+                    <div id="preview-content" style="color: #d4a053; font-size: 0.9em; line-height: 1.6;"></div>
+                </div>
+                <button type="submit" class="admin-btn admin-btn-primary" style="width: 100%; padding: 18px; font-size: 1.15em; font-weight: 700; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); border: none;">
+                    ✨ Générer le planning du tournoi
+                </button>
+            </form>
+
+            <div class="ed-card" style="margin-top: 20px;">
+                <h2>🗓️ Planning complet des matchs</h2>
+                <div id="planning-matches-container"><p style="text-align: center; color: #5a6a7a; padding: 40px;">Générez d'abord le planning</p></div>
             </div>
         </div>
     </div>
-    
-    <!-- APERÇU PLANIFICATION -->
-    <div id="planning-preview" style="
-        background: #fff3cd;
-        border-left: 4px solid #f39c12;
-        padding: 20px;
-        border-radius: 10px;
-        display: none;
-    ">
-        <h3 style="margin: 0 0 12px 0; color: #856404; font-size: 1em; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-eye"></i>
-            Aperçu de la planification
-        </h3>
-        <div id="preview-content" style="color: #856404; font-size: 0.9em; line-height: 1.6;"></div>
+
+    <!-- ═══ ACCORDION: PHASE FINALE ═══ -->
+    <div class="ed-accordion" id="accordion-bracket">
+        <div class="ed-accordion-header" data-target="bracket">
+            <div class="acc-icon">🏆</div>
+            <div class="acc-title">Phase finale</div>
+            <div class="acc-badge" id="badge-bracket">—</div>
+            <i class="fas fa-chevron-down acc-chevron"></i>
+        </div>
+        <div class="ed-accordion-body">
+            <div class="ed-card"><h2>🏆 Bracket principal</h2><div id="event-bracket" class="admin-loading"><div class="loader">⏳ Chargement...</div></div></div>
+            <div class="ed-card"><h2>♻️ Consolante</h2><div id="event-consolante" class="admin-loading"><div class="loader">⏳ Chargement...</div></div></div>
+        </div>
     </div>
-    
-    <!-- BOUTON GÉNÉRATION -->
-    <button type="submit" class="admin-btn admin-btn-primary" style="
-        width: 100%;
-        padding: 18px;
-        font-size: 1.15em;
-        font-weight: 700;
-        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-        border: none;
-        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
-    ">
-        <i class="fas fa-magic"></i> Générer le planning du tournoi
-    </button>
-</form>
-    </section>
-    
-    <!-- ======================== -->
-    <!-- 📋 AFFICHAGE DU PLANNING -->
-    <!-- ======================== -->
-    <section class="admin-card">
-        <h2>🗓️ Planning complet des matchs</h2>
-        <div id="planning-matches-container">
-            <p style="text-align: center; color: #7f8c8d; padding: 40px;">
-                Générez d'abord le planning pour voir les horaires
-            </p>
+
+    <!-- ═══ ACCORDION: CLASSEMENTS ═══ -->
+    <div class="ed-accordion" id="accordion-rankings">
+        <div class="ed-accordion-header" data-target="rankings">
+            <div class="acc-icon">📊</div>
+            <div class="acc-title">Classements</div>
+            <div class="acc-badge" id="badge-rankings">—</div>
+            <i class="fas fa-chevron-down acc-chevron"></i>
         </div>
-    </section>
-</div>
-
-                    <!-- ONGLET 5: CLASSEMENTS -->
-                    <div class="tab-content" data-content="rankings">
-                        <section class="admin-card">
-                            <h2>🧩 Poules & classements</h2>
-                            <div id="event-groups" class="admin-loading">
-                                <div class="loader">⏳ Chargement...</div>
-                            </div>
-                            <div id="event-groups-rankings" style="margin-top: 10px;"></div>
-                        </section>
-
-                        <section class="admin-card">
-                            <h2>📊 Résumé du tournoi</h2>
-                            <div id="event-summary" class="admin-loading">
-                                <div class="loader">⏳ Chargement...</div>
-                            </div>
-                        </section>
-                    </div>
-
-                </div>
-
-                <!-- ONGLET 6: ARCHIVÉS -->
-<div class="tab-content" data-content="archived">
-    <section class="admin-card">
-        <h2>📦 Événements archivés</h2>
-        <p style="color: #7f8c8d; margin-bottom: 20px;">
-            Les événements archivés ne sont plus visibles publiquement. Vous pouvez les restaurer à tout moment.
-        </p>
-        <div id="archived-events-list">
-            <div class="loader">⏳ Chargement...</div>
+        <div class="ed-accordion-body">
+            <div class="ed-card"><h2>🧩 Poules & classements</h2><div id="event-groups" class="admin-loading"><div class="loader">⏳ Chargement...</div></div><div id="event-groups-rankings" style="margin-top: 10px;"></div></div>
+            <div class="ed-card"><h2>📊 Résumé</h2><div id="event-summary" class="admin-loading"><div class="loader">⏳ Chargement...</div></div></div>
         </div>
-    </section>
-</div>
-                <!-- MODAL ÉDITION HORAIRE -->
-<div id="edit-match-schedule-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; overflow-y: auto;">
-    <div style="
-        background: white;
-        max-width: 500px;
-        margin: 50px auto;
-        padding: 30px;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    ">
-        <h3 style="margin: 0 0 20px 0; color: #2c3e50;">✏️ Modifier l'horaire du match</h3>
-        
-        <div id="edit-match-info" style="
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 0.9em;
-        "></div>
-        
-        <div style="display: grid; gap: 15px;">
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
-                    📅 Date
-                </label>
-                <input type="date" id="edit-match-date" 
-                       style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
-            </div>
-            
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
-                    🕐 Heure
-                </label>
-                <input type="time" id="edit-match-time" 
-                       style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
-            </div>
-            
-            <div>
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
-                    🏟️ Terrain
-                </label>
-                <input type="text" id="edit-match-field" placeholder="Ex: Terrain 1"
-                       style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
-            </div>
+    </div>
+
+    <!-- ═══ ACCORDION: ARCHIVÉS ═══ -->
+    <div class="ed-accordion" id="accordion-archived">
+        <div class="ed-accordion-header" data-target="archived">
+            <div class="acc-icon">📦</div>
+            <div class="acc-title">Archivés</div>
+            <i class="fas fa-chevron-down acc-chevron"></i>
         </div>
-        
-        <div style="display: flex; gap: 10px; margin-top: 25px;">
-            <button id="cancel-edit-match" class="admin-btn" style="flex: 1; background: #95a5a6;">
-                Annuler
-            </button>
-            <button id="save-edit-match" class="admin-btn admin-btn-primary" style="flex: 1;">
-                ✅ Enregistrer
-            </button>
+        <div class="ed-accordion-body">
+            <p style="color: #5a6a7a; margin-bottom: 20px;">Les événements archivés ne sont plus visibles publiquement.</p>
+            <div id="archived-events-list"><div class="loader">⏳ Chargement...</div></div>
+        </div>
+    </div>
+
+    <!-- DANGER ZONE -->
+    <div class="ed-danger-zone">
+        <h3>⚠️ Zone de danger</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <button id="btn-cancel-event" class="admin-btn" style="background: #f39c12; width: 100%;"><i class="fas fa-ban"></i> Annuler</button>
+            <button id="btn-delete-event" class="admin-btn" style="background: #e74c3c; width: 100%;"><i class="fas fa-trash"></i> Archiver</button>
+        </div>
+    </div>
+
+    <!-- MODAL ÉDITION HORAIRE -->
+    <div id="edit-match-schedule-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; overflow-y: auto;">
+        <div style="background: #1a2735; max-width: 500px; margin: 50px auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); color: #e0e6ed;">
+            <h3 style="margin: 0 0 20px 0;">✏️ Modifier l'horaire</h3>
+            <div id="edit-match-info" style="background: #0f1923; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9em;"></div>
+            <div style="display: grid; gap: 15px;">
+                <div><label style="display: block; margin-bottom: 8px; font-weight: 600;">📅 Date</label><input type="date" id="edit-match-date" style="width: 100%; padding: 10px; border: 2px solid #2a3a4a; border-radius: 8px; background: #0f1923; color: #e0e6ed;"></div>
+                <div><label style="display: block; margin-bottom: 8px; font-weight: 600;">🕐 Heure</label><input type="time" id="edit-match-time" style="width: 100%; padding: 10px; border: 2px solid #2a3a4a; border-radius: 8px; background: #0f1923; color: #e0e6ed;"></div>
+                <div><label style="display: block; margin-bottom: 8px; font-weight: 600;">🏟️ Terrain</label><input type="text" id="edit-match-field" placeholder="Ex: Terrain 1" style="width: 100%; padding: 10px; border: 2px solid #2a3a4a; border-radius: 8px; background: #0f1923; color: #e0e6ed;"></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button id="cancel-edit-match" class="admin-btn" style="flex: 1; background: #95a5a6;">Annuler</button>
+                <button id="save-edit-match" class="admin-btn admin-btn-primary" style="flex: 1;">✅ Enregistrer</button>
+            </div>
         </div>
     </div>
 </div>
-            </div>
         `;
     },
 
@@ -809,7 +609,8 @@ const eventData = await this.safeGet(`/api/events/public/${eventId}`, token);
                 return;
             }
 
-            this.initTabs();
+            this.initAccordions();
+            this.initStepper();
 
             // ✅ MATCH UNIQUE : ne pas exécuter le dashboard tournoi
 if (eventData.format === "SINGLE_MATCH") {
@@ -853,6 +654,8 @@ if (event2.format !== "SINGLE_MATCH") {
 
 }
 
+            this.updateCTABanner();
+
             results.forEach((result, index) => {
                 if (result.status === 'rejected') {
                     const labels = ['Details', 'Registrations', 'MyTeams', 'Groups', 'Bracket', 'Consolante', 'Matches', 'Summary'];
@@ -876,54 +679,142 @@ if (event2.format !== "SINGLE_MATCH") {
     // ================================
     // 🆕 SYSTÈME D'ONGLETS
     // ================================
-    initTabs() {
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        tabButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const targetTab = btn.getAttribute('data-tab');
-
-                // Retirer la classe active de tous les boutons et contenus
-                tabButtons.forEach(b => b.classList.remove('active'));
-                tabContents.forEach(c => c.classList.remove('active'));
-
-                // Ajouter la classe active au bouton et contenu cliqué
-                btn.classList.add('active');
-                const targetContent = document.querySelector(`[data-content="${targetTab}"]`);
-                if (targetContent) {
-                    targetContent.classList.add('active');
+        // ================================
+    // SYSTÈME D'ACCORDIONS (remplace initTabs)
+    // ================================
+    initAccordions() {
+        const accordions = document.querySelectorAll('.ed-accordion');
+        accordions.forEach(acc => {
+            const header = acc.querySelector('.ed-accordion-header');
+            if (!header) return;
+            header.addEventListener('click', () => {
+                const wasOpen = acc.classList.contains('open');
+                acc.classList.toggle('open');
+                const target = header.dataset.target;
+                if (target && !wasOpen) {
+                    this.setActiveStep(target);
+                    this.onAccordionOpen(target);
                 }
-
-                // Mémoriser l'onglet actif
-                this.currentTab = targetTab;
-
-                // 🆕 RECHARGER LES DONNÉES SELON L'ONGLET
-const eventId = this.extractEventIdFromPath();
-const token = Auth.accessToken;
-
-if (eventId && token) {
-    switch (targetTab) {
-        case 'planning':
-            this.loadPlanningMatches(eventId, token);
-            break;
-        case 'matches':
-            this.loadMatches(eventId, token);
-            break;
-        case 'rankings':
-            this.loadGroups(eventId, token);
-            break;
-        case 'bracket':
-            this.loadBracket(eventId, token);
-            this.loadConsolante(eventId, token);
-            break;
-            case 'archived':
-                    this.loadArchivedEvents(eventId, token);
-                    break;
-    }
-}
             });
         });
+    },
+
+    // ================================
+    // STEPPER NAVIGATION
+    // ================================
+    initStepper() {
+        const steps = document.querySelectorAll('.stepper-step');
+        steps.forEach(step => {
+            step.addEventListener('click', () => {
+                const targetId = step.dataset.step;
+                const accordion = document.getElementById(`accordion-${targetId}`);
+                if (accordion) {
+                    accordion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    if (!accordion.classList.contains('open')) {
+                        accordion.classList.add('open');
+                        this.onAccordionOpen(targetId);
+                    }
+                }
+                this.setActiveStep(targetId);
+            });
+        });
+    },
+
+    setActiveStep(stepId) {
+        document.querySelectorAll('.stepper-step').forEach(s => s.classList.remove('active'));
+        const target = document.querySelector(`.stepper-step[data-step="${stepId}"]`);
+        if (target) target.classList.add('active');
+        this.currentTab = stepId;
+    },
+
+    onAccordionOpen(target) {
+        const eventId = this.extractEventIdFromPath();
+        const token = Auth.accessToken;
+        if (!eventId || !token) return;
+        switch (target) {
+            case 'planning': this.loadPlanningMatches(eventId, token); break;
+            case 'matches': this.loadMatches(eventId, token); break;
+            case 'rankings': this.loadGroups(eventId, token); break;
+            case 'bracket':
+                this.loadBracket(eventId, token);
+                this.loadConsolante(eventId, token);
+                break;
+            case 'archived': this.loadArchivedEvents && this.loadArchivedEvents(eventId, token); break;
+        }
+    },
+
+    // ================================
+    // CTA BANNER DYNAMIQUE
+    // ================================
+ updateCTABanner() {
+        const cta = document.getElementById('next-step-cta');
+        const ctaDesc = document.getElementById('cta-description');
+        const ctaBtn = document.getElementById('cta-action-btn');
+        if (!cta || !ctaDesc || !ctaBtn) return;
+
+        let nextAction = null;
+        let targetAccordion = null;
+
+        // Lire les infos affichées dans event-details pour détecter l'état réel
+        const detailsEl = document.getElementById('event-details');
+        const detailsText = detailsEl ? detailsEl.textContent : '';
+        
+        // Détecter le statut depuis le DOM
+        const isDraft = detailsText.includes('DRAFT');
+        const isPublished = detailsText.includes('PUBLISHED');
+        const isRegClosed = detailsText.includes('REGISTRATION_CLOSED');
+        const isOngoing = detailsText.includes('ONGOING') || detailsText.includes('EN_COURS');
+        const isCompleted = detailsText.includes('COMPLETED');
+
+        // Extraire le nombre d'équipes (pattern "X / Y équipes")
+        const teamsMatch = detailsText.match(/(\d+)\s*\/\s*(\d+)\s*équipes/i);
+        const currentTeams = teamsMatch ? parseInt(teamsMatch[1]) : 0;
+        const minTeams = 4;
+
+        if (isCompleted) {
+            cta.style.display = 'none';
+            return;
+        } else if (isDraft) {
+            nextAction = "Publier l'événement pour ouvrir les inscriptions";
+            targetAccordion = "overview";
+        } else if (isPublished && currentTeams < minTeams) {
+            nextAction = `Attendre les inscriptions (${currentTeams} équipe(s), minimum ${minTeams} requises)`;
+            targetAccordion = "registrations";
+        } else if (isPublished && currentTeams >= minTeams) {
+            nextAction = `${currentTeams} équipes inscrites — Clôturer les inscriptions`;
+            targetAccordion = "registrations";
+        } else if (isRegClosed && this.cachedMatchesCount === 0) {
+            nextAction = "Générer les poules et les matchs";
+            targetAccordion = "overview";
+        } else if (this.cachedMatchesCount > 0 && this.cachedRemainingScores > 0 && isOngoing) {
+            nextAction = `${this.cachedRemainingScores} match(s) restent à scorer`;
+            targetAccordion = "matches";
+        } else if (isOngoing && !this.cachedHasBracket && this.cachedMatchesCount > 0 && this.cachedRemainingScores === 0) {
+            nextAction = "Tous les matchs de poules sont joués — Générer le bracket";
+            targetAccordion = "overview";
+        } else if (isOngoing && this.cachedHasBracket && this.cachedRemainingScores === 0) {
+            nextAction = "Tous les matchs sont joués — Terminer le tournoi";
+            targetAccordion = "overview";
+        } else if (this.cachedMatchesCount > 0 && !isOngoing && !isCompleted) {
+            nextAction = "Démarrer le tournoi";
+            targetAccordion = "overview";
+        }
+
+        if (nextAction) {
+            cta.style.display = 'flex';
+            ctaDesc.textContent = nextAction;
+            ctaBtn.onclick = () => {
+                const acc = document.getElementById(`accordion-${targetAccordion}`);
+                if (acc) {
+                    acc.classList.add('open');
+                    acc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    this.setActiveStep(targetAccordion);
+                    this.onAccordionOpen(targetAccordion);
+                }
+            };
+        } else {
+            cta.style.display = 'none';
+        }
     },
 
     // ================================
@@ -5978,6 +5869,8 @@ renderTournamentControlButtons(event) {
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0.3; }
                 }
+
+                
             </style>
         `;
     }
@@ -6104,7 +5997,12 @@ renderMatchControlButtons(event) {
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0.3; }
                 }
-            </style>
+            
+/* Hide old tabs if any remain */
+.tab-btn, .tab-content-old { display: none !important; }
+
+
+</style>
         `;
     }
 
