@@ -21,31 +21,51 @@ export const FeedRender = {
     },
 
     /**
-     * Create video card - VERSION SIMPLE
+     * Create video card - VERSION TIKTOK
      */
     createVideoCard(video) {
         const id = video.id;
         const videoUrl = `/videos/${video.filename}`;
         const title = video.title || "";
         const author = video.uploaderUsername || "Unknown";
+        const authorId = video.uploaderId || null;
+        const avatarUrl = video.uploaderAvatarUrl || null;
         const likeCount = video.likesCount ?? 0;
         const commentCount = video.commentsCount ?? 0;
         const liked = video.likedByCurrentUser === true;
+        const isFollowing = video.isFollowingUploader === true;
+
+        // Avatar : initiale si pas d'image
+        const avatarContent = avatarUrl
+            ? `<img src="${avatarUrl}" alt="${author}" class="action-avatar-img">`
+            : `<span class="action-avatar-initial">${author.charAt(0).toUpperCase()}</span>`;
 
         const card = document.createElement("article");
         card.className = "video-card";
         card.dataset.videoId = id;
 
-        card.innerHTML = `
- <video class="video-element"
-  data-src="${videoUrl}"
-  playsinline
-  webkit-playsinline
-  muted
-  loop
-  preload="none">
-</video>
+        // Bouton follow : masqué si c'est notre propre vidéo
+        const currentUser = Auth.currentUser;
+        const isOwnVideo = currentUser && currentUser.username === author;
 
+        const followBtnHtml = !isOwnVideo ? `
+            <button class="follow-mini-btn ${isFollowing ? 'following' : ''}" 
+                    data-target-id="${authorId}"
+                    data-action="follow"
+                    aria-label="Suivre ${author}">
+                <i class="fa-solid ${isFollowing ? 'fa-check' : 'fa-plus'}"></i>
+            </button>
+        ` : '';
+
+        card.innerHTML = `
+            <video class="video-element"
+                data-src="${videoUrl}"
+                playsinline
+                webkit-playsinline
+                muted
+                loop
+                preload="none">
+            </video>
 
             <div class="overlay">
                 <div class="video-info">
@@ -57,6 +77,17 @@ export const FeedRender = {
                 </div>
 
                 <div class="video-actions">
+
+                    <!-- ⭐ AVATAR CRÉATEUR + FOLLOW (style TikTok) -->
+                    <div class="action-avatar-wrapper">
+                        <div class="action-avatar" 
+                             data-username="${author}" 
+                             data-action="go-profile">
+                            ${avatarContent}
+                        </div>
+                        ${followBtnHtml}
+                    </div>
+
                     <button class="like-btn ${liked ? "active" : ""}" 
                             data-video-id="${id}"
                             data-action="like">
@@ -77,24 +108,22 @@ export const FeedRender = {
                         <i class="fa-solid fa-share"></i>
                     </button>
 
-                 
-<button class="mute-btn" 
-        data-video-id="${id}"
-        data-action="mute">
-    <i class="fa-solid ${window.__ffSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'}"></i>
-</button>
+                    <button class="mute-btn" 
+                            data-video-id="${id}"
+                            data-action="mute">
+                        <i class="fa-solid ${window.__ffSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'}"></i>
+                    </button>
                 </div>
             </div>
         `;
 
-            const v = card.querySelector("video");
-if (v) {
-  v.playsInline = true;
-  v.setAttribute("playsinline", "");
-  v.setAttribute("webkit-playsinline", "");
-  v.preload = "none"; // ✅ ne charge rien tant qu’elle n’est pas active
-}
-
+        const v = card.querySelector("video");
+        if (v) {
+            v.playsInline = true;
+            v.setAttribute("playsinline", "");
+            v.setAttribute("webkit-playsinline", "");
+            v.preload = "none";
+        }
 
         // WebSocket
         this.subscribeToLikeUpdates(id);
@@ -174,6 +203,63 @@ if (v) {
         setTimeout(() => btn.classList.remove("processing"), 300);
     },
 
+    /**
+     * ⭐ Toggle follow depuis la sidebar
+     */
+    async toggleFollow(btn) {
+        if (btn.classList.contains("processing")) return;
+        btn.classList.add("processing");
+
+        const targetId = btn.dataset.targetId;
+        if (!targetId) return;
+
+        const wasFollowing = btn.classList.contains("following");
+        const icon = btn.querySelector("i");
+
+        // Optimistic UI
+        btn.classList.toggle("following");
+        if (icon) {
+            icon.className = wasFollowing 
+                ? "fa-solid fa-plus" 
+                : "fa-solid fa-check";
+        }
+
+        try {
+            const res = await Auth.secureFetch(`/api/follow/${targetId}`, {
+                method: "POST"
+            });
+            const json = await res.json();
+
+            if (json.success) {
+                const isNowFollowing = json.data.isFollowing;
+                btn.classList.toggle("following", isNowFollowing);
+                if (icon) {
+                    icon.className = isNowFollowing 
+                        ? "fa-solid fa-check" 
+                        : "fa-solid fa-plus";
+                }
+
+                // Met à jour tous les boutons follow du même user sur d'autres cartes
+                document.querySelectorAll(`.follow-mini-btn[data-target-id="${targetId}"]`).forEach(b => {
+                    b.classList.toggle("following", isNowFollowing);
+                    const i = b.querySelector("i");
+                    if (i) i.className = isNowFollowing ? "fa-solid fa-check" : "fa-solid fa-plus";
+                });
+            }
+        } catch (err) {
+            // Rollback
+            btn.classList.toggle("following", wasFollowing);
+            if (icon) {
+                icon.className = wasFollowing 
+                    ? "fa-solid fa-check" 
+                    : "fa-solid fa-plus";
+            }
+            console.error("❌ Erreur follow:", err);
+        }
+
+        setTimeout(() => btn.classList.remove("processing"), 300);
+    },
+
     shareVideo(videoId) {
         const url = `${window.location.origin}/watch?video=${videoId}`;
 
@@ -208,34 +294,40 @@ if (v) {
                 case "mute":
                     this.toggleMute(btn, videoId);
                     break;
+                case "follow":
+                    this.toggleFollow(btn);
+                    break;
+                case "go-profile":
+                    const username = btn.dataset.username;
+                    if (username) {
+                        Router.navigate(`/profile/${username}`);
+                    }
+                    break;
             }
         });
     },
 
-  toggleMute(btn, videoId) {
-  const card = document.querySelector(`[data-video-id="${videoId}"]`);
-  if (!card) return;
+    toggleMute(btn, videoId) {
+        const card = document.querySelector(`[data-video-id="${videoId}"]`);
+        if (!card) return;
 
-  const video = card.querySelector("video");
-  if (!video) return;
+        const video = card.querySelector("video");
+        if (!video) return;
 
-  video.muted = !video.muted;
+        video.muted = !video.muted;
+        window.__ffSoundEnabled = !video.muted;
 
-  // ✅ MÉMORISE LE CHOIX UTILISATEUR (utilisé par feed.js quand il active une nouvelle vidéo)
-  window.__ffSoundEnabled = !video.muted;
+        console.log("TOGGLE MUTE OK", { muted: video.muted, ff: window.__ffSoundEnabled });
 
-  console.log("TOGGLE MUTE OK", { muted: video.muted, ff: window.__ffSoundEnabled });
-
-  const icon = btn.querySelector("i");
-  if (video.muted) {
-    icon.classList.remove("fa-volume-high");
-    icon.classList.add("fa-volume-xmark");
-  } else {
-    icon.classList.remove("fa-volume-xmark");
-    icon.classList.add("fa-volume-high");
-  }
-},
-
+        const icon = btn.querySelector("i");
+        if (video.muted) {
+            icon.classList.remove("fa-volume-high");
+            icon.classList.add("fa-volume-xmark");
+        } else {
+            icon.classList.remove("fa-volume-xmark");
+            icon.classList.add("fa-volume-high");
+        }
+    },
 
     cleanup() {
         console.log("🧹 Cleanup feed render");

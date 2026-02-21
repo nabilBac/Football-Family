@@ -23,8 +23,8 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-
-
+import java.util.Set;
+import java.util.HashSet;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -89,50 +89,59 @@ Page<VideoFeedProjection> videosPage = videoRepository.findFollowedFeedProjectio
     // ---------------------------
     // MAPPER → DTO
     // ---------------------------
-    private List<VideoDto> mapToVideoDtoList(Page<VideoRepository.VideoFeedProjection> page, String username) {
-        User currentUser = userService.findUserByUsernameCached(username);
+private List<VideoDto> mapToVideoDtoList(Page<VideoRepository.VideoFeedProjection> page, String username) {
+    User currentUser = userService.findUserByUsernameCached(username);
 
-        List<Long> videoIds = page.getContent().stream()
-                .map(VideoRepository.VideoFeedProjection::getId)
-                .toList();
+    List<Long> videoIds = page.getContent().stream()
+            .map(VideoRepository.VideoFeedProjection::getId)
+            .toList();
 
-        if (videoIds.isEmpty()) {
-            return List.of();
-        }
-
-        Map<Long, Boolean> likedMap = new HashMap<>();
-        if (currentUser != null) {
-            List<Long> likedIds = videoLikeRepository.findLikedVideoIdsByUserAndVideoIds(currentUser, videoIds);
-            for (Long id : likedIds) {
-                likedMap.put(id, true);
-            }
-        }
-
-        Map<Long, Long> likeCountsMap = new HashMap<>();
-        List<Object[]> rows = videoLikeRepository.countLikesForVideoIds(videoIds);
-        for (Object[] row : rows) {
-            Long videoId = (Long) row[0];
-            Long count = (Long) row[1];
-            likeCountsMap.put(videoId, count);
-        }
-
-        return page.getContent().stream()
-                .map(p -> VideoDto.builder()
-                        .id(p.getId())
-                        .title(p.getTitle())
-                        .uploaderUsername(p.getUploaderUsername())
-                        .uploaderId(p.getUploaderId())
-                        .category(p.getCategory())
-                        .dateUpload(p.getDateUpload())
-                        .filename(p.getFilename())
-                        .thumbnailUrl(p.getThumbnailUrl())
-                       
-                        .likesCount(likeCountsMap.getOrDefault(p.getId(), 0L).intValue())
-                        .likedByCurrentUser(likedMap.getOrDefault(p.getId(), false))
-                        .commentsCount(p.getCommentsCount())
-                        .build())
-                .toList();
+    if (videoIds.isEmpty()) {
+        return List.of();
     }
+
+    // ── Likes map ──
+    Map<Long, Boolean> likedMap = new HashMap<>();
+    if (currentUser != null) {
+        List<Long> likedIds = videoLikeRepository.findLikedVideoIdsByUserAndVideoIds(currentUser, videoIds);
+        for (Long id : likedIds) {
+            likedMap.put(id, true);
+        }
+    }
+
+    Map<Long, Long> likeCountsMap = new HashMap<>();
+    List<Object[]> rows = videoLikeRepository.countLikesForVideoIds(videoIds);
+    for (Object[] row : rows) {
+        Long videoId = (Long) row[0];
+        Long count = (Long) row[1];
+        likeCountsMap.put(videoId, count);
+    }
+
+    // ⭐ NOUVEAU — IDs des uploaders que le user courant suit
+    Set<Long> followedUploaderIds = new HashSet<>();
+    if (currentUser != null) {
+        List<Long> allFollowedIds = followRepository.findFollowingIdsByFollower(currentUser);
+        followedUploaderIds.addAll(allFollowedIds);
+    }
+
+    return page.getContent().stream()
+            .map(p -> VideoDto.builder()
+                    .id(p.getId())
+                    .title(p.getTitle())
+                    .uploaderUsername(p.getUploaderUsername())
+                    .uploaderId(p.getUploaderId())
+                    .uploaderAvatarUrl(p.getUploaderAvatarUrl())  // ⭐ NOUVEAU
+                    .category(p.getCategory())
+                    .dateUpload(p.getDateUpload())
+                    .filename(p.getFilename())
+                    .thumbnailUrl(p.getThumbnailUrl())
+                    .likesCount(likeCountsMap.getOrDefault(p.getId(), 0L).intValue())
+                    .likedByCurrentUser(likedMap.getOrDefault(p.getId(), false))
+                    .commentsCount(p.getCommentsCount())
+                    .isFollowingUploader(followedUploaderIds.contains(p.getUploaderId()))  // ⭐ NOUVEAU
+                    .build())
+            .toList();
+}
 
     // ---------------------------
     // LIKE / UNLIKE

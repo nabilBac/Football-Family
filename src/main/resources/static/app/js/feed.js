@@ -16,6 +16,8 @@ let videoObserver;
 // ✅ Single active video (évite audio fantôme)
 let activeVideo = null;
 
+// ⭐ Feed type: "foryou" ou "following"
+let currentFeedType = "foryou";
 
 // ✅ mémoire globale du choix son (persiste pendant la session)
 window.__ffSoundEnabled = window.__ffSoundEnabled ?? false;
@@ -37,7 +39,6 @@ async function playVideo(video) {
 
 function activateVideoSource(video) {
   if (!video) return;
-  // lazy src: on n’assigne src que quand la vidéo devient active
   if (!video.getAttribute("src")) {
     const url = video.dataset?.src;
     if (url) video.setAttribute("src", url);
@@ -48,9 +49,8 @@ function activateVideoSource(video) {
 function deactivateVideoSource(video) {
   if (!video) return;
   try { video.pause(); } catch (_) {}
-  // libère mémoire / décodeur (mobile)
   try { video.removeAttribute("src"); } catch (_) {}
-  try { video.load(); } catch (_) {} // ✅ ici OK (pas dans stopVideo)
+  try { video.load(); } catch (_) {}
 }
 
 
@@ -58,16 +58,13 @@ function deactivateVideoSource(video) {
 function setActiveVideo(video) {
   if (!video || video === activeVideo) return;
 
-  // 1) Désactive l’ancienne (libère ressources mobile)
   if (activeVideo) {
     deactivateVideoSource(activeVideo);
   }
 
-  // 2) Désactive toutes les autres (sécurité)
   const all = videoContainer?.querySelectorAll("video") || [];
   all.forEach(v => { if (v !== video) deactivateVideoSource(v); });
 
-  // 3) Active la nouvelle (src lazy)
   activateVideoSource(video);
 
   activeVideo = video;
@@ -82,6 +79,9 @@ let hasMoreVideos = true;
 // ✅ LIMITE DE VIDÉOS EN DOM
 const MAX_VIDEOS_IN_DOM = 50;
 let totalVideosLoaded = 0;
+
+// ⭐ Page tracking par type de feed
+let feedPages = { foryou: 0, following: 0 };
 
 export async function initFeed() {
 
@@ -98,43 +98,40 @@ export async function initFeed() {
         return;
     }
 
-    // ✅ iOS: unlock autoplay after first user gesture (important for Safari)
-let iosUnlocked = false;
+    // ✅ iOS: unlock autoplay after first user gesture
+    let iosUnlocked = false;
 
-function unlockIOSOnce() {
-  if (iosUnlocked) return;
-  iosUnlocked = true;
+    function unlockIOSOnce() {
+      if (iosUnlocked) return;
+      iosUnlocked = true;
 
-  const v = videoContainer?.querySelector("video");
-  if (!v) return;
+      const v = videoContainer?.querySelector("video");
+      if (!v) return;
 
-  // ✅ active une source juste pour “déverrouiller”
-  if (!v.getAttribute("src")) {
-    const url = v.dataset?.src;
-    if (url) v.setAttribute("src", url);
-  }
+      if (!v.getAttribute("src")) {
+        const url = v.dataset?.src;
+        if (url) v.setAttribute("src", url);
+      }
 
-  v.muted = true;
-  const p = v.play();
-  if (p && p.catch) p.catch(() => {});
-  v.pause();
-  v.currentTime = 0;
+      v.muted = true;
+      const p = v.play();
+      if (p && p.catch) p.catch(() => {});
+      v.pause();
+      v.currentTime = 0;
 
-  // option: on relâche la source pour rester en lazy
-  v.removeAttribute("src");
-  v.load();
-}
+      v.removeAttribute("src");
+      v.load();
+    }
 
-
-scrollContainer.addEventListener("touchstart", unlockIOSOnce, { once: true, passive: true });
-scrollContainer.addEventListener("click", unlockIOSOnce, { once: true });
+    scrollContainer.addEventListener("touchstart", unlockIOSOnce, { once: true, passive: true });
+    scrollContainer.addEventListener("click", unlockIOSOnce, { once: true });
 
 
     setupMenu();
     setupNavActiveState();
     setProfileAvatar();
 
-    // ✅ WebSocket - Ne reconnecte que si déconnecté
+    // ✅ WebSocket
     if (!WebSocketService.isConnected()) {
         WebSocketService.init();
         await WebSocketService.connect();
@@ -144,8 +141,9 @@ scrollContainer.addEventListener("click", unlockIOSOnce, { once: true });
     FeedService.reset();
     hasMoreVideos = true;
     totalVideosLoaded = 0;
+    currentFeedType = "foryou";
+    feedPages = { foryou: 0, following: 0 };
     videoContainer.innerHTML = "";
-
 
     setupVideoAutoplayObserver();
 
@@ -154,24 +152,62 @@ scrollContainer.addEventListener("click", unlockIOSOnce, { once: true });
 
     FeedRender.setupEventDelegation(videoContainer);
 
-    // ✅ INTERSECTION OBSERVER (méthode moderne)
     setupIntersectionObserver();
-
-    // ✅ SCROLL FALLBACK (throttled)
     setupScrollFallback();
 
+    // ⭐ ÉCOUTE DU CHANGEMENT D'ONGLET (depuis navbar.js topbar)
+    window.__feedTabHandler = (e) => {
+        const type = e.detail?.type;
+        if (type && type !== currentFeedType) {
+            switchFeedType(type);
+        }
+    };
+    window.addEventListener('feed-tab-change', window.__feedTabHandler);
+}
+
+/**
+ * ⭐ SWITCH ENTRE "Pour toi" ET "Suivis"
+ */
+async function switchFeedType(type) {
+    currentFeedType = type;
+
+    // Pause toutes les vidéos
+    const videos = videoContainer?.querySelectorAll("video") || [];
+    videos.forEach(v => {
+        stopVideo(v);
+        v.removeAttribute("src");
+        v.load();
+    });
+    activeVideo = null;
+
+    // Reset
+    videoContainer.innerHTML = "";
+    totalVideosLoaded = 0;
+    hasMoreVideos = true;
+    isLoadingMore = false;
+
+    if (type === "foryou") {
+        FeedService.reset();
+    }
+
+    feedPages[type] = 0;
+
+    // Recharger
+    await loadNextPage();
+
+    // Re-observer les vidéos
+    setupVideoAutoplayObserver();
 }
 
 
 /**
- * ✅ NOUVEAU : OBSERVER POUR AUTOPLAY/PAUSE VIDÉOS
+ * ✅ OBSERVER POUR AUTOPLAY/PAUSE VIDÉOS
  */
 function setupVideoAutoplayObserver() {
     if (videoObserver) videoObserver.disconnect();
 
     videoObserver = new IntersectionObserver(
         async (entries) => {
-            // on cherche la vidéo la plus visible
             let bestEntry = null;
 
             for (const entry of entries) {
@@ -181,44 +217,39 @@ function setupVideoAutoplayObserver() {
                 }
             }
 
-            // 1) Pause toutes celles qui sortent de l’écran
             entries.forEach(entry => {
                 const video = entry.target;
-               if (!entry.isIntersecting) {
-  stopVideo(video);
-}
-
+                if (!entry.isIntersecting) {
+                    stopVideo(video);
+                }
             });
 
-            // 2) Si une vidéo est clairement dominante → elle devient active
-if (bestEntry && bestEntry.intersectionRatio >= 0.6) {
-  const video = bestEntry.target;
-  setActiveVideo(video);
-  
-  video.muted = !(window.__ffSoundEnabled === true);
-  
-  // ✅ SYNC ICÔNE
-  const card = video.closest('.video-card');
-  if (card) {
-    const muteBtn = card.querySelector('.mute-btn i');
-    if (muteBtn) {
-      if (video.muted) {
-        muteBtn.classList.remove('fa-volume-high');
-        muteBtn.classList.add('fa-volume-xmark');
-      } else {
-        muteBtn.classList.remove('fa-volume-xmark');
-        muteBtn.classList.add('fa-volume-high');
-      }
-    }
-  }
-  
-  await playVideo(video);
-}
-
+            if (bestEntry && bestEntry.intersectionRatio >= 0.6) {
+                const video = bestEntry.target;
+                setActiveVideo(video);
+                
+                video.muted = !(window.__ffSoundEnabled === true);
+                
+                // ✅ SYNC ICÔNE
+                const card = video.closest('.video-card');
+                if (card) {
+                    const muteBtn = card.querySelector('.mute-btn i');
+                    if (muteBtn) {
+                        if (video.muted) {
+                            muteBtn.classList.remove('fa-volume-high');
+                            muteBtn.classList.add('fa-volume-xmark');
+                        } else {
+                            muteBtn.classList.remove('fa-volume-xmark');
+                            muteBtn.classList.add('fa-volume-high');
+                        }
+                    }
+                }
+                
+                await playVideo(video);
+            }
         },
         {
             root: scrollContainer,
-            // seuils plus fins = plus stable pendant le scroll/snap
             threshold: [0, 0.25, 0.5, 0.6, 0.75, 1.0]
         }
     );
@@ -227,13 +258,8 @@ if (bestEntry && bestEntry.intersectionRatio >= 0.6) {
 }
 
 
-/**
- * ✅ HELPER : Observer toutes les vidéos
- */
 function observeAllVideos() {
-    if (!videoObserver) {
-        return; // 👈 garde-fou CRUCIAL
-    }
+    if (!videoObserver) return;
 
     const videos = videoContainer.querySelectorAll("video");
     videos.forEach(video => {
@@ -242,34 +268,24 @@ function observeAllVideos() {
 }
 
 
-/**
- * ✅ NOUVEAU : INVALIDER ET RECHARGER LE FEED (appelé après upload)
- */
 export function invalidateAndReload() {
     console.log("🔄 Invalidation et rechargement du feed...");
     
-    // 1. Invalider le cache FeedService
     FeedService.invalidateCache();
     
-    // 2. Vider le DOM
     if (videoContainer) {
         videoContainer.innerHTML = "";
     }
     
-    // 3. Reset les flags
     hasMoreVideos = true;
     totalVideosLoaded = 0;
     isLoadingMore = false;
+    feedPages = { foryou: 0, following: 0 };
     
-    // 4. Recharger la première page
     loadNextPage();
 }
 
-/**
- * ✅ INTERSECTION OBSERVER - Détecte quand loader devient visible
- */
 function setupIntersectionObserver() {
-    // Cleanup ancien observer
     if (intersectionObserver) {
         intersectionObserver.disconnect();
     }
@@ -284,22 +300,17 @@ function setupIntersectionObserver() {
         },
         {
             root: scrollContainer,
-            rootMargin: "200px", // Déclenche 200px avant d'atteindre le bas
+            rootMargin: "200px",
             threshold: 0.1
         }
     );
 
-    // Observer le loader
     if (loader) {
         intersectionObserver.observe(loader);
     }
 }
 
-/**
- * ✅ SCROLL FALLBACK - Throttled à 200ms (backup si IntersectionObserver fail)
- */
 function setupScrollFallback() {
-    // Cleanup ancien listener
     if (scrollListener) {
         scrollContainer.removeEventListener("scroll", scrollListener);
     }
@@ -320,14 +331,14 @@ function setupScrollFallback() {
             if (scrollPos >= threshold) {
                 loadNextPage();
             }
-        }, 200); // ✅ Throttle: max 5 appels/seconde
+        }, 200);
     };
 
     scrollContainer.addEventListener("scroll", scrollListener, { passive: true });
 }
 
 /**
- * ✅ CHARGEMENT PAGE SUIVANTE - Avec limite DOM
+ * ✅ CHARGEMENT PAGE SUIVANTE — avec support onglet "Suivis"
  */
 async function loadNextPage() {
     if (isLoadingMore || !hasMoreVideos) return;
@@ -336,11 +347,21 @@ async function loadNextPage() {
     showLoader(true);
 
     try {
-        const videos = await FeedService.loadNextPage();
-        
-        console.log("✅ Vidéos reçues:", videos);
-        console.log("✅ FeedRender:", FeedRender);
-        console.log("✅ videoContainer:", videoContainer);
+        let videos;
+
+        if (currentFeedType === "following") {
+            // ⭐ Feed des suivis — appel direct à l'API
+            const page = feedPages.following;
+            const res = await Auth.secureFetch(`/api/videos/feed/following?page=${page}`);
+            const json = await res.json();
+            videos = json.data || [];
+            feedPages.following++;
+        } else {
+            // Feed "Pour toi" — utilise FeedService existant
+            videos = await FeedService.loadNextPage();
+        }
+
+        console.log("✅ Vidéos reçues:", videos.length, "type:", currentFeedType);
 
         if (videos.length > 0) {
             if (totalVideosLoaded >= MAX_VIDEOS_IN_DOM) {
@@ -348,18 +369,21 @@ async function loadNextPage() {
             }
 
             totalVideosLoaded += videos.length;
-console.log("🔍 AVANT renderVideos:", videos);
-FeedRender.renderVideos(videoContainer, videos);
-console.log("🔍 APRÈS renderVideos, DOM count:", videoContainer.children.length);
+            FeedRender.renderVideos(videoContainer, videos);
 
-// ✅ NOUVEAU : Observer les nouvelles vidéos
-observeAllVideos();
+            // ✅ Observer les nouvelles vidéos
+            observeAllVideos();
 
-console.log(`📹 ${videos.length} vidéos ajoutées (total: ${totalVideosLoaded})`);
+            console.log(`📹 ${videos.length} vidéos ajoutées (total: ${totalVideosLoaded})`);
 
         } else {
             hasMoreVideos = false;
-            appendEndMessage();
+
+            if (currentFeedType === "following" && totalVideosLoaded === 0) {
+                appendEmptyFollowingMessage();
+            } else {
+                appendEndMessage();
+            }
         }
     } catch (error) {
         console.error("❌ Erreur chargement feed:", error);
@@ -371,25 +395,19 @@ console.log(`📹 ${videos.length} vidéos ajoutées (total: ${totalVideosLoaded
     }
 }
 
-/**
- * ✅ SUPPRIME LES VIDÉOS LES PLUS ANCIENNES (virtualization basique)
- */
 function removeOldestVideos(countToAdd) {
-   const videoItems = videoContainer.querySelectorAll(".video-card");
+    const videoItems = videoContainer.querySelectorAll(".video-card");
     const toRemove = Math.min(countToAdd, videoItems.length);
 
     for (let i = 0; i < toRemove; i++) {
         const oldVideo = videoItems[i];
         
-        // ✅ Pause vidéo avant suppression
         const video = oldVideo.querySelector("video");
         if (video) {
-      stopVideo(video);
-      if (video === activeVideo) activeVideo = null;
-
-video.removeAttribute("src");
-video.load(); // force à couper le flux audio sur certains navigateurs
-
+            stopVideo(video);
+            if (video === activeVideo) activeVideo = null;
+            video.removeAttribute("src");
+            video.load();
         }
 
         oldVideo.remove();
@@ -399,9 +417,6 @@ video.load(); // force à couper le flux audio sur certains navigateurs
     console.log(`🗑️ ${toRemove} anciennes vidéos supprimées`);
 }
 
-/**
- * ✅ MESSAGE FIN DE FEED
- */
 function appendEndMessage() {
     const endDiv = document.createElement("div");
     endDiv.style.cssText = "text-align:center;padding:40px;color:#888;font-size:18px;";
@@ -410,8 +425,19 @@ function appendEndMessage() {
 }
 
 /**
- * ✅ MESSAGE ERREUR
+ * ⭐ Message quand l'onglet "Suivis" est vide
  */
+function appendEmptyFollowingMessage() {
+    const div = document.createElement("div");
+    div.style.cssText = "text-align:center;padding:60px 20px;color:#888;";
+    div.innerHTML = `
+        <div style="font-size:48px;margin-bottom:16px;">👥</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px;">Aucune vidéo de vos abonnements</div>
+        <div style="font-size:14px;color:#666;">Suivez des créateurs pour voir leurs vidéos ici</div>
+    `;
+    videoContainer.appendChild(div);
+}
+
 function appendErrorMessage() {
     const errorDiv = document.createElement("div");
     errorDiv.style.cssText = "text-align:center;padding:40px;color:#ff4444;";
@@ -441,7 +467,6 @@ function showLoader(show) {
   if (show) {
     clearTimeout(loaderTimer);
     loaderTimer = setTimeout(() => {
-      // IMPORTANT: on ne change pas la position ici
       loader.style.display = "block";
     }, 200);
   } else {
@@ -501,40 +526,38 @@ export function cleanupFeed() {
 
     FeedRender.cleanup();
 
-    // ✅ Disconnect IntersectionObserver
- 
-if (intersectionObserver) {
-    intersectionObserver.disconnect();
-    intersectionObserver = null;
-}
+    if (intersectionObserver) {
+        intersectionObserver.disconnect();
+        intersectionObserver = null;
+    }
 
-// ✅ NOUVEAU : Disconnect VideoObserver
-if (videoObserver) {
-    videoObserver.disconnect();
-    videoObserver = null;
-}
+    if (videoObserver) {
+        videoObserver.disconnect();
+        videoObserver = null;
+    }
 
-// ✅ Remove scroll listener
-
-    // ✅ Remove scroll listener
     if (scrollListener && scrollContainer) {
         scrollContainer.removeEventListener("scroll", scrollListener);
         scrollListener = null;
     }
 
-    // ✅ Pause toutes les vidéos
+    // ⭐ Retirer le listener d'onglet
+    if (window.__feedTabHandler) {
+        window.removeEventListener('feed-tab-change', window.__feedTabHandler);
+        window.__feedTabHandler = null;
+    }
+
     const videos = videoContainer?.querySelectorAll("video");
     videos?.forEach(video => {
-       stopVideo(video);
-video.removeAttribute("src");
-video.load();
-
+        stopVideo(video);
+        video.removeAttribute("src");
+        video.load();
     });
 
     isLoadingMore = false;
     hasMoreVideos = true;
     totalVideosLoaded = 0;
+    currentFeedType = "foryou";
 
     activeVideo = null;
-
 }

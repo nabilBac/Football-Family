@@ -9,10 +9,6 @@ import com.footballdemo.football_family.model.VideoStatus;
 
 import java.util.Collections;
 
-// DTO final et allégé (Priorité #1).
-// Utilise @Value pour l'immuabilité (final fields) et @Builder pour la création facile.
-// Il ne charge PLUS la liste lourde des commentaires.
-
 @Value
 @Builder
 public class VideoDto {
@@ -20,11 +16,12 @@ public class VideoDto {
     String title;
     String uploaderUsername;
     Long uploaderId;
+    String uploaderAvatarUrl;       // ⭐ NOUVEAU — avatar du créateur
     String category;
     LocalDateTime dateUpload;
     String filename;
     String thumbnailUrl;
-    VideoStatus status; 
+    VideoStatus status;
 
     @Builder.Default
     List<CommentDto> topComments = Collections.emptyList();
@@ -32,6 +29,7 @@ public class VideoDto {
     int likesCount;
     long commentsCount;
     boolean likedByCurrentUser;
+    boolean isFollowingUploader;    // ⭐ NOUVEAU — est-ce que le viewer suit ce créateur
 
     boolean live;
     boolean top;

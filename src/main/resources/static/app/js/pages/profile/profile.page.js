@@ -1,6 +1,5 @@
 // /static/app/js/pages/profile/profile.page.js
-// ✅ VERSION PRO — Design social inspiré de la démo HTML "Profile Social"
-// Conserve toute la logique existante (Auth, follow, vidéos, delete)
+// ✅ VERSION AVEC DRAWER MENU (style TikTok/Instagram)
 
 import { Auth } from "../../auth.js";
 import { Router } from "../../router.js";
@@ -63,6 +62,30 @@ function injectProfileStyles() {
     .pp-cover-arc {
         position: absolute; left: 50%; bottom: -30px; transform: translateX(-50%);
         width: 120px; height: 120px; border: 2px solid rgba(255,255,255,.15); border-radius: 50%;
+    }
+
+    /* ⭐ BOUTON MENU (hamburger) sur le cover */
+    .pp-menu-btn {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        z-index: 10;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.4);
+        backdrop-filter: blur(8px);
+        border: 1.5px solid rgba(255,255,255,0.2);
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    .pp-menu-btn:hover {
+        background: rgba(0,0,0,0.6);
     }
 
     /* ── HERO ── */
@@ -275,6 +298,133 @@ function injectProfileStyles() {
     .pp-empty-icon { font-size: 48px; margin-bottom: 12px; }
     .pp-empty-text { font-size: 15px; color: var(--pp-muted); font-weight: 600; }
 
+    /* ════════════════════════════════════════
+       ⭐ DRAWER MENU (style TikTok/Instagram)
+    ════════════════════════════════════════ */
+    .pp-drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 50000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    .pp-drawer-backdrop.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .pp-drawer {
+        position: fixed;
+        top: 0;
+        right: -320px;
+        width: 300px;
+        max-width: 85vw;
+        height: 100%;
+        background: var(--pp-white);
+        z-index: 50001;
+        transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        box-shadow: -4px 0 30px rgba(0,0,0,0.15);
+    }
+    .pp-drawer.open {
+        right: 0;
+    }
+
+    .pp-drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px;
+        border-bottom: 1.5px solid var(--pp-border);
+    }
+    .pp-drawer-title {
+        font-family: 'Unbounded', sans-serif;
+        font-size: 16px;
+        font-weight: 900;
+    }
+    .pp-drawer-close {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: var(--pp-bg);
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: 0.15s;
+        color: var(--pp-text);
+    }
+    .pp-drawer-close:hover {
+        background: var(--pp-border);
+    }
+
+    .pp-drawer-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px 0;
+    }
+
+    .pp-drawer-section {
+        padding: 8px 16px 4px;
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--pp-muted2);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .pp-drawer-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 20px;
+        cursor: pointer;
+        transition: background 0.15s;
+        text-decoration: none;
+        color: var(--pp-text);
+        font-size: 14px;
+        font-weight: 600;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        font-family: 'Nunito', sans-serif;
+    }
+    .pp-drawer-item:hover {
+        background: var(--pp-bg);
+    }
+    .pp-drawer-item i {
+        width: 22px;
+        text-align: center;
+        font-size: 16px;
+        color: var(--pp-muted);
+    }
+    .pp-drawer-item.danger {
+        color: var(--pp-red);
+    }
+    .pp-drawer-item.danger i {
+        color: var(--pp-red);
+    }
+
+    .pp-drawer-divider {
+        height: 1px;
+        background: var(--pp-border);
+        margin: 8px 16px;
+    }
+
+    .pp-drawer-footer {
+        padding: 16px 20px;
+        border-top: 1.5px solid var(--pp-border);
+        font-size: 11px;
+        color: var(--pp-muted2);
+        text-align: center;
+    }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
         .pp-hero-top { flex-direction: column; }
@@ -307,7 +457,6 @@ export async function render(params) {
 
     injectProfileStyles();
 
-    // Charger l'utilisateur courant
     const token =
         Auth.accessToken ||
         localStorage.getItem("token") ||
@@ -369,8 +518,96 @@ export async function render(params) {
     const avatarUrl = user.avatarUrl ||
         `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=16c060&color=fff&size=200`;
 
-    // Initiales pour le fallback
     const initials = (user.username || 'U').substring(0, 2).toUpperCase();
+
+    // ⭐ Déterminer les items du drawer selon le rôle
+    const currentUserRole = Auth.currentUser?.highestRole || '';
+    const isAdmin = ['CLUB_ADMIN', 'SUPER_ADMIN', 'ORGANIZER'].includes(currentUserRole);
+    const hasClub = Auth.currentUser?.clubId != null;
+
+    // =====================================================
+    // ⭐ DRAWER HTML (visible uniquement pour currentUser)
+    // =====================================================
+    const drawerHtml = isCurrentUser ? `
+        <!-- DRAWER BACKDROP -->
+        <div class="pp-drawer-backdrop" id="pp-drawer-backdrop"></div>
+
+        <!-- DRAWER PANEL -->
+        <div class="pp-drawer" id="pp-drawer">
+            <div class="pp-drawer-header">
+                <span class="pp-drawer-title">Menu</span>
+                <button class="pp-drawer-close" id="pp-drawer-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="pp-drawer-body">
+                ${isAdmin ? `
+                    <div class="pp-drawer-section">Gestion</div>
+                    <a href="/admin" data-link class="pp-drawer-item" id="drawer-dashboard">
+                        <i class="fas fa-chart-line"></i>
+                        Dashboard Admin
+                    </a>
+                    ${hasClub ? `
+                        <a href="/club-admin" data-link class="pp-drawer-item">
+                            <i class="fas fa-users-gear"></i>
+                            Mon Club
+                        </a>
+                    ` : `
+                        <a href="/account/club/create" data-link class="pp-drawer-item">
+                            <i class="fas fa-trophy"></i>
+                            Créer mon club
+                        </a>
+                    `}
+                    <a href="/admin/events" data-link class="pp-drawer-item">
+                        <i class="fas fa-calendar-plus"></i>
+                        Mes événements
+                    </a>
+                    <div class="pp-drawer-divider"></div>
+                ` : ''}
+
+                <div class="pp-drawer-section">Compte</div>
+                <a href="/account" data-link class="pp-drawer-item">
+                    <i class="fas fa-user-cog"></i>
+                    Paramètres du compte
+                </a>
+                <button class="pp-drawer-item" id="drawer-edit-profile">
+                    <i class="fas fa-pen"></i>
+                    Modifier le profil
+                </button>
+
+                ${!hasClub && !isAdmin ? `
+                    <a href="/account/club/create" data-link class="pp-drawer-item">
+                        <i class="fas fa-trophy"></i>
+                        Créer mon club
+                    </a>
+                ` : ''}
+
+                <div class="pp-drawer-divider"></div>
+
+                <div class="pp-drawer-section">Contenu</div>
+                <a href="/upload" data-link class="pp-drawer-item">
+                    <i class="fas fa-video"></i>
+                    Publier une vidéo
+                </a>
+                <a href="/videos" data-link class="pp-drawer-item">
+                    <i class="fas fa-photo-film"></i>
+                    Mes vidéos
+                </a>
+
+                <div class="pp-drawer-divider"></div>
+
+                <button class="pp-drawer-item danger" id="drawer-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Se déconnecter
+                </button>
+            </div>
+
+            <div class="pp-drawer-footer">
+                GoalClips &middot; FootballFamily
+            </div>
+        </div>
+    ` : '';
 
     // =====================================================
     // 🎨 HTML TEMPLATE
@@ -378,10 +615,17 @@ export async function render(params) {
     return `
     <div class="pp-profile-page">
 
+        ${drawerHtml}
+
         <!-- ══ COVER ══ -->
         <div class="pp-cover">
             <div class="pp-cover-pitch"></div>
             <div class="pp-cover-arc"></div>
+            ${isCurrentUser ? `
+                <button class="pp-menu-btn" id="pp-menu-btn" aria-label="Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            ` : ''}
         </div>
 
         <!-- ══ HERO ══ -->
@@ -402,23 +646,11 @@ export async function render(params) {
 
                     <div class="pp-hero-actions">
                         ${isCurrentUser ? `
-                            ${Auth.currentUser?.clubId != null ? `
-                                <a href="/club-admin" data-link class="pp-btn pp-btn-green pp-btn-sm">
-                                    <i class="fas fa-users-gear"></i> Mon Club
-                                </a>
-                            ` : `
-                                <a href="/account/club/create" data-link class="pp-btn pp-btn-green pp-btn-sm">
-                                    <i class="fas fa-trophy"></i> Créer mon club
-                                </a>
-                            `}
                             <button class="pp-btn pp-btn-outline pp-btn-sm" id="editProfileBtn">
                                 <i class="fas fa-pen"></i> Éditer
                             </button>
-                            <a href="/account" data-link class="pp-btn pp-btn-outline pp-btn-sm">
-                                <i class="fas fa-user-cog"></i> Compte
-                            </a>
-                            <button class="pp-btn pp-btn-outline pp-btn-sm" id="logoutBtn" style="color:var(--pp-red);border-color:var(--pp-red)">
-                                <i class="fas fa-sign-out-alt"></i>
+                            <button class="pp-btn pp-btn-outline pp-btn-sm" id="shareProfileBtn">
+                                <i class="fas fa-share-nodes"></i> Partager
                             </button>
                         ` : `
                             <button class="pp-btn pp-btn-outline pp-btn-sm">
@@ -529,6 +761,70 @@ export async function render(params) {
 // =====================================================
 export function init(params) {
 
+    // ⭐ DRAWER : ouverture/fermeture
+    const menuBtn = document.getElementById('pp-menu-btn');
+    const drawer = document.getElementById('pp-drawer');
+    const drawerBackdrop = document.getElementById('pp-drawer-backdrop');
+    const drawerClose = document.getElementById('pp-drawer-close');
+
+    function openDrawer() {
+        if (drawer) drawer.classList.add('open');
+        if (drawerBackdrop) drawerBackdrop.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+        if (drawer) drawer.classList.remove('open');
+        if (drawerBackdrop) drawerBackdrop.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    if (menuBtn) menuBtn.addEventListener('click', openDrawer);
+    if (drawerClose) drawerClose.addEventListener('click', closeDrawer);
+    if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeDrawer);
+
+    // Fermer le drawer quand on clique sur un lien dedans
+    document.querySelectorAll('.pp-drawer-item[data-link]').forEach(item => {
+        item.addEventListener('click', () => {
+            closeDrawer();
+        });
+    });
+
+    // ⭐ DRAWER : Éditer profil
+    const drawerEditProfile = document.getElementById('drawer-edit-profile');
+    if (drawerEditProfile) {
+        drawerEditProfile.addEventListener('click', () => {
+            closeDrawer();
+            alert("Édition du profil à implémenter");
+        });
+    }
+
+    // ⭐ DRAWER : Déconnexion
+    const drawerLogout = document.getElementById('drawer-logout');
+    if (drawerLogout) {
+        drawerLogout.addEventListener('click', () => {
+            closeDrawer();
+            if (confirm("Voulez-vous vous déconnecter ?")) {
+                Auth.logout();
+            }
+        });
+    }
+
+    // ⭐ PARTAGE PROFIL
+    const shareBtn = document.getElementById('shareProfileBtn');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', () => {
+            const url = window.location.href;
+            if (navigator.share) {
+                navigator.share({ title: 'Mon profil GoalClips', url }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(url)
+                    .then(() => alert('Lien copié !'))
+                    .catch(() => alert('Impossible de copier'));
+            }
+        });
+    }
+
     // 🗑️ SUPPRESSION VIDÉO
     document.querySelectorAll(".delete-video-btn").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
@@ -557,38 +853,19 @@ export function init(params) {
         });
     });
 
-    // Tabs (local switching)
+    // Tabs
     document.querySelectorAll(".pp-tab").forEach(tab => {
         tab.addEventListener("click", () => {
             document.querySelectorAll(".pp-tab").forEach(t => t.classList.remove("active"));
             tab.classList.add("active");
-            // Future: switch content based on data-tab
         });
     });
 
-    // Edit profil
+    // Edit profil (bouton hero)
     const editBtn = document.getElementById("editProfileBtn");
     if (editBtn) {
         editBtn.addEventListener("click", () => {
             alert("Édition du profil à implémenter");
-        });
-    }
-
-    // Déconnexion
-    const logoutBtn = document.getElementById("logoutBtn");
-    if (logoutBtn) {
-        logoutBtn.addEventListener("click", () => {
-            if (confirm("Voulez-vous vous déconnecter ?")) {
-                Auth.logout();
-            }
-        });
-    }
-
-    // Bouton Mon Club
-    const goToAdminBtn = document.getElementById("goToAdminBtn");
-    if (goToAdminBtn) {
-        goToAdminBtn.addEventListener("click", () => {
-            Router.go("/admin");
         });
     }
 
@@ -611,10 +888,10 @@ export function init(params) {
                 if (!res.ok) return;
 
                 const result = await res.json();
-                const data = result.data;
+                const d = result.data;
 
-                followBtn.classList.toggle("following", data.isFollowing);
-                followBtn.innerHTML = data.isFollowing ? "✓ Abonné" : "➕ S'abonner";
+                followBtn.classList.toggle("following", d.isFollowing);
+                followBtn.innerHTML = d.isFollowing ? "✓ Abonné" : "➕ S'abonner";
             } catch (e) {
                 console.warn("refreshFollowStatus error:", e);
             }
