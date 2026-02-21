@@ -45,7 +45,7 @@ public class CreateEventDTO {
 
     @NotBlank(message = "La catégorie est obligatoire")
     @Pattern(
-        regexp = "^(U7|U9|U11|U13|U15|U17|U19|SENIOR|VETERAN)$",
+        regexp = "^(U6|U7|U8|U9|U10|U11|U12|U13|U14|U15|U16|U17|U18|U19|U20|U21|SENIOR|VETERAN)$",
         message = "Catégorie invalide"
     )
     private String category;

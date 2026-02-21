@@ -113,6 +113,9 @@ public class SecurityConfig {
                             // MES INSCRIPTIONS
                             .requestMatchers("/api/events/registration/me").authenticated()
 
+                            // FRIENDS
+                            .requestMatchers("/api/friends", "/api/friends/**").permitAll()
+
                             // VIDEOS
                             .requestMatchers("/api/videos/feed", "/api/videos/public/**").permitAll()
 

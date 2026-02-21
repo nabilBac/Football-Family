@@ -38,8 +38,11 @@ public class FriendsRestController {
      * }
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getFriends(Principal principal) {
+
+        if (principal == null) {
+            return ResponseEntity.ok(java.util.Map.of("friends", java.util.List.of(), "totalFriends", 0, "liveCount", 0));
+        }
 
         User currentUser = userService.getUserByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
@@ -89,7 +92,6 @@ public class FriendsRestController {
      * Vérifie si l'utilisateur connecté est ami avec un autre user
      */
     @GetMapping("/check/{userId}")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> checkFriendship(@PathVariable Long userId, Principal principal) {
 
         User currentUser = userService.getUserByUsername(principal.getName())

@@ -226,10 +226,7 @@ async function loadFriendsBubbles() {
 
     try {
         const res = await fetch("/api/friends", {
-            headers: {
-                "Authorization": `Bearer ${Auth.getToken?.() || ""}`,
-                "Content-Type": "application/json"
-            }
+            headers: { "Authorization": Auth.getAuthHeader() }
         });
 
         if (!res.ok) {
