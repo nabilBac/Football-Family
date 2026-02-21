@@ -1,8 +1,8 @@
 // /static/app/js/router.js
-// ✅ VERSION CORRIGÉE - Routes tournament supprimées
+// ✅ VERSION REFONTE - Bottom sheet + Amis
 
 import { Auth } from "./auth.js";
-import { Navbar } from "./components/navbar.js";
+import { Navbar, initNavbarActions, cleanupNavbarActions } from "./components/navbar.js"; // ⭐ 1️⃣ AJOUT imports
 import { AdminHeader } from './components/admin-header.js';
 
 function updateNavbarButtonVisibility() {
@@ -30,7 +30,7 @@ routes: {
     "/login": "/app/js/pages/login/login.page.js",
     "/register": "/app/js/pages/register/register.page.js",
     "/upload": "/app/js/pages/upload/upload.js",
-    "/hub": "/app/js/pages/hub/hub.page.js",
+    // "/hub": "/app/js/pages/hub/hub.page.js",  // ⭐ 3️⃣ Route supprimée (remplacée par bottom sheet + amis)
     "/profile": "/app/js/pages/profile/profile.page.js",
     "/videos": "/app/js/pages/videos/list.page.js",
     "/videos/go-live": "/app/js/pages/videos/go-live.page.js",
@@ -86,7 +86,6 @@ routes: {
             modulePath: "/app/js/pages/clubs/event-groups.page.js",
             paramKey: ["clubId", "eventId"]
         },
-        // ✅ NOUVELLE ROUTE ADMIN POUR LE DASHBOARD D'UN ÉVÉNEMENT
         {
             pattern: /^\/admin\/events\/(\d+)$/,
             modulePath: "/app/js/pages/admin/event.dashboard.page.js",
@@ -125,19 +124,19 @@ async go(url) {
 
 
     resolveRoute(url) {
-        // ⭐ Redirection racine vers feed
      if (url === "/" || url === "/index.html") {
-    history.replaceState(null, "", "/feed"); // ✅ met l'URL à jour
+    history.replaceState(null, "", "/feed");
     url = "/feed";
 }
+          if (url === "/hub") {
+        history.replaceState(null, "", "/feed");
+        url = "/feed";
+    }
 
-
-        // Routes simples
         if (this.routes[url]) {
             return { modulePath: this.routes[url], params: {} };
         }
 
-        // Routes dynamiques
         for (const r of this.dynamicRoutes) {
             const match = url.match(r.pattern);
             if (match) {
@@ -171,21 +170,18 @@ if (prev) {
   }
 }
 
+// ⭐ Cleanup navbar listeners avant chaque navigation
+cleanupNavbarActions();
+
 if (token !== this.navToken) return;
 this.root.classList.remove("is-hub-page", "is-live-page", "fade-in", "fade-out", "ready");
 
-        // 🟣 START TRANSITION (fade-out)
         this.root.classList.add("fade-out");
 
-
-  // ⏳ Attendre que le fade-out soit visible (100ms)
 await new Promise(resolve => setTimeout(resolve, 100));
 
 if (token !== this.navToken) return;
 
-
-
-            // 🧹 RESET GLOBAL DES CLASSES
             document.body.classList.remove(
                 "is-feed-page",
                 "is-hub-page",
@@ -195,22 +191,14 @@ if (token !== this.navToken) return;
                   "is-event-detail-page"   
             );
 
-            // 🛠️ Mode ADMIN
            if (url.startsWith("/club-admin")) {
-
                 document.body.classList.add("is-admin-page");
             }
 
-            // 🎯 Mode FEED
             if (url === "/feed") {
                 document.body.classList.add("is-feed-page");
             }
 
-  // Route flags BEFORE render
-if (url === "/hub") {
-    this.root.classList.add("is-hub-page");
-    document.body.classList.add("is-live-page");
-}
 if (url === "/videos/go-live" || url.startsWith("/videos/watch/")) {
     this.root.classList.add("is-live-page");
     document.body.classList.add("is-live-page");
@@ -218,12 +206,8 @@ if (url === "/videos/go-live" || url.startsWith("/videos/watch/")) {
 
                     if (url === "/live/matches") this.root.classList.add("is-live-page");
 
-
-            // Resolve route
             const resolved = this.resolveRoute(url);
 
-         
-// 🚨 PROTECTION ADMIN
 if (url.startsWith("/club-admin") || url.startsWith("/admin")) {
     console.log("🔥 ADMIN GUARD : Vérification accès...");
 
@@ -257,7 +241,6 @@ if (url.startsWith("/club-admin") || url.startsWith("/admin")) {
                 return;
             }
 
-            // ✅ DEBUG + SAFE IMPORT (mobile/render)
 const moduleUrl = resolved.modulePath;
 console.log("[Router] importing:", moduleUrl, "for url=", url);
 
@@ -274,10 +257,9 @@ try {
     throw new Error(`Module introuvable: ${moduleUrl} (HTTP ${r.status})`);
   }
 
-  // Si Render renvoie index.html au lieu du JS => fallback SPA trop large
 if (ct.includes("text/html")) {
   const txt = await r.text();
-  if (token !== this.navToken) return; // ✅ AJOUT ICI
+  if (token !== this.navToken) return;
 
   console.error("⚠️ HTML renvoyé au lieu de JS pour", moduleUrl);
   console.log("HTML head:", txt.slice(0, 150));
@@ -311,11 +293,10 @@ const hideNavbar =
   url.startsWith("/videos/go-live") ||
   url.startsWith("/videos/watch/");
 
-const hidePostButton = (url === "/hub");
+const hidePostButton = false; // ⭐ 4️⃣ Plus nécessaire pour /hub
 const isAdminPage = url.startsWith("/club-admin") || url.startsWith("/admin");
 
 
-// ... dans navigate()
 const pageHtml =
   Page.render.length > 0
     ? await Page.render(resolved.params)
@@ -330,6 +311,7 @@ if (isAdminPage) {
     this.root.innerHTML = pageHtml;
 } else {
     this.root.innerHTML = `${pageHtml}${Navbar({ hidePostButton })}`;
+    initNavbarActions();  // ⭐ 2️⃣ Active le bottom sheet + amis
 }
 
 // ✅ Init admin si page admin
@@ -337,15 +319,12 @@ if (isAdminPage && AdminHeader.init) {
     AdminHeader.init();
 }
 
-if (token !== this.navToken) return; // ✅ G
-
-// ... tes animations/classes etc. (tu peux laisser comme tu as)
+if (token !== this.navToken) return;
 
 if (Page.init) await Page.init(resolved.params);
 
-if (token !== this.navToken) return; // ✅ H
+if (token !== this.navToken) return;
 
-         // 🔥 FIX du bouton + qui devient ovale après quitter un live
 if (url !== "/hub") {
     document.body.classList.remove("is-live-page");
 }
@@ -364,7 +343,6 @@ setTimeout(() => {
     this.root.classList.remove("fade-in");
 }, 150);
 
-            // Reload post buttons only if not admin
             if (!isAdminPage) {
                 updateNavbarButtonVisibility();
             }
